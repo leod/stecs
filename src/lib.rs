@@ -19,9 +19,9 @@ mod archetype;
 mod query;
 mod world;
 
-pub use archetype::{Archetype, Column, Storage};
+pub use archetype::{Archetype, Storage};
 pub use query::Query;
-pub use world::{World, WorldData};
+pub use world::World;
 
 pub trait Component {}
 

@@ -39,7 +39,9 @@ impl<C1: Component> Query for C1 {
 
 impl<C1: Component, C2: Component> Query for (C1, C2) {
     fn query<A: Archetype>(arena: &Arena<A>) -> impl Iterator<Self> {
-        A::query_simple(arena)
+        if let (Some(c1), Some(c2)) = (A::query_simple::<C1>(arena), A::query_simple::<C2>(arena)) {
+            c1.zip(c2)
+        }
     }
 }
 
