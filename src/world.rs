@@ -11,7 +11,5 @@ pub trait World {
 
     fn despawn(&mut self, id: Self::Id) -> Option<Self::Entity>;
 
-    fn query<'a, Q: Query>(&'a self) -> Q::Iter<'a>;
-
-    fn query_borrow<'a, Q: Query>(&'a self) -> Q::Iter<'a>;
+    fn query<'a, Q: Query>(&'a mut self) -> Q::Iter<'a>;
 }

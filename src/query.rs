@@ -10,15 +10,7 @@ pub trait Query {
     where
         Self: 'a;
 
-    fn query<'a, A: Archetype>(storage: &'a A::Storage) -> Option<Self::Iter<'a>>;
-}
-
-pub trait QueryMut {
-    type Iter<'a>: Iterator<Item = Self>
-    where
-        Self: 'a;
-
-    fn query_mut<'a, A: Archetype>(storage: &'a mut A::Storage) -> Option<Self::Iter<'a>>;
+    fn query<'a, A: Archetype>(storage: &'a mut A::Storage) -> Option<Self::Iter<'a>>;
 }
 
 macro_rules! zip_type {
