@@ -1,11 +1,31 @@
-use std::{fmt::Debug, hash::Hash};
+use std::{borrow::Borrow, fmt::Debug, hash::Hash, marker::PhantomData};
+
+use frunk::{hlist::Sculptor, prelude::HList};
 
 use crate::Query;
+
+struct WorldBorrow<'a, W, Cs>(&'a mut W, PhantomData<Cs>);
+
+impl<'a, W, Cs> WorldBorrow<'a, W, Cs> {
+    pub fn query<Ts, Indices>(
+        self,
+    ) -> (
+        Ts,
+        WorldBorrow<'a, W, <Cs as Sculptor<Ts, Indices>>::Remainder>,
+    )
+    where
+        Cs: Sculptor<Ts, Indices>,
+    {
+        todo!()
+    }
+}
 
 pub trait World {
     type Id: Copy + Debug + PartialEq + Hash;
 
     type Entity;
+
+    type Components: HList;
 
     fn spawn(&mut self, entity: Self::Entity) -> Self::Id;
 

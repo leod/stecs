@@ -11,7 +11,7 @@ pub trait Archetype {
 
     fn has<C: Component>() -> bool;
 
-    fn column<C: Component>(storage: &Self::Storage) -> Option<Column<C>>;
+    //fn column<C: Component>(storage: &Self::Storage) -> Option<Column<C>>;
 }
 
 pub type Storage<A> = <A as Archetype>::Storage;

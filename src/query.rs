@@ -60,4 +60,4 @@ macro_rules! tuple_impl {
     };
 }
 
-smaller_tuples_too!(tuple_impl, F);
+//smaller_tuples_too!(tuple_impl, F);
