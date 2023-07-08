@@ -17,11 +17,12 @@ macro_rules! smaller_tuples_too {
 
 mod archetype;
 mod query;
+mod storage;
 mod world;
 
-pub use archetype::{Archetype, Storage};
+pub use archetype::{Archetype, Column, ColumnIter, EntityIndex, Storage};
 pub use query::Query;
-pub use world::World;
+pub use world::{Entity, EntityId, World};
 
 pub trait Component {}
 

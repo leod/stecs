@@ -2,7 +2,7 @@ use std::iter::{Empty, Map, Zip};
 
 use crate::{
     archetype::{Column, ColumnIter},
-    Archetype,
+    Archetype, Storage,
 };
 
 pub trait Query {
@@ -10,7 +10,7 @@ pub trait Query {
     where
         Self: 'a;
 
-    fn query<'a, A: Archetype>(storage: &'a mut A::Storage) -> Option<Self::Iter<'a>>;
+    fn query<'a, A: Archetype>(storage: &'a Storage<A>) -> Option<Self::Iter<'a>>;
 }
 
 macro_rules! zip_type {
