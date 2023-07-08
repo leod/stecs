@@ -20,10 +20,10 @@ mod query;
 mod storage;
 mod world;
 
-pub use archetype::{Archetype, Column, ColumnIter, EntityIndex, Storage};
+pub use archetype::{Archetype, Column, ColumnIter, ColumnValues, EntityIndex, Storage};
 pub use query::Query;
 pub use world::{Entity, EntityId, World};
 
-pub trait Component {}
+pub trait Component: 'static {}
 
-impl<T> Component for T {}
+impl<T> Component for T where T: 'static {}

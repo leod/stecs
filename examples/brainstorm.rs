@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     cell::RefCell,
     fmt::Debug,
     iter::{Chain, Flatten},
@@ -30,12 +31,12 @@ impl Archetype for Player {
 
     type Storage = PlayerStorage;
 
-    fn has<C: stecs::Component>() -> bool {
-        todo!()
-    }
+    fn column<'a, C: stecs::Component>(
+        storage: &'a Self::Storage,
+    ) -> Option<&'a RefCell<Column<C>>> {
+        let any: &dyn Any = &storage.pos;
 
-    fn column<C: stecs::Component>(storage: &Self::Storage) -> Option<Column<C>> {
-        todo!()
+        any.downcast_ref()
     }
 
     fn insert(storage: &mut Self::Storage, entity: Self) -> EntityIndex {
@@ -60,16 +61,14 @@ impl Archetype for Enemy {
 
     type Storage = EnemyStorage;
 
-    fn has<C: stecs::Component>() -> bool {
-        todo!()
-    }
-
-    fn column<C: stecs::Component>(storage: &Self::Storage) -> Option<Column<C>> {
+    fn column<'a, C: 'a + stecs::Component>(
+        storage: &'a Self::Storage,
+    ) -> Option<&'a RefCell<Column<C>>> {
         todo!()
     }
 
     fn insert(storage: &mut Self::Storage, entity: Self) -> EntityIndex {
-        todo!()
+        storage.pos.borrow_mut().insert(entity.pos)
     }
 }
 

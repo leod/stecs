@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use frunk::prelude::HList;
 use thunderdome::{Arena, Index};
 
@@ -9,9 +11,7 @@ pub trait Archetype {
     type Components: HList;
     type Storage: Default;
 
-    fn has<C: Component>() -> bool;
-
-    fn column<C: Component>(storage: &Self::Storage) -> Option<Column<C>>;
+    fn column<'a, C: Component>(storage: &'a Self::Storage) -> Option<&'a RefCell<Column<C>>>;
 
     fn insert(storage: &mut Self::Storage, entity: Self) -> EntityIndex;
 }
@@ -33,11 +33,25 @@ impl<C: Component> Column<C> {
 
 pub type ColumnIter<'a, C> = thunderdome::iter::Iter<'a, C>;
 
+pub struct ColumnValues<'a, C>(pub(crate) ColumnIter<'a, C>);
+
+impl<'a, C> Iterator for ColumnValues<'a, C> {
+    type Item = &'a C;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|(_, value)| value)
+    }
+}
+
 pub struct Storage<S: Archetype>(S::Storage);
 
 impl<A: Archetype> Storage<A> {
     pub fn insert(&mut self, entity: A) -> Index {
         A::insert(&mut self.0, entity)
+    }
+
+    pub fn column<'a, C: Component>(&'a self) -> Option<&'a RefCell<Column<C>>> {
+        A::column(&self.0)
     }
 }
 
