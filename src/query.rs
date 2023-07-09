@@ -11,7 +11,7 @@ where
 {
     type Output;
 
-    unsafe fn get(&self, id: W::EntityId, entity: &'a mut A) -> Self::Output;
+    unsafe fn get(&self, id: W::EntityId, entity: *mut A) -> Self::Output;
 }
 
 pub struct GetterIter<'a, W, A, G>
@@ -72,20 +72,6 @@ where
         W: WorldArchetype<A>;
 }
 
-macro_rules! zip_type {
-    () => { Empty<()> };
-
-    ($lt:lifetime, $name:ty) => { <$name as Query>::Iter<$lt> };
-
-    ($lt:lifetime, $name1:ty, $name2:ty) => {
-        Zip<zip_type!($lt, $name1), zip_type!($lt, $name2)>
-    };
-
-    ($lt:lifetime, $name:ty, $($rest:ty),*) => {
-        Zip<zip_type!($lt, $name), zip_type!($lt, $($rest),*)>
-    };
-}
-
 pub struct EntityIdGetter;
 
 impl<'a, W, A> Getter<'a, W, A> for EntityIdGetter
@@ -95,7 +81,7 @@ where
 {
     type Output = W::EntityId;
 
-    unsafe fn get(&self, id: W::EntityId, _: &'a mut A) -> Self::Output {
+    unsafe fn get(&self, id: W::EntityId, _: *mut A) -> Self::Output {
         id
     }
 }
@@ -114,7 +100,7 @@ where
     type Output = &'a C;
 
     // FIXME: Figure out if this can even be done safely.
-    unsafe fn get(&self, _: W::EntityId, entity: &'a mut A) -> Self::Output {
+    unsafe fn get(&self, _: W::EntityId, entity: *mut A) -> Self::Output {
         let entity = entity as *const A as *const ();
         let component = entity.add(self.offset) as *const C;
 
@@ -131,7 +117,7 @@ where
     type Output = &'a mut C;
 
     // FIXME: Figure out if this can even be done safely.
-    unsafe fn get(&self, _: W::EntityId, entity: &'a mut A) -> Self::Output {
+    unsafe fn get(&self, _: W::EntityId, entity: *mut A) -> Self::Output {
         let entity = entity as *mut A as *mut ();
         let component = entity.add(self.offset) as *mut C;
 
@@ -187,20 +173,43 @@ where
     }
 }
 
-/*
-impl<'a, D: Query, E: Query> Query for (&'a D, &'a E) {
-    type Iter<'b> = zip_type!('b, &'a D, &'a E)
-    where
-        Self: 'b;
+pub struct PairGetter<G0, G1>(G0, G1);
 
-    fn query<'b, A: Archetype>(storage: &'b Storage<A>) -> Option<Self::Iter<'b>>
-    where
-        Self: 'b,
-    {
-        todo!()
+impl<'a, W, A, G0, G1> Getter<'a, W, A> for PairGetter<G0, G1>
+where
+    W: WorldArchetype<A>,
+    A: Archetype,
+    G0: Getter<'a, W, A>,
+    G1: Getter<'a, W, A>,
+{
+    type Output = (G0::Output, G1::Output);
+
+    unsafe fn get(&self, id: <W>::EntityId, entity: *mut A) -> Self::Output {
+        (self.0.get(id, entity), self.1.get(id, entity))
     }
+}
 
-*/
+impl<'a, W, Q0, Q1> Query<'a, W> for (Q0, Q1)
+where
+    W: World,
+    Q0: Query<'a, W>,
+    Q1: Query<'a, W>,
+{
+    type Getter<A> = PairGetter<Q0::Getter<A>, Q1::Getter<A>>
+    where
+        W: WorldArchetype<A>,
+        A: Archetype + 'a;
+
+    fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>>
+    where
+        W: WorldArchetype<A>,
+    {
+        let g0 = Q0::getter::<A>()?;
+        let g1 = Q1::getter::<A>()?;
+
+        Some(PairGetter(g0, g1))
+    }
+}
 
 /*
 macro_rules! tuple_impl {

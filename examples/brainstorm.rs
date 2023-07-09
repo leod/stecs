@@ -171,6 +171,18 @@ fn main() {
 
     dbg!("--");
 
+    for (p, v) in world.query::<(&mut Position, &Velocity)>() {
+        p.0 += v.0;
+    }
+
+    dbg!("--");
+
+    for (p, q) in world.query::<(&mut Position, &mut Position)>() {
+        p.0 += q.0;
+    }
+
+    dbg!("--");
+
     for id in world.query::<EntityId<MyWorld>>() {
         dbg!(id);
     }
