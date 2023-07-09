@@ -6,10 +6,16 @@ use stecs::{
     World, WorldArchetype,
 };
 
+#[derive(Clone)]
 struct Position(f32);
+
+#[derive(Clone)]
 struct Velocity(f32);
+
+#[derive(Clone)]
 struct Color(f32);
 
+#[derive(Clone)]
 struct Player {
     pos: Position,
     vel: Velocity,
@@ -35,9 +41,10 @@ unsafe impl Archetype for Player {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Target(EntityId<MyWorld>);
 
+#[derive(Clone)]
 struct Enemy {
     pos: Position,
     target: Target,
@@ -60,7 +67,7 @@ unsafe impl Archetype for Enemy {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct MyWorld {
     players: Arena<Player>,
     enemies: Arena<Enemy>,
