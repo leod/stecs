@@ -1,7 +1,7 @@
 use std::{any::TypeId, fmt::Debug, iter::Chain};
 
 use frunk::{HCons, HNil};
-use stecs::{Archetype, Arena, EntityId, EntityIndex, GetterIter, Query, World};
+use stecs::{arena, Archetype, Arena, EntityId, GetterIter, Query, World, WorldArchetype};
 
 struct Position(f32);
 struct Velocity(f32);
@@ -52,8 +52,8 @@ struct MyWorld {
 // generated
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 enum WorldEntityId {
-    Player(EntityIndex),
-    Enemy(EntityIndex),
+    Player(arena::Index),
+    Enemy(arena::Index),
 }
 
 enum WorldEntity {
@@ -78,8 +78,10 @@ impl stecs::World for MyWorld {
 
     type Entity = WorldEntity;
 
-    type QueryIter<'a, Q: Query<'a>> =
-        Chain<GetterIter<'a, Player, Q::Getter<Player>>, GetterIter<'a, Enemy, Q::Getter<Enemy>>>;
+    type QueryIter<'a, Q: Query<'a>> = Chain<
+        GetterIter<'a, Self, Player, Q::Getter<Self, Player>>,
+        GetterIter<'a, Self, Enemy, Q::Getter<Self, Enemy>>,
+    >;
 
     fn spawn(&mut self, entity: impl Into<Self::Entity>) -> Self::EntityId {
         match entity.into() {
@@ -96,10 +98,21 @@ impl stecs::World for MyWorld {
     where
         Q: stecs::Query<'a>,
     {
-        GetterIter::new(self.players.iter_mut(), Q::getter::<Player>()).chain(GetterIter::new(
-            self.enemies.iter_mut(),
-            Q::getter::<Enemy>(),
-        ))
+        GetterIter::new(self.players.iter_mut(), Q::getter::<Self, Player>()).chain(
+            GetterIter::new(self.enemies.iter_mut(), Q::getter::<Self, Enemy>()),
+        )
+    }
+}
+
+impl WorldArchetype<Player> for MyWorld {
+    fn id(index: arena::Index) -> EntityId<Self> {
+        EntityId::<Self>::Player(index)
+    }
+}
+
+impl WorldArchetype<Enemy> for MyWorld {
+    fn id(index: arena::Index) -> EntityId<Self> {
+        EntityId::<Self>::Enemy(index)
     }
 }
 

@@ -21,10 +21,10 @@ mod world;
 
 pub mod arena;
 
-pub use archetype::{Archetype, EntityIndex};
+pub use archetype::Archetype;
 pub use arena::Arena;
 pub use query::{Getter, GetterIter, Query};
-pub use world::{Entity, EntityId, World};
+pub use world::{Entity, EntityId, World, WorldArchetype};
 
 pub trait Component: 'static {}
 

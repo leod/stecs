@@ -1,6 +1,6 @@
 use std::{fmt::Debug, hash::Hash};
 
-use crate::Query;
+use crate::{arena, Archetype, Query};
 
 pub trait World: Default + Sized {
     type EntityId: Copy + Debug + PartialEq + Hash;
@@ -24,3 +24,7 @@ pub trait World: Default + Sized {
 pub type EntityId<W> = <W as World>::EntityId;
 
 pub type Entity<W> = <W as World>::Entity;
+
+pub trait WorldArchetype<A: Archetype>: World {
+    fn id(index: arena::Index) -> Self::EntityId;
+}

@@ -1,27 +1,35 @@
 use std::marker::PhantomData;
 
-use crate::{arena, Archetype, Component};
+use crate::{arena, Archetype, Component, WorldArchetype};
 
 // FIXME: Figure out safety!
 
-pub trait Getter<'a, A> {
+pub trait Getter<'a, W, A>
+where
+    W: WorldArchetype<A>,
+    A: Archetype,
+{
     type Output;
 
-    unsafe fn get(&self, index: arena::Index, entity: &'a mut A) -> Self::Output;
+    unsafe fn get(&self, id: W::EntityId, entity: &'a mut A) -> Self::Output;
 }
 
-pub struct GetterIter<'a, A, G>
+pub struct GetterIter<'a, W, A, G>
 where
-    G: Getter<'a, A>,
+    W: WorldArchetype<A>,
+    A: Archetype,
+    G: Getter<'a, W, A>,
 {
     iter: arena::iter::IterMut<'a, A>,
     getter: Option<G>,
-    _phantom: PhantomData<A>,
+    _phantom: PhantomData<(W, A)>,
 }
 
-impl<'a, A, G> GetterIter<'a, A, G>
+impl<'a, W, A, G> GetterIter<'a, W, A, G>
 where
-    G: Getter<'a, A>,
+    W: WorldArchetype<A>,
+    A: Archetype,
+    G: Getter<'a, W, A>,
 {
     pub fn new(iter: arena::iter::IterMut<'a, A>, getter: Option<G>) -> Self {
         GetterIter {
@@ -32,25 +40,31 @@ where
     }
 }
 
-impl<'a, A, G> Iterator for GetterIter<'a, A, G>
+impl<'a, W, A, G> Iterator for GetterIter<'a, W, A, G>
 where
-    G: Getter<'a, A>,
+    W: WorldArchetype<A>,
+    A: Archetype,
+    G: Getter<'a, W, A>,
 {
     type Item = G::Output;
 
     fn next(&mut self) -> Option<Self::Item> {
         let getter = self.getter.as_ref()?;
         let (index, entity) = self.iter.next()?;
+        let id = W::id(index);
 
         // FIXME: Figure out safety.
-        Some(unsafe { getter.get(index, entity) })
+        Some(unsafe { getter.get(id, entity) })
     }
 }
 
 pub trait Query<'a> {
-    type Getter<A: Archetype + 'a>: Getter<'a, A, Output = Self>;
+    type Getter<W, A>: Getter<'a, W, A, Output = Self>
+    where
+        W: WorldArchetype<A>,
+        A: Archetype + 'a;
 
-    fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>>;
+    fn getter<W: WorldArchetype<A>, A: Archetype + 'a>() -> Option<Self::Getter<W, A>>;
 }
 
 macro_rules! zip_type {
@@ -72,15 +86,16 @@ pub struct ComponentAccessor<A, C> {
     _phantom: PhantomData<(A, C)>,
 }
 
-impl<'a, A, C> Getter<'a, A> for ComponentAccessor<A, &'a C>
+impl<'a, W, A, C> Getter<'a, W, A> for ComponentAccessor<A, &'a C>
 where
+    W: WorldArchetype<A>,
     A: Archetype,
     C: Component,
 {
     type Output = &'a C;
 
     // FIXME: Figure out if this can even be done safely.
-    unsafe fn get(&self, _: arena::Index, entity: &'a mut A) -> Self::Output {
+    unsafe fn get(&self, _: W::EntityId, entity: &'a mut A) -> Self::Output {
         let entity = entity as *const A as *const ();
         let component = entity.add(self.offset) as *const C;
 
@@ -88,15 +103,16 @@ where
     }
 }
 
-impl<'a, A, C> Getter<'a, A> for ComponentAccessor<A, &'a mut C>
+impl<'a, W, A, C> Getter<'a, W, A> for ComponentAccessor<A, &'a mut C>
 where
+    W: WorldArchetype<A>,
     A: Archetype,
     C: Component,
 {
     type Output = &'a mut C;
 
     // FIXME: Figure out if this can even be done safely.
-    unsafe fn get(&self, _: arena::Index, entity: &'a mut A) -> Self::Output {
+    unsafe fn get(&self, _: W::EntityId, entity: &'a mut A) -> Self::Output {
         let entity = entity as *mut A as *mut ();
         let component = entity.add(self.offset) as *mut C;
 
@@ -105,9 +121,16 @@ where
 }
 
 impl<'a, C: Component> Query<'a> for &'a C {
-    type Getter<A: Archetype + 'a> = ComponentAccessor<A, &'a C>;
+    type Getter<W, A> = ComponentAccessor<A, &'a C>
+    where
+        W: WorldArchetype<A>,
+        A: Archetype + 'a;
 
-    fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>> {
+    fn getter<W, A>() -> Option<Self::Getter<W, A>>
+    where
+        W: WorldArchetype<A>,
+        A: Archetype + 'a,
+    {
         let offset = A::offset_of::<C>()?;
 
         Some(ComponentAccessor {
@@ -118,9 +141,16 @@ impl<'a, C: Component> Query<'a> for &'a C {
 }
 
 impl<'a, C: Component> Query<'a> for &'a mut C {
-    type Getter<A: Archetype + 'a> = ComponentAccessor<A, &'a mut C>;
+    type Getter<W, A> = ComponentAccessor<A, &'a mut C>
+    where
+        W: WorldArchetype<A>,
+        A: Archetype + 'a;
 
-    fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>> {
+    fn getter<W, A>() -> Option<Self::Getter<W, A>>
+    where
+        W: WorldArchetype<A>,
+        A: Archetype + 'a,
+    {
         let offset = A::offset_of::<C>()?;
 
         Some(ComponentAccessor {
