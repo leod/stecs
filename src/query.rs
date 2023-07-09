@@ -81,12 +81,12 @@ macro_rules! zip_type {
     };
 }
 
-pub struct ComponentAccessor<A, C> {
+pub struct ComponentGetter<A, C> {
     offset: usize,
     _phantom: PhantomData<(A, C)>,
 }
 
-impl<'a, W, A, C> Getter<'a, W, A> for ComponentAccessor<A, &'a C>
+impl<'a, W, A, C> Getter<'a, W, A> for ComponentGetter<A, &'a C>
 where
     W: WorldArchetype<A>,
     A: Archetype,
@@ -103,7 +103,7 @@ where
     }
 }
 
-impl<'a, W, A, C> Getter<'a, W, A> for ComponentAccessor<A, &'a mut C>
+impl<'a, W, A, C> Getter<'a, W, A> for ComponentGetter<A, &'a mut C>
 where
     W: WorldArchetype<A>,
     A: Archetype,
@@ -121,7 +121,7 @@ where
 }
 
 impl<'a, C: Component> Query<'a> for &'a C {
-    type Getter<W, A> = ComponentAccessor<A, &'a C>
+    type Getter<W, A> = ComponentGetter<A, &'a C>
     where
         W: WorldArchetype<A>,
         A: Archetype + 'a;
@@ -133,7 +133,7 @@ impl<'a, C: Component> Query<'a> for &'a C {
     {
         let offset = A::offset_of::<C>()?;
 
-        Some(ComponentAccessor {
+        Some(ComponentGetter {
             offset,
             _phantom: PhantomData,
         })
@@ -141,7 +141,7 @@ impl<'a, C: Component> Query<'a> for &'a C {
 }
 
 impl<'a, C: Component> Query<'a> for &'a mut C {
-    type Getter<W, A> = ComponentAccessor<A, &'a mut C>
+    type Getter<W, A> = ComponentGetter<A, &'a mut C>
     where
         W: WorldArchetype<A>,
         A: Archetype + 'a;
@@ -153,7 +153,7 @@ impl<'a, C: Component> Query<'a> for &'a mut C {
     {
         let offset = A::offset_of::<C>()?;
 
-        Some(ComponentAccessor {
+        Some(ComponentGetter {
             offset,
             _phantom: PhantomData,
         })
