@@ -1,8 +1,69 @@
-use std::marker::PhantomData;
+use std::{
+    any::{type_name, TypeId},
+    collections::HashSet,
+    marker::PhantomData,
+};
 
 use crate::{arena, Archetype, Component, World, WorldArchetype};
 
 // FIXME: Figure out safety!
+
+#[derive(Debug, Clone)]
+pub struct BorrowChecker {
+    query: &'static str,
+    borrows: HashSet<TypeId>,
+    mut_borrows: HashSet<TypeId>,
+}
+
+impl BorrowChecker {
+    fn new(query: &'static str) -> Self {
+        BorrowChecker {
+            query,
+            borrows: Default::default(),
+            mut_borrows: Default::default(),
+        }
+    }
+
+    fn borrow<C: 'static>(&mut self) {
+        let type_id = TypeId::of::<C>();
+
+        if self.mut_borrows.contains(&type_id) {
+            self.panic_exclusive_and_shared::<C>();
+        }
+
+        self.borrows.insert(type_id);
+    }
+
+    fn borrow_mut<C: 'static>(&mut self) {
+        let type_id = TypeId::of::<C>();
+
+        if self.borrows.contains(&type_id) {
+            self.panic_exclusive_and_shared::<C>();
+        }
+
+        if self.mut_borrows.contains(&type_id) {
+            self.panic_exclusive_and_exclusive::<C>();
+        }
+
+        self.mut_borrows.insert(type_id);
+    }
+
+    fn panic_exclusive_and_shared<C>(&self) -> ! {
+        panic!(
+            "Query `{}` has an exclusive and a shared reference to component `{}`",
+            self.query,
+            type_name::<C>(),
+        );
+    }
+
+    fn panic_exclusive_and_exclusive<C>(&self) -> ! {
+        panic!(
+            "Query `{}` has multiple exclusive references to component `{}`",
+            self.query,
+            type_name::<C>(),
+        );
+    }
+}
 
 pub trait Getter<'a, W, A>
 where
@@ -31,7 +92,17 @@ where
     A: Archetype,
     G: Getter<'a, W, A>,
 {
-    pub fn new(iter: arena::iter::IterMut<'a, A>, getter: Option<G>) -> Self {
+    pub fn new<Q>(iter: arena::iter::IterMut<'a, A>) -> Self
+    where
+        Q: Query<'a, W, Getter<A> = G>,
+    {
+        // SAFETY: Check that the components in the query satisfy Rust's
+        // borrowing rules.
+        let mut borrow_checker = BorrowChecker::new(type_name::<Q>());
+        Q::check_borrows(&mut borrow_checker);
+
+        let getter = Q::getter::<A>();
+
         GetterIter {
             iter,
             getter,
@@ -66,6 +137,8 @@ where
     where
         W: WorldArchetype<A>,
         A: Archetype + 'a;
+
+    fn check_borrows(checker: &mut BorrowChecker);
 
     fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>>
     where
@@ -135,6 +208,10 @@ where
         W: WorldArchetype<A>,
         A: Archetype + 'a;
 
+    fn check_borrows(checker: &mut BorrowChecker) {
+        checker.borrow::<C>();
+    }
+
     fn getter<A>() -> Option<Self::Getter<A>>
     where
         W: WorldArchetype<A>,
@@ -158,6 +235,10 @@ where
     where
         W: WorldArchetype<A>,
         A: Archetype + 'a;
+
+    fn check_borrows(checker: &mut BorrowChecker) {
+        checker.borrow_mut::<C>();
+    }
 
     fn getter<A>() -> Option<Self::Getter<A>>
     where
@@ -199,6 +280,11 @@ where
     where
         W: WorldArchetype<A>,
         A: Archetype + 'a;
+
+    fn check_borrows(checkers: &mut BorrowChecker) {
+        Q0::check_borrows(checkers);
+        Q1::check_borrows(checkers);
+    }
 
     fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>>
     where

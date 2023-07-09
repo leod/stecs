@@ -2,7 +2,8 @@ use std::{any::TypeId, fmt::Debug, iter::Chain};
 
 use frunk::{HCons, HNil};
 use stecs::{
-    arena, Archetype, Arena, EntityId, EntityIdGetter, GetterIter, Query, World, WorldArchetype,
+    arena, Archetype, Arena, BorrowChecker, EntityId, EntityIdGetter, GetterIter, Query, World,
+    WorldArchetype,
 };
 
 struct Position(f32);
@@ -100,10 +101,10 @@ impl stecs::World for MyWorld {
     where
         Q: Query<'a, Self>,
     {
-        GetterIter::new(self.players.iter_mut(), Q::getter::<Player>()).chain(GetterIter::new(
-            self.enemies.iter_mut(),
-            Q::getter::<Enemy>(),
-        ))
+        let iter = GetterIter::new::<Q>(self.players.iter_mut());
+        let iter = iter.chain(GetterIter::new::<Q>(self.enemies.iter_mut()));
+
+        iter
     }
 }
 
@@ -124,6 +125,8 @@ impl<'a> Query<'a, MyWorld> for WorldEntityId {
     where
         MyWorld: WorldArchetype<A>,
         A: Archetype + 'a;
+
+    fn check_borrows(_: &mut BorrowChecker) {}
 
     fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>>
     where
@@ -177,13 +180,19 @@ fn main() {
 
     dbg!("--");
 
-    for (p, q) in world.query::<(&mut Position, &mut Position)>() {
+    /*for (p, q) in world.query::<(&mut Position, &mut Position)>() {
         p.0 += q.0;
-    }
+    }*/
+
+    /*for (p, q) in world.query::<(&mut Position, &Position)>() {
+        p.0 += q.0;
+    }*/
+
+    for (p, q) in world.query::<(&Position, &Position)>() {}
 
     dbg!("--");
 
-    for id in world.query::<EntityId<MyWorld>>() {
+    for (id, _) in world.query::<(EntityId<MyWorld>, &Position)>() {
         dbg!(id);
     }
 
