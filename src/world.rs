@@ -10,7 +10,7 @@ pub trait World: Default + Sized {
     type QueryIter<'a, Q>: Iterator<Item = Q>
     where
         Self: 'a,
-        Q: 'a + Query;
+        Q: Query<'a>;
 
     fn spawn(&mut self, entity: impl Into<Self::Entity>) -> Self::EntityId;
 
@@ -18,7 +18,7 @@ pub trait World: Default + Sized {
 
     fn query<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
     where
-        Q: Query;
+        Q: Query<'a>;
 }
 
 pub type EntityId<W> = <W as World>::EntityId;

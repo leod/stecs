@@ -1,5 +1,5 @@
 use std::{
-    any::Any,
+    any::{type_name, Any},
     cell::RefCell,
     fmt::Debug,
     iter::{Chain, Flatten},
@@ -27,22 +27,20 @@ struct PlayerStorage {
 }
 
 impl Archetype for Player {
-    type Components = HCons<Position, HCons<Velocity, HCons<Velocity, HCons<Color, HNil>>>>;
+    type Components = HCons<Position, HCons<Velocity, HCons<Color, HNil>>>;
 
     type Storage = PlayerStorage;
 
-    fn column<'a, C: stecs::Component>(
-        storage: &'a Self::Storage,
-    ) -> Option<&'a RefCell<Column<C>>> {
+    fn column<'a, C: stecs::Component>(storage: &'a Self::Storage) -> Option<&'a Column<C>> {
         let any: &dyn Any = &storage.pos;
 
         any.downcast_ref()
     }
 
     fn insert(storage: &mut Self::Storage, entity: Self) -> EntityIndex {
-        storage.pos.borrow_mut().insert(entity.pos);
-        storage.vel.borrow_mut().insert(entity.vel);
-        storage.col.borrow_mut().insert(entity.col)
+        storage.pos.insert(entity.pos);
+        storage.vel.insert(entity.vel);
+        storage.col.insert(entity.col)
     }
 }
 
@@ -53,7 +51,7 @@ struct Enemy {
 // generated
 #[derive(Default)]
 struct EnemyStorage {
-    pos: RefCell<Column<Position>>,
+    pos: Column<Position>,
 }
 
 impl Archetype for Enemy {
@@ -61,14 +59,14 @@ impl Archetype for Enemy {
 
     type Storage = EnemyStorage;
 
-    fn column<'a, C: 'a + stecs::Component>(
-        storage: &'a Self::Storage,
-    ) -> Option<&'a RefCell<Column<C>>> {
-        todo!()
+    fn column<'a, C: stecs::Component>(storage: &'a Self::Storage) -> Option<&'a Column<C>> {
+        let any: &dyn Any = &storage.pos;
+
+        any.downcast_ref()
     }
 
     fn insert(storage: &mut Self::Storage, entity: Self) -> EntityIndex {
-        storage.pos.borrow_mut().insert(entity.pos)
+        storage.pos.insert(entity.pos)
     }
 }
 
@@ -107,10 +105,8 @@ impl stecs::World for MyWorld {
 
     type Entity = WorldEntity;
 
-    type QueryIter<'a, Q: Query> = Chain<
-        Flatten<std::option::IntoIter<Q::Iter<'a>>>,
-        Flatten<std::option::IntoIter<Q::Iter<'a>>>>
-        where Q: 'a;
+    type QueryIter<'a, Q: Query<'a>> =
+        Chain<Flatten<std::option::IntoIter<Q::Iter>>, Flatten<std::option::IntoIter<Q::Iter>>>;
 
     fn spawn(&mut self, entity: impl Into<Self::Entity>) -> Self::EntityId {
         match entity.into() {
@@ -125,7 +121,7 @@ impl stecs::World for MyWorld {
 
     fn query<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
     where
-        Q: stecs::Query,
+        Q: stecs::Query<'a>,
     {
         Q::query(&self.players)
             .into_iter()
@@ -155,7 +151,13 @@ fn main() {
         pos: Position(-1.5),
     });
 
-    for p in world.query::<&Position>() {}
+    world.spawn(Enemy {
+        pos: Position(-1.5),
+    });
+
+    for p in world.query::<&Position>() {
+        dbg!(p.0);
+    }
 
     let id: EntityId<MyWorld> = todo!();
 

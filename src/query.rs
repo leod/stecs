@@ -2,14 +2,10 @@ use std::iter::{Empty, Flatten, Map, Zip};
 
 use crate::{Archetype, Column, ColumnIter, ColumnValues, Component, Storage};
 
-pub trait Query {
-    type Iter<'b>: Iterator<Item = Self> + 'b
-    where
-        Self: 'b;
+pub trait Query<'a> {
+    type Iter: Iterator<Item = Self> + 'a;
 
-    fn query<'b, A: Archetype>(storage: &'b Storage<A>) -> Option<Self::Iter<'b>>
-    where
-        Self: 'b;
+    fn query<A: Archetype>(storage: &'a Storage<A>) -> Option<Self::Iter>;
 }
 
 macro_rules! zip_type {
@@ -26,13 +22,10 @@ macro_rules! zip_type {
     };
 }
 
-impl<'a, C: Component> Query for &'a C {
-    type Iter<'b> = ColumnValues<'a, C> where Self: 'b;
+impl<'a, C: Component> Query<'a> for &'a C {
+    type Iter = ColumnValues<'a, C>;
 
-    fn query<'b, A: Archetype>(storage: &'b Storage<A>) -> Option<Self::Iter<'b>>
-    where
-        Self: 'b,
-    {
+    fn query<A: Archetype>(storage: &'a Storage<A>) -> Option<Self::Iter> {
         storage
             .column()
             .map(move |column| ColumnValues(column.iter()))
