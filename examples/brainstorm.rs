@@ -128,6 +128,13 @@ fn main() {
         pos: Position(-1.5),
     });
 
+    for p in world.query::<&mut Position>() {
+        dbg!(p.0);
+        p.0 += 3.0;
+    }
+
+    dbg!("--");
+
     for p in world.query::<&Position>() {
         dbg!(p.0);
     }

@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, mem::transmute};
+use std::marker::PhantomData;
 
 use crate::{arena, Archetype, Component};
 
@@ -88,6 +88,22 @@ where
     }
 }
 
+impl<'a, A, C> Getter<'a, A> for ComponentAccessor<A, &'a mut C>
+where
+    A: Archetype,
+    C: Component,
+{
+    type Output = &'a mut C;
+
+    // FIXME: Figure out if this can even be done safely.
+    unsafe fn get(&self, _: arena::Index, entity: &'a mut A) -> Self::Output {
+        let entity = entity as *mut A as *mut ();
+        let component = entity.add(self.offset) as *mut C;
+
+        &mut *component
+    }
+}
+
 impl<'a, C: Component> Query<'a> for &'a C {
     type Getter<A: Archetype + 'a> = ComponentAccessor<A, &'a C>;
 
@@ -101,15 +117,18 @@ impl<'a, C: Component> Query<'a> for &'a C {
     }
 }
 
-/*impl<'a, C: Component> Query<'a> for &'a C {
-    type Iter = ColumnValues<'a, C>;
+impl<'a, C: Component> Query<'a> for &'a mut C {
+    type Getter<A: Archetype + 'a> = ComponentAccessor<A, &'a mut C>;
 
-    fn query<A: Archetype>(storage: &'a Storage<A>) -> Option<Self::Iter> {
-        storage
-            .column()
-            .map(move |column| ColumnValues(column.iter()))
+    fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>> {
+        let offset = A::offset_of::<C>()?;
+
+        Some(ComponentAccessor {
+            offset,
+            _phantom: PhantomData,
+        })
     }
-}*/
+}
 
 /*
 impl<'a, D: Query, E: Query> Query for (&'a D, &'a E) {
