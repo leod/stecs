@@ -3,7 +3,7 @@ use std::iter::{Empty, Flatten, Map, Zip};
 use crate::{Archetype, Column, ColumnIter, ColumnValues, Component, Storage};
 
 pub trait Query {
-    type Iter<'b>: Iterator<Item = Self>
+    type Iter<'b>: Iterator<Item = Self> + 'b
     where
         Self: 'b;
 
@@ -33,7 +33,9 @@ impl<'a, C: Component> Query for &'a C {
     where
         Self: 'b,
     {
-        storage.column().map(|iter| ColumnValues(iter))
+        storage
+            .column()
+            .map(move |column| ColumnValues(column.iter()))
     }
 }
 
@@ -49,7 +51,7 @@ impl<'a, D: Query, E: Query> Query for (&'a D, &'a E) {
     {
         todo!()
     }
-}
+
 */
 
 /*

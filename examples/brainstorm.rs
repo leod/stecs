@@ -21,9 +21,9 @@ struct Player {
 // generated
 #[derive(Default)]
 struct PlayerStorage {
-    pos: RefCell<Column<Position>>,
-    vel: RefCell<Column<Velocity>>,
-    col: RefCell<Column<Color>>,
+    pos: Column<Position>,
+    vel: Column<Velocity>,
+    col: Column<Color>,
 }
 
 impl Archetype for Player {

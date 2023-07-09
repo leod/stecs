@@ -11,7 +11,7 @@ pub trait Archetype {
     type Components: HList;
     type Storage: Default;
 
-    fn column<'a, C: Component>(storage: &'a Self::Storage) -> Option<&'a RefCell<Column<C>>>;
+    fn column<'a, C: Component>(storage: &'a Self::Storage) -> Option<&'a Column<C>>;
 
     fn insert(storage: &mut Self::Storage, entity: Self) -> EntityIndex;
 }
@@ -28,6 +28,10 @@ impl<C> Default for Column<C> {
 impl<C: Component> Column<C> {
     pub fn insert(&mut self, component: C) -> Index {
         self.0.insert(component)
+    }
+
+    pub fn iter(&self) -> ColumnIter<C> {
+        self.0.iter()
     }
 }
 
@@ -50,7 +54,7 @@ impl<A: Archetype> Storage<A> {
         A::insert(&mut self.0, entity)
     }
 
-    pub fn column<'a, C: Component>(&'a self) -> Option<&'a RefCell<Column<C>>> {
+    pub fn column<'a, C: Component>(&'a self) -> Option<&'a Column<C>> {
         A::column(&self.0)
     }
 }
