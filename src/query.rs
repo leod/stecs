@@ -1,11 +1,56 @@
-use std::iter::{Empty, Flatten, Map, Zip};
+use std::{marker::PhantomData, mem::transmute};
 
-use crate::{Archetype, Column, ColumnIter, ColumnValues, Component, Storage};
+use crate::{arena, Archetype, Component};
+
+// FIXME: Figure out safety!
+
+pub trait Getter<'a, A> {
+    type Output;
+
+    unsafe fn get(&self, index: arena::Index, entity: &'a mut A) -> Self::Output;
+}
+
+pub struct GetterIter<'a, A, G>
+where
+    G: Getter<'a, A>,
+{
+    iter: arena::iter::IterMut<'a, A>,
+    getter: Option<G>,
+    _phantom: PhantomData<A>,
+}
+
+impl<'a, A, G> GetterIter<'a, A, G>
+where
+    G: Getter<'a, A>,
+{
+    pub fn new(iter: arena::iter::IterMut<'a, A>, getter: Option<G>) -> Self {
+        GetterIter {
+            iter,
+            getter,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, A, G> Iterator for GetterIter<'a, A, G>
+where
+    G: Getter<'a, A>,
+{
+    type Item = G::Output;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let getter = self.getter.as_ref()?;
+        let (index, entity) = self.iter.next()?;
+
+        // FIXME: Figure out safety.
+        Some(unsafe { getter.get(index, entity) })
+    }
+}
 
 pub trait Query<'a> {
-    type Iter: Iterator<Item = Self> + 'a;
+    type Getter<A: Archetype + 'a>: Getter<'a, A, Output = Self>;
 
-    fn query<A: Archetype>(storage: &'a Storage<A>) -> Option<Self::Iter>;
+    fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>>;
 }
 
 macro_rules! zip_type {
@@ -22,7 +67,41 @@ macro_rules! zip_type {
     };
 }
 
+pub struct ComponentAccessor<A, C> {
+    offset: usize,
+    _phantom: PhantomData<(A, C)>,
+}
+
+impl<'a, A, C> Getter<'a, A> for ComponentAccessor<A, &'a C>
+where
+    A: Archetype,
+    C: Component,
+{
+    type Output = &'a C;
+
+    // FIXME: Figure out if this can even be done safely.
+    unsafe fn get(&self, _: arena::Index, entity: &'a mut A) -> Self::Output {
+        let entity = entity as *const A as *const ();
+        let component = entity.add(self.offset) as *const C;
+
+        &*component
+    }
+}
+
 impl<'a, C: Component> Query<'a> for &'a C {
+    type Getter<A: Archetype + 'a> = ComponentAccessor<A, &'a C>;
+
+    fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>> {
+        let offset = A::offset_of::<C>()?;
+
+        Some(ComponentAccessor {
+            offset,
+            _phantom: PhantomData,
+        })
+    }
+}
+
+/*impl<'a, C: Component> Query<'a> for &'a C {
     type Iter = ColumnValues<'a, C>;
 
     fn query<A: Archetype>(storage: &'a Storage<A>) -> Option<Self::Iter> {
@@ -30,7 +109,7 @@ impl<'a, C: Component> Query<'a> for &'a C {
             .column()
             .map(move |column| ColumnValues(column.iter()))
     }
-}
+}*/
 
 /*
 impl<'a, D: Query, E: Query> Query for (&'a D, &'a E) {

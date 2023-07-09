@@ -1,12 +1,7 @@
-use std::{
-    any::{type_name, Any},
-    cell::RefCell,
-    fmt::Debug,
-    iter::{Chain, Flatten},
-};
+use std::{any::TypeId, fmt::Debug, iter::Chain};
 
 use frunk::{HCons, HNil};
-use stecs::{Archetype, Column, EntityId, EntityIndex, Query, Storage, World};
+use stecs::{Archetype, Arena, EntityId, EntityIndex, GetterIter, Query, World};
 
 struct Position(f32);
 struct Velocity(f32);
@@ -19,28 +14,15 @@ struct Player {
 }
 
 // generated
-#[derive(Default)]
-struct PlayerStorage {
-    pos: Column<Position>,
-    vel: Column<Velocity>,
-    col: Column<Color>,
-}
-
-impl Archetype for Player {
+unsafe impl Archetype for Player {
     type Components = HCons<Position, HCons<Velocity, HCons<Color, HNil>>>;
 
-    type Storage = PlayerStorage;
-
-    fn column<'a, C: stecs::Component>(storage: &'a Self::Storage) -> Option<&'a Column<C>> {
-        let any: &dyn Any = &storage.pos;
-
-        any.downcast_ref()
-    }
-
-    fn insert(storage: &mut Self::Storage, entity: Self) -> EntityIndex {
-        storage.pos.insert(entity.pos);
-        storage.vel.insert(entity.vel);
-        storage.col.insert(entity.col)
+    fn offset_of<C: stecs::Component>() -> Option<usize> {
+        if TypeId::of::<C>() == TypeId::of::<Position>() {
+            Some(memoffset::offset_of!(Player, pos))
+        } else {
+            None
+        }
     }
 }
 
@@ -49,31 +31,22 @@ struct Enemy {
 }
 
 // generated
-#[derive(Default)]
-struct EnemyStorage {
-    pos: Column<Position>,
-}
-
-impl Archetype for Enemy {
+unsafe impl Archetype for Enemy {
     type Components = HCons<Position, HNil>;
 
-    type Storage = EnemyStorage;
-
-    fn column<'a, C: stecs::Component>(storage: &'a Self::Storage) -> Option<&'a Column<C>> {
-        let any: &dyn Any = &storage.pos;
-
-        any.downcast_ref()
-    }
-
-    fn insert(storage: &mut Self::Storage, entity: Self) -> EntityIndex {
-        storage.pos.insert(entity.pos)
+    fn offset_of<C: stecs::Component>() -> Option<usize> {
+        if TypeId::of::<C>() == TypeId::of::<Position>() {
+            Some(memoffset::offset_of!(Player, pos))
+        } else {
+            None
+        }
     }
 }
 
 #[derive(Default)]
 struct MyWorld {
-    players: Storage<Player>,
-    enemies: Storage<Enemy>,
+    players: Arena<Player>,
+    enemies: Arena<Enemy>,
 }
 
 // generated
@@ -106,7 +79,7 @@ impl stecs::World for MyWorld {
     type Entity = WorldEntity;
 
     type QueryIter<'a, Q: Query<'a>> =
-        Chain<Flatten<std::option::IntoIter<Q::Iter>>, Flatten<std::option::IntoIter<Q::Iter>>>;
+        Chain<GetterIter<'a, Player, Q::Getter<Player>>, GetterIter<'a, Enemy, Q::Getter<Enemy>>>;
 
     fn spawn(&mut self, entity: impl Into<Self::Entity>) -> Self::EntityId {
         match entity.into() {
@@ -123,10 +96,10 @@ impl stecs::World for MyWorld {
     where
         Q: stecs::Query<'a>,
     {
-        Q::query(&self.players)
-            .into_iter()
-            .flatten()
-            .chain(Q::query(&self.enemies).into_iter().flatten())
+        GetterIter::new(self.players.iter_mut(), Q::getter::<Player>()).chain(GetterIter::new(
+            self.enemies.iter_mut(),
+            Q::getter::<Enemy>(),
+        ))
     }
 }
 
@@ -159,10 +132,12 @@ fn main() {
         dbg!(p.0);
     }
 
+    /*
     let id: EntityId<MyWorld> = todo!();
 
     match id {
         EntityId::<MyWorld>::Player(_) => todo!(),
         WorldEntityId::Enemy(_) => todo!(),
     }
+    */
 }
