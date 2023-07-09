@@ -5,16 +5,16 @@ use crate::{arena, Archetype, Query};
 pub trait World: Default + Sized {
     type EntityId: Copy + Debug + PartialEq + Hash;
 
-    type Entity;
+    type AnyEntity;
 
     type QueryIter<'a, Q>: Iterator<Item = Q>
     where
         Self: 'a,
         Q: Query<'a, Self>;
 
-    fn spawn(&mut self, entity: impl Into<Self::Entity>) -> Self::EntityId;
+    fn spawn<A: WorldArchetype<Self>>(&mut self, entity: A) -> Self::EntityId;
 
-    fn despawn(&mut self, id: Self::EntityId) -> Option<Self::Entity>;
+    fn despawn(&mut self, id: Self::EntityId) -> Option<Self::AnyEntity>;
 
     fn query<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
     where
@@ -23,8 +23,9 @@ pub trait World: Default + Sized {
 
 pub type EntityId<W> = <W as World>::EntityId;
 
-pub type Entity<W> = <W as World>::Entity;
+pub type AnyEntity<W> = <W as World>::AnyEntity;
 
-pub trait WorldArchetype<A: Archetype>: World {
-    fn id(index: arena::Index) -> Self::EntityId;
+pub trait WorldArchetype<W: World>: Archetype {
+    fn id(index: arena::Index) -> W::EntityId;
+    fn into_any(self) -> W::AnyEntity;
 }

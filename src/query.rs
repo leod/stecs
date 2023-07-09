@@ -67,8 +67,8 @@ impl BorrowChecker {
 
 pub trait Getter<'a, W, A>
 where
-    W: WorldArchetype<A>,
-    A: Archetype,
+    W: World,
+    A: WorldArchetype<W>,
 {
     type Output;
 
@@ -77,8 +77,8 @@ where
 
 pub struct GetterIter<'a, W, A, G>
 where
-    W: WorldArchetype<A>,
-    A: Archetype,
+    W: World,
+    A: WorldArchetype<W>,
     G: Getter<'a, W, A>,
 {
     iter: arena::iter::IterMut<'a, A>,
@@ -88,8 +88,8 @@ where
 
 impl<'a, W, A, G> GetterIter<'a, W, A, G>
 where
-    W: WorldArchetype<A>,
-    A: Archetype,
+    W: World,
+    A: WorldArchetype<W>,
     G: Getter<'a, W, A>,
 {
     pub fn new<Q>(iter: arena::iter::IterMut<'a, A>) -> Self
@@ -113,8 +113,8 @@ where
 
 impl<'a, W, A, G> Iterator for GetterIter<'a, W, A, G>
 where
-    W: WorldArchetype<A>,
-    A: Archetype,
+    W: World,
+    A: WorldArchetype<W>,
     G: Getter<'a, W, A>,
 {
     type Item = G::Output;
@@ -122,7 +122,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let getter = self.getter.as_ref()?;
         let (index, entity) = self.iter.next()?;
-        let id = W::id(index);
+        let id = A::id(index);
 
         // FIXME: Figure out safety.
         Some(unsafe { getter.get(id, entity) })
@@ -135,22 +135,21 @@ where
 {
     type Getter<A>: Getter<'a, W, A, Output = Self>
     where
-        W: WorldArchetype<A>,
-        A: Archetype + 'a;
+        A: 'a + WorldArchetype<W>;
 
     fn check_borrows(checker: &mut BorrowChecker);
 
-    fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>>
+    fn getter<A>() -> Option<Self::Getter<A>>
     where
-        W: WorldArchetype<A>;
+        A: 'a + WorldArchetype<W>;
 }
 
 pub struct EntityIdGetter;
 
 impl<'a, W, A> Getter<'a, W, A> for EntityIdGetter
 where
-    W: WorldArchetype<A>,
-    A: Archetype,
+    W: World,
+    A: WorldArchetype<W>,
 {
     type Output = W::EntityId;
 
@@ -166,8 +165,8 @@ pub struct ComponentGetter<A, C> {
 
 impl<'a, W, A, C> Getter<'a, W, A> for ComponentGetter<A, &'a C>
 where
-    W: WorldArchetype<A>,
-    A: Archetype,
+    W: World,
+    A: WorldArchetype<W>,
     C: Component,
 {
     type Output = &'a C;
@@ -183,8 +182,8 @@ where
 
 impl<'a, W, A, C> Getter<'a, W, A> for ComponentGetter<A, &'a mut C>
 where
-    W: WorldArchetype<A>,
-    A: Archetype,
+    W: World,
+    A: WorldArchetype<W>,
     C: Component,
 {
     type Output = &'a mut C;
@@ -205,8 +204,7 @@ where
 {
     type Getter<A> = ComponentGetter<A, &'a C>
     where
-        W: WorldArchetype<A>,
-        A: Archetype + 'a;
+        A: 'a + WorldArchetype<W>;
 
     fn check_borrows(checker: &mut BorrowChecker) {
         checker.borrow::<C>();
@@ -214,8 +212,7 @@ where
 
     fn getter<A>() -> Option<Self::Getter<A>>
     where
-        W: WorldArchetype<A>,
-        A: Archetype + 'a,
+        A: 'a + WorldArchetype<W>,
     {
         let offset = A::offset_of::<C>()?;
 
@@ -233,8 +230,7 @@ where
 {
     type Getter<A> = ComponentGetter<A, &'a mut C>
     where
-        W: WorldArchetype<A>,
-        A: Archetype + 'a;
+        A: 'a + WorldArchetype<W>;
 
     fn check_borrows(checker: &mut BorrowChecker) {
         checker.borrow_mut::<C>();
@@ -242,8 +238,7 @@ where
 
     fn getter<A>() -> Option<Self::Getter<A>>
     where
-        W: WorldArchetype<A>,
-        A: Archetype + 'a,
+        A: WorldArchetype<W> + 'a,
     {
         let offset = A::offset_of::<C>()?;
 
@@ -258,14 +253,14 @@ pub struct PairGetter<G0, G1>(G0, G1);
 
 impl<'a, W, A, G0, G1> Getter<'a, W, A> for PairGetter<G0, G1>
 where
-    W: WorldArchetype<A>,
-    A: Archetype,
+    W: World,
+    A: WorldArchetype<W>,
     G0: Getter<'a, W, A>,
     G1: Getter<'a, W, A>,
 {
     type Output = (G0::Output, G1::Output);
 
-    unsafe fn get(&self, id: <W>::EntityId, entity: *mut A) -> Self::Output {
+    unsafe fn get(&self, id: W::EntityId, entity: *mut A) -> Self::Output {
         (self.0.get(id, entity), self.1.get(id, entity))
     }
 }
@@ -278,17 +273,16 @@ where
 {
     type Getter<A> = PairGetter<Q0::Getter<A>, Q1::Getter<A>>
     where
-        W: WorldArchetype<A>,
-        A: Archetype + 'a;
+        A: 'a + WorldArchetype<W>;
 
     fn check_borrows(checkers: &mut BorrowChecker) {
         Q0::check_borrows(checkers);
         Q1::check_borrows(checkers);
     }
 
-    fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>>
+    fn getter<A>() -> Option<Self::Getter<A>>
     where
-        W: WorldArchetype<A>,
+        A: 'a + WorldArchetype<W>,
     {
         let g0 = Q0::getter::<A>()?;
         let g1 = Q1::getter::<A>()?;

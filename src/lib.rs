@@ -21,7 +21,7 @@ pub mod arena;
 pub use archetype::Archetype;
 pub use arena::Arena;
 pub use query::{BorrowChecker, EntityIdGetter, Getter, GetterIter, Query};
-pub use world::{Entity, EntityId, World, WorldArchetype};
+pub use world::{AnyEntity, EntityId, World, WorldArchetype};
 
 pub trait Component: 'static {}
 
