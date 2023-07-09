@@ -21,16 +21,26 @@ unsafe impl Archetype for Player {
     type Components = HCons<Position, HCons<Velocity, HCons<Color, HNil>>>;
 
     fn offset_of<C: stecs::Component>() -> Option<usize> {
-        if TypeId::of::<C>() == TypeId::of::<Position>() {
+        let type_id = TypeId::of::<C>();
+
+        if type_id == TypeId::of::<Position>() {
             Some(memoffset::offset_of!(Player, pos))
+        } else if type_id == TypeId::of::<Velocity>() {
+            Some(memoffset::offset_of!(Player, vel))
+        } else if type_id == TypeId::of::<Color>() {
+            Some(memoffset::offset_of!(Player, col))
         } else {
             None
         }
     }
 }
 
+#[derive(Debug)]
+struct Target(EntityId<MyWorld>);
+
 struct Enemy {
     pos: Position,
+    target: Target,
 }
 
 // generated
@@ -38,8 +48,12 @@ unsafe impl Archetype for Enemy {
     type Components = HCons<Position, HNil>;
 
     fn offset_of<C: stecs::Component>() -> Option<usize> {
-        if TypeId::of::<C>() == TypeId::of::<Position>() {
-            Some(memoffset::offset_of!(Player, pos))
+        let type_id = TypeId::of::<C>();
+
+        if type_id == TypeId::of::<Position>() {
+            Some(memoffset::offset_of!(Enemy, pos))
+        } else if type_id == TypeId::of::<Target>() {
+            Some(memoffset::offset_of!(Enemy, target))
         } else {
             None
         }
@@ -141,7 +155,7 @@ fn main() {
 
     let mut world = MyWorld::default();
 
-    world.spawn(Player {
+    let p0 = world.spawn(Player {
         pos: Position(1.0),
         vel: Velocity(2.0),
         col: Color(3.0),
@@ -155,10 +169,12 @@ fn main() {
 
     world.spawn(Enemy {
         pos: Position(-1.5),
+        target: Target(p0),
     });
 
     world.spawn(Enemy {
         pos: Position(-1.5),
+        target: Target(p0),
     });
 
     for p in world.query::<&mut Position>() {
@@ -170,6 +186,12 @@ fn main() {
 
     for p in world.query::<&Position>() {
         dbg!(p.0);
+    }
+
+    dbg!("--");
+
+    for (p, v) in world.query::<(&Position, &Velocity)>() {
+        dbg!(p.0, v.0);
     }
 
     dbg!("--");
@@ -194,6 +216,12 @@ fn main() {
 
     for (id, _) in world.query::<(EntityId<MyWorld>, &Position)>() {
         dbg!(id);
+    }
+
+    dbg!("--");
+
+    for (id, target) in world.query::<(EntityId<MyWorld>, &Target)>() {
+        println!("{:?} targeting {:?}", id, target);
     }
 
     /*
