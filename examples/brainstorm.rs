@@ -1,7 +1,9 @@
 use std::{any::TypeId, fmt::Debug, iter::Chain};
 
 use frunk::{HCons, HNil};
-use stecs::{arena, Archetype, Arena, EntityId, GetterIter, Query, World, WorldArchetype};
+use stecs::{
+    arena, Archetype, Arena, EntityId, EntityIdGetter, GetterIter, Query, World, WorldArchetype,
+};
 
 struct Position(f32);
 struct Velocity(f32);
@@ -78,9 +80,9 @@ impl stecs::World for MyWorld {
 
     type Entity = WorldEntity;
 
-    type QueryIter<'a, Q: Query<'a>> = Chain<
-        GetterIter<'a, Self, Player, Q::Getter<Self, Player>>,
-        GetterIter<'a, Self, Enemy, Q::Getter<Self, Enemy>>,
+    type QueryIter<'a, Q: Query<'a, Self>> = Chain<
+        GetterIter<'a, Self, Player, Q::Getter<Player>>,
+        GetterIter<'a, Self, Enemy, Q::Getter<Enemy>>,
     >;
 
     fn spawn(&mut self, entity: impl Into<Self::Entity>) -> Self::EntityId {
@@ -96,11 +98,12 @@ impl stecs::World for MyWorld {
 
     fn query<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
     where
-        Q: stecs::Query<'a>,
+        Q: Query<'a, Self>,
     {
-        GetterIter::new(self.players.iter_mut(), Q::getter::<Self, Player>()).chain(
-            GetterIter::new(self.enemies.iter_mut(), Q::getter::<Self, Enemy>()),
-        )
+        GetterIter::new(self.players.iter_mut(), Q::getter::<Player>()).chain(GetterIter::new(
+            self.enemies.iter_mut(),
+            Q::getter::<Enemy>(),
+        ))
     }
 }
 
@@ -113,6 +116,20 @@ impl WorldArchetype<Player> for MyWorld {
 impl WorldArchetype<Enemy> for MyWorld {
     fn id(index: arena::Index) -> EntityId<Self> {
         EntityId::<Self>::Enemy(index)
+    }
+}
+
+impl<'a> Query<'a, MyWorld> for WorldEntityId {
+    type Getter<A> = EntityIdGetter
+    where
+        MyWorld: WorldArchetype<A>,
+        A: Archetype + 'a;
+
+    fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>>
+    where
+        MyWorld: WorldArchetype<A>,
+    {
+        Some(EntityIdGetter)
     }
 }
 
@@ -150,6 +167,12 @@ fn main() {
 
     for p in world.query::<&Position>() {
         dbg!(p.0);
+    }
+
+    dbg!("--");
+
+    for id in world.query::<EntityId<MyWorld>>() {
+        dbg!(id);
     }
 
     /*

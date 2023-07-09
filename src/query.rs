@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{arena, Archetype, Component, WorldArchetype};
+use crate::{arena, Archetype, Component, World, WorldArchetype};
 
 // FIXME: Figure out safety!
 
@@ -58,13 +58,18 @@ where
     }
 }
 
-pub trait Query<'a> {
-    type Getter<W, A>: Getter<'a, W, A, Output = Self>
+pub trait Query<'a, W>
+where
+    W: World,
+{
+    type Getter<A>: Getter<'a, W, A, Output = Self>
     where
         W: WorldArchetype<A>,
         A: Archetype + 'a;
 
-    fn getter<W: WorldArchetype<A>, A: Archetype + 'a>() -> Option<Self::Getter<W, A>>;
+    fn getter<A: Archetype + 'a>() -> Option<Self::Getter<A>>
+    where
+        W: WorldArchetype<A>;
 }
 
 macro_rules! zip_type {
@@ -79,6 +84,20 @@ macro_rules! zip_type {
     ($lt:lifetime, $name:ty, $($rest:ty),*) => {
         Zip<zip_type!($lt, $name), zip_type!($lt, $($rest),*)>
     };
+}
+
+pub struct EntityIdGetter;
+
+impl<'a, W, A> Getter<'a, W, A> for EntityIdGetter
+where
+    W: WorldArchetype<A>,
+    A: Archetype,
+{
+    type Output = W::EntityId;
+
+    unsafe fn get(&self, id: W::EntityId, _: &'a mut A) -> Self::Output {
+        id
+    }
 }
 
 pub struct ComponentGetter<A, C> {
@@ -120,13 +139,17 @@ where
     }
 }
 
-impl<'a, C: Component> Query<'a> for &'a C {
-    type Getter<W, A> = ComponentGetter<A, &'a C>
+impl<'a, W, C> Query<'a, W> for &'a C
+where
+    W: World,
+    C: Component,
+{
+    type Getter<A> = ComponentGetter<A, &'a C>
     where
         W: WorldArchetype<A>,
         A: Archetype + 'a;
 
-    fn getter<W, A>() -> Option<Self::Getter<W, A>>
+    fn getter<A>() -> Option<Self::Getter<A>>
     where
         W: WorldArchetype<A>,
         A: Archetype + 'a,
@@ -140,13 +163,17 @@ impl<'a, C: Component> Query<'a> for &'a C {
     }
 }
 
-impl<'a, C: Component> Query<'a> for &'a mut C {
-    type Getter<W, A> = ComponentGetter<A, &'a mut C>
+impl<'a, W, C> Query<'a, W> for &'a mut C
+where
+    W: World,
+    C: Component,
+{
+    type Getter<A> = ComponentGetter<A, &'a mut C>
     where
         W: WorldArchetype<A>,
         A: Archetype + 'a;
 
-    fn getter<W, A>() -> Option<Self::Getter<W, A>>
+    fn getter<A>() -> Option<Self::Getter<A>>
     where
         W: WorldArchetype<A>,
         A: Archetype + 'a,
