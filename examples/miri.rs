@@ -1,20 +1,33 @@
 use memoffset::offset_of;
 
+#[repr(C)]
 struct Entity {
     x: u32,
     y: f32,
 }
 
 unsafe fn borrow_x<'a>(entity: *mut Entity) -> &'a u32 {
-    let entity = entity as *mut Entity as *mut ();
-    let component = unsafe { entity.add(offset_of!(Entity, x)) } as *mut u32;
+    let entity = entity as *mut Entity as *mut u8;
+    let offset = offset_of!(Entity, x);
+
+    let ptr = unsafe { entity.add(offset_of!(Entity, x)) };
+
+    println!("x at {offset} -> {ptr:?}");
+
+    let component = ptr as *mut u32;
 
     unsafe { &*component }
 }
 
 unsafe fn borrow_y<'a>(entity: *mut Entity) -> &'a mut f32 {
-    let entity = entity as *mut Entity as *mut ();
-    let component = unsafe { entity.add(offset_of!(Entity, y)) } as *mut f32;
+    let entity = entity as *mut Entity as *mut u8;
+    let offset = offset_of!(Entity, y);
+
+    let ptr = unsafe { entity.add(offset_of!(Entity, y)) };
+
+    println!("y at {offset} -> {ptr:?}");
+
+    let component = ptr as *mut f32;
 
     unsafe { &mut *component }
 }

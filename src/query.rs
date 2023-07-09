@@ -174,7 +174,7 @@ where
 
     // FIXME: Figure out if this can even be done safely.
     unsafe fn get(&self, _: W::EntityId, entity: *mut A) -> Self::Output {
-        let entity = entity as *const A as *const ();
+        let entity = entity as *const A as *const u8;
         let component = entity.add(self.offset) as *const C;
 
         &*component
@@ -191,7 +191,7 @@ where
 
     // FIXME: Figure out if this can even be done safely.
     unsafe fn get(&self, _: W::EntityId, entity: *mut A) -> Self::Output {
-        let entity = entity as *mut A as *mut ();
+        let entity = entity as *mut A as *mut u8;
         let component = entity.add(self.offset) as *mut C;
 
         &mut *component
