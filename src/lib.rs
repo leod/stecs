@@ -13,15 +13,14 @@ macro_rules! smaller_tuples_too {
 }
 
 mod archetype;
+mod archetype_set;
 mod query;
-mod world;
-
-pub mod arena;
+mod storage;
 
 pub use archetype::Archetype;
-pub use arena::Arena;
+pub use archetype_set::{ArchetypeInSet, ArchetypeSet, Entity, EntityId};
 pub use query::{BorrowChecker, EntityIdGetter, Getter, GetterIter, Query};
-pub use world::{AnyEntity, EntityId, World, WorldArchetype};
+pub use storage::{EntityIndex, Storage};
 
 pub trait Component: 'static {}
 

@@ -2,8 +2,8 @@ use std::{any::TypeId, fmt::Debug, iter::Chain};
 
 use frunk::{HCons, HNil};
 use stecs::{
-    arena, AnyEntity, Archetype, Arena, BorrowChecker, EntityId, EntityIdGetter, GetterIter, Query,
-    World, WorldArchetype,
+    arena, Archetype, ArchetypeInSet, ArchetypeSet, Arena, BorrowChecker, Entity, EntityId,
+    EntityIdGetter, GetterIter, Query,
 };
 
 #[derive(Clone)]
@@ -97,24 +97,24 @@ impl From<Enemy> for WorldAnyEntity {
     }
 }
 
-impl stecs::World for MyWorld {
+impl stecs::ArchetypeSet for MyWorld {
     type EntityId = WorldEntityId;
 
-    type AnyEntity = WorldAnyEntity;
+    type Entity = WorldAnyEntity;
 
     type QueryIter<'a, Q: Query<'a, Self>> = Chain<
         GetterIter<'a, Self, Player, Q::Getter<Player>>,
         GetterIter<'a, Self, Enemy, Q::Getter<Enemy>>,
     >;
 
-    fn spawn<A: WorldArchetype<Self>>(&mut self, entity: A) -> Self::EntityId {
+    fn spawn<A: ArchetypeInSet<Self>>(&mut self, entity: A) -> Self::EntityId {
         match entity.into_any() {
             WorldAnyEntity::Player(entity) => WorldEntityId::Player(self.players.insert(entity)),
             WorldAnyEntity::Enemy(entity) => WorldEntityId::Enemy(self.enemies.insert(entity)),
         }
     }
 
-    fn despawn(&mut self, id: Self::EntityId) -> Option<Self::AnyEntity> {
+    fn despawn(&mut self, id: Self::EntityId) -> Option<Self::Entity> {
         todo!()
     }
 
@@ -129,36 +129,36 @@ impl stecs::World for MyWorld {
     }
 }
 
-impl WorldArchetype<MyWorld> for Player {
+impl ArchetypeInSet<MyWorld> for Player {
     fn id(index: arena::Index) -> EntityId<MyWorld> {
         EntityId::<MyWorld>::Player(index)
     }
 
-    fn into_any(self) -> AnyEntity<MyWorld> {
-        AnyEntity::<MyWorld>::Player(self)
+    fn into_any(self) -> Entity<MyWorld> {
+        Entity::<MyWorld>::Player(self)
     }
 }
 
-impl WorldArchetype<MyWorld> for Enemy {
+impl ArchetypeInSet<MyWorld> for Enemy {
     fn id(index: arena::Index) -> EntityId<MyWorld> {
         EntityId::<MyWorld>::Enemy(index)
     }
 
-    fn into_any(self) -> AnyEntity<MyWorld> {
-        AnyEntity::<MyWorld>::Enemy(self)
+    fn into_any(self) -> Entity<MyWorld> {
+        Entity::<MyWorld>::Enemy(self)
     }
 }
 
 impl<'a> Query<'a, MyWorld> for WorldEntityId {
     type Getter<A> = EntityIdGetter
     where
-        A: 'a + WorldArchetype<MyWorld>;
+        A: 'a + ArchetypeInSet<MyWorld>;
 
     fn check_borrows(_: &mut BorrowChecker) {}
 
     fn getter<A>() -> Option<Self::Getter<A>>
     where
-        A: 'a + WorldArchetype<MyWorld>,
+        A: 'a + ArchetypeInSet<MyWorld>,
     {
         Some(EntityIdGetter)
     }
