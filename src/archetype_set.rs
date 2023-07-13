@@ -1,13 +1,13 @@
 use std::{fmt::Debug, hash::Hash};
 
-use crate::{Archetype, Query};
+use crate::{Archetype, EntityKey};
 
 pub trait ArchetypeSet: Default + Sized {
     type EntityId: Copy + Debug + PartialEq + Hash;
 
     type Entity;
 
-    type QueryIter<'a, Q>: Iterator<Item = Q>
+    /*type QueryIter<'a, Q>: Iterator<Item = Q>
     where
         Self: 'a,
         Q: Query<'a, Self>;
@@ -18,7 +18,7 @@ pub trait ArchetypeSet: Default + Sized {
 
     fn query<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
     where
-        Q: Query<'a, Self>;
+        Q: Query<'a, Self>;*/
 }
 
 pub type EntityId<W> = <W as ArchetypeSet>::EntityId;
@@ -26,6 +26,6 @@ pub type EntityId<W> = <W as ArchetypeSet>::EntityId;
 pub type Entity<W> = <W as ArchetypeSet>::Entity;
 
 pub trait ArchetypeInSet<S: ArchetypeSet>: Archetype {
-    fn id(index: arena::Index) -> S::EntityId;
+    fn id(key: EntityKey<Self>) -> S::EntityId;
     fn into_any(self) -> S::Entity;
 }
