@@ -180,23 +180,6 @@ where
     }
 }
 
-impl<'a, W, A, C> Getter<'a, W, A> for ComponentGetter<A, &'a mut C>
-where
-    W: ArchetypeSet,
-    A: ArchetypeInSet<W>,
-    C: Component,
-{
-    type Output = &'a mut C;
-
-    // FIXME: Figure out if this can even be done safely.
-    unsafe fn get(&self, _: W::EntityId, entity: *mut A) -> Self::Output {
-        let entity = entity as *mut A as *mut u8;
-        let component = entity.add(self.offset) as *mut C;
-
-        &mut *component
-    }
-}
-
 impl<'a, W, C> Query<'a, W> for &'a C
 where
     W: ArchetypeSet,
@@ -220,6 +203,23 @@ where
             offset,
             _phantom: PhantomData,
         })
+    }
+}
+
+impl<'a, W, A, C> Getter<'a, W, A> for ComponentGetter<A, &'a mut C>
+where
+    W: ArchetypeSet,
+    A: ArchetypeInSet<W>,
+    C: Component,
+{
+    type Output = &'a mut C;
+
+    // FIXME: Figure out if this can even be done safely.
+    unsafe fn get(&self, _: W::EntityId, entity: *mut A) -> Self::Output {
+        let entity = entity as *mut A as *mut u8;
+        let component = entity.add(self.offset) as *mut C;
+
+        &mut *component
     }
 }
 
@@ -275,9 +275,9 @@ where
     where
         A: 'a + ArchetypeInSet<W>;
 
-    fn check_borrows(checkers: &mut BorrowChecker) {
-        Q0::check_borrows(checkers);
-        Q1::check_borrows(checkers);
+    fn check_borrows(checker: &mut BorrowChecker) {
+        Q0::check_borrows(checker);
+        Q1::check_borrows(checker);
     }
 
     fn getter<A>() -> Option<Self::Getter<A>>

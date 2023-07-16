@@ -1,5 +1,7 @@
 use std::{marker::PhantomData, mem};
 
+pub mod iter;
+
 // TODO: Do NonZero optimization as in `thunderdome`.
 
 #[derive(Debug, Clone)]
