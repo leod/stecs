@@ -1,17 +1,17 @@
-use std::{marker::PhantomData, mem};
+use std::mem;
 
 pub mod iter;
 
 // TODO: Do NonZero optimization as in `thunderdome`.
 
 #[derive(Debug, Clone)]
-pub(crate) enum Slot<T> {
+pub(crate) enum Slot<C> {
     Vacant { next_free_index: Option<usize> },
-    Occupied { value: T },
+    Occupied { value: C },
 }
 
-impl<T> Slot<T> {
-    fn value(&self) -> Option<&T> {
+impl<C> Slot<C> {
+    fn value(&self) -> Option<&C> {
         let Slot::Occupied { value } = self else {
             return None;
         };
@@ -19,7 +19,7 @@ impl<T> Slot<T> {
         Some(value)
     }
 
-    fn value_mut(&mut self) -> Option<&T> {
+    fn value_mut(&mut self) -> Option<&C> {
         let Slot::Occupied { value } = self else {
             return None;
         };
@@ -28,24 +28,24 @@ impl<T> Slot<T> {
     }
 }
 
-pub(crate) struct Entry<T> {
+pub(crate) struct Entry<C> {
     generation: usize,
-    slot: Slot<T>,
+    slot: Slot<C>,
 }
 
-pub struct EntityKey<T> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ColumnKey {
     generation: usize,
     index: usize,
-    _phantom: PhantomData<T>,
 }
 
-pub struct Storage<T> {
-    entries: Vec<Entry<T>>,
+pub struct Column<C> {
+    entries: Vec<Entry<C>>,
     first_free_index: Option<usize>,
     len: usize,
 }
 
-impl<T> Default for Storage<T> {
+impl<C> Default for Column<C> {
     fn default() -> Self {
         Self {
             entries: Vec::new(),
@@ -55,7 +55,7 @@ impl<T> Default for Storage<T> {
     }
 }
 
-impl<T> Storage<T> {
+impl<C> Column<C> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -68,25 +68,25 @@ impl<T> Storage<T> {
         self.len() == 0
     }
 
-    pub fn get(&self, key: EntityKey<T>) -> Option<&T> {
+    pub fn get(&self, key: ColumnKey) -> Option<&C> {
         self.entries
             .get(key.index)
             .filter(|entry| entry.generation == key.generation)
             .and_then(|entry| entry.slot.value())
     }
 
-    pub fn get_mut(&mut self, key: EntityKey<T>) -> Option<&T> {
+    pub fn get_mut(&mut self, key: ColumnKey) -> Option<&C> {
         self.entries
             .get_mut(key.index)
             .filter(|entry| entry.generation == key.generation)
             .and_then(|entry| entry.slot.value_mut())
     }
 
-    pub fn contains_key(&self, key: EntityKey<T>) -> bool {
+    pub fn contains_key(&self, key: ColumnKey) -> bool {
         self.get(key).is_some()
     }
 
-    pub fn insert(&mut self, value: T) -> EntityKey<T> {
+    pub fn insert(&mut self, value: C) -> ColumnKey {
         self.len
             .checked_add(1)
             .expect("Storage `len` overflowed `usize`");
@@ -110,10 +110,9 @@ impl<T> Storage<T> {
                 slot: Slot::Occupied { value },
             };
 
-            EntityKey {
+            ColumnKey {
                 generation: next_generation,
                 index,
-                _phantom: PhantomData,
             }
         } else {
             let index = self.entries.len();
@@ -123,15 +122,14 @@ impl<T> Storage<T> {
                 slot: Slot::Occupied { value },
             });
 
-            EntityKey {
+            ColumnKey {
                 generation: 0,
                 index,
-                _phantom: PhantomData,
             }
         }
     }
 
-    pub fn remove(&mut self, key: EntityKey<T>) -> Option<T> {
+    pub fn remove(&mut self, key: ColumnKey) -> Option<C> {
         let Entry {
             generation,
             slot: slot @ Slot::Occupied { .. },

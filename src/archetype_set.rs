@@ -27,5 +27,6 @@ pub type Entity<W> = <W as ArchetypeSet>::Entity;
 
 pub trait ArchetypeInSet<S: ArchetypeSet>: Archetype {
     fn id(key: EntityKey<Self>) -> S::EntityId;
-    fn into_any(self) -> S::Entity;
+
+    fn into_entity(self) -> S::Entity;
 }
