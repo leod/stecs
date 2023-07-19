@@ -1,14 +1,12 @@
 use std::{
     any::{Any, TypeId},
-    cell::RefCell,
-    fmt::Debug,
-    iter::Chain,
-    marker::PhantomData,
+    iter::{Chain, Flatten},
+    option::IntoIter,
 };
 
 use stecs::{
     Archetype, ArchetypeSet, Column, Component, Entity, EntityColumns, EntityId, EntityKey,
-    InArchetypeSet,
+    InArchetypeSet, Query,
 };
 
 #[derive(Clone)]
@@ -165,6 +163,21 @@ impl stecs::ArchetypeSet for World {
         }
     }
 
+    type QueryIter<'a, Q> = Chain<Flatten<IntoIter<Q::Iter<Player>>>, Flatten<IntoIter<Q::Iter<Enemy>>>>
+    where
+        Self: 'a,
+        Q: Query<'a, Self>;
+
+    fn query<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
+    where
+        Q: Query<'a, Self>,
+    {
+        let iter = Q::iter_archetype(&mut self.players).into_iter().flatten();
+        let iter = iter.chain(Q::iter_archetype(&mut self.enemies).into_iter().flatten());
+
+        iter
+    }
+
     /*
     type QueryIter<'a, Q: Query<'a, Self>> = Chain<
         GetterIter<'a, Self, Player, Q::Getter<Player>>,
@@ -289,12 +302,13 @@ fn main() {
 
     /*for (p, q) in world.query::<(&mut Position, &Position)>() {
         p.0 += q.0;
-    }*/
+    }
 
-    for (p, q) in world.query::<(&Position, &Position)>() {}
+    for (p, q) in world.query::<(&Position, &Position)>() {}*/
 
     dbg!("--");
 
+    /*
     for (id, _) in world.query::<(EntityId<World>, &Position)>() {
         dbg!(id);
     }
@@ -304,6 +318,7 @@ fn main() {
     for (id, target) in world.query::<(EntityId<World>, &Target)>() {
         println!("{:?} targeting {:?}", id, target);
     }
+    */
 
     /*
     let id: EntityId<MyWorld> = todo!();

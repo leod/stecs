@@ -2,13 +2,14 @@ use std::{iter::Zip, marker::PhantomData};
 
 use crate::{Archetype, ArchetypeSet, Component, Entity, InArchetypeSet};
 
-pub trait Query<S: ArchetypeSet> {
+// TODO: `Query` probably does not need a lifetime.
+pub trait Query<'a, S: ArchetypeSet> {
     type Iter<E: Entity>: Iterator<Item = Self>;
 
     fn iter_archetype<E: InArchetypeSet<S>>(archetype: &mut Archetype<E>) -> Option<Self::Iter<E>>;
 }
 
-impl<'a, C, S> Query<S> for &'a C
+impl<'a, C, S> Query<'a, S> for &'a C
 where
     C: Component,
     S: ArchetypeSet,
@@ -26,7 +27,7 @@ where
     }
 }
 
-impl<'a, C, S> Query<S> for &'a mut C
+impl<'a, C, S> Query<'a, S> for &'a mut C
 where
     C: Component,
     S: ArchetypeSet,
@@ -44,10 +45,10 @@ where
     }
 }
 
-impl<'a, Q0, Q1, S> Query<S> for (Q0, Q1)
+impl<'a, Q0, Q1, S> Query<'a, S> for (Q0, Q1)
 where
-    Q0: Query<S>,
-    Q1: Query<S>,
+    Q0: Query<'a, S>,
+    Q1: Query<'a, S>,
     S: ArchetypeSet,
 {
     type Iter<E: Entity> = Zip<Q0::Iter<E>, Q1::Iter<E>>;
