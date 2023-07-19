@@ -7,8 +7,8 @@ use std::{
 };
 
 use stecs::{
-    Archetype, ArchetypeSet, Column, Component, Entity, EntityColumns, EntityId,
-    EntityInArchetypeSet, EntityKey,
+    Archetype, ArchetypeSet, Column, Component, Entity, EntityColumns, EntityId, EntityKey,
+    InArchetypeSet,
 };
 
 #[derive(Clone)]
@@ -30,36 +30,37 @@ struct Player {
 // generated
 #[derive(Default, Clone)]
 struct PlayerColumns {
-    pos: RefCell<Column<Position>>,
-    vel: RefCell<Column<Velocity>>,
-    col: RefCell<Column<Color>>,
+    pos: Column<Position>,
+    vel: Column<Velocity>,
+    col: Column<Color>,
 }
 
 impl EntityColumns for PlayerColumns {
     type Entity = Player;
 
-    fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>> {
+    fn column<C: Component>(&mut self) -> Option<(*mut C, usize)> {
         if TypeId::of::<C>() == TypeId::of::<Position>() {
-            (&self.pos as &dyn Any).downcast_ref()
+            (&mut self.pos as &mut dyn Any).downcast_mut::<Column<C>>()
         } else if TypeId::of::<C>() == TypeId::of::<Velocity>() {
-            (&self.vel as &dyn Any).downcast_ref()
+            (&mut self.vel as &mut dyn Any).downcast_mut::<Column<C>>()
         } else if TypeId::of::<C>() == TypeId::of::<Color>() {
-            (&self.col as &dyn Any).downcast_ref()
+            (&mut self.col as &mut dyn Any).downcast_mut::<Column<C>>()
         } else {
             None
         }
+        .map(|column| column.as_raw_parts())
     }
 
     fn push(&mut self, entity: Self::Entity) {
-        self.pos.borrow_mut().push(entity.pos);
-        self.vel.borrow_mut().push(entity.vel);
+        self.pos.push(entity.pos);
+        self.vel.push(entity.vel);
     }
 
     fn remove(&mut self, index: usize) -> Self::Entity {
         Player {
-            pos: self.pos.borrow_mut().remove(index),
-            vel: self.vel.borrow_mut().remove(index),
-            col: self.col.borrow_mut().remove(index),
+            pos: self.pos.remove(index),
+            vel: self.vel.remove(index),
+            col: self.col.remove(index),
         }
     }
 }
@@ -68,7 +69,7 @@ impl Entity for Player {
     type Columns = PlayerColumns;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct Target(EntityId<World>);
 
 #[derive(Clone)]
@@ -80,32 +81,33 @@ struct Enemy {
 // generated
 #[derive(Default, Clone)]
 struct EnemyColumns {
-    pos: RefCell<Column<Position>>,
-    target: RefCell<Column<Target>>,
+    pos: Column<Position>,
+    target: Column<Target>,
 }
 
 impl EntityColumns for EnemyColumns {
     type Entity = Enemy;
 
-    fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>> {
+    fn column<C: Component>(&mut self) -> Option<(*mut C, usize)> {
         if TypeId::of::<C>() == TypeId::of::<Position>() {
-            (&self.pos as &dyn Any).downcast_ref()
+            (&mut self.pos as &mut dyn Any).downcast_mut::<Column<C>>()
         } else if TypeId::of::<C>() == TypeId::of::<Target>() {
-            (&self.target as &dyn Any).downcast_ref()
+            (&mut self.target as &mut dyn Any).downcast_mut::<Column<C>>()
         } else {
             None
         }
+        .map(|column| column.as_raw_parts())
     }
 
     fn push(&mut self, entity: Self::Entity) {
-        self.pos.borrow_mut().push(entity.pos);
-        self.target.borrow_mut().push(entity.target);
+        self.pos.push(entity.pos);
+        self.target.push(entity.target);
     }
 
     fn remove(&mut self, index: usize) -> Self::Entity {
         Enemy {
-            pos: self.pos.borrow_mut().remove(index),
-            target: self.target.borrow_mut().remove(index),
+            pos: self.pos.remove(index),
+            target: self.target.remove(index),
         }
     }
 }
@@ -149,7 +151,7 @@ impl stecs::ArchetypeSet for World {
 
     type Entity = WorldEntity;
 
-    fn spawn<E: EntityInArchetypeSet<Self>>(&mut self, entity: E) -> Self::EntityId {
+    fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::EntityId {
         match entity.into_entity() {
             WorldEntity::Player(entity) => WorldEntityId::Player(self.players.spawn(entity)),
             WorldEntity::Enemy(entity) => WorldEntityId::Enemy(self.enemies.spawn(entity)),
@@ -192,7 +194,7 @@ impl stecs::ArchetypeSet for World {
     */
 }
 
-impl EntityInArchetypeSet<World> for Player {
+impl InArchetypeSet<World> for Player {
     fn id(key: EntityKey<Self>) -> EntityId<World> {
         EntityId::<World>::Player(key)
     }
@@ -202,7 +204,7 @@ impl EntityInArchetypeSet<World> for Player {
     }
 }
 
-impl EntityInArchetypeSet<World> for Enemy {
+impl InArchetypeSet<World> for Enemy {
     fn id(key: EntityKey<Self>) -> EntityId<World> {
         EntityId::<World>::Enemy(key)
     }

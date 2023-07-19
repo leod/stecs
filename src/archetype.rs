@@ -19,7 +19,7 @@ impl<E> Copy for EntityKey<E> {}
 pub trait EntityColumns: Default {
     type Entity: Entity<Columns = Self>;
 
-    fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>>;
+    fn column<C: Component>(&mut self) -> Option<(*mut C, usize)>;
 
     fn push(&mut self, entity: Self::Entity);
 
@@ -38,6 +38,10 @@ pub struct Archetype<E: Entity> {
 }
 
 impl<E: Entity> Archetype<E> {
+    pub fn column<C: Component>(&mut self) -> Option<(*mut C, usize)> {
+        self.columns.column::<C>()
+    }
+
     pub fn spawn(&mut self, entity: E) -> EntityKey<E> {
         let index = self.ids.len();
         let key = EntityKey(self.indices.insert(index), PhantomData);
@@ -52,6 +56,11 @@ impl<E: Entity> Archetype<E> {
         let index = self.indices.remove(key.0)?;
 
         self.ids.remove(index);
+
+        if let Some(last) = self.ids.last() {
+            self.indices[last.0] = self.ids.len() - 1;
+        }
+
         Some(self.columns.remove(index))
     }
 }

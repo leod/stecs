@@ -1,3 +1,5 @@
+use std::slice;
+
 #[derive(Clone, Debug)]
 pub struct Column<C>(Vec<C>);
 
@@ -28,4 +30,16 @@ impl<C> Column<C> {
         self.0.swap(index, last);
         self.0.pop().unwrap()
     }
+
+    pub fn last(&self) -> Option<&C> {
+        self.0.last()
+    }
+
+    pub fn as_raw_parts(&mut self) -> (*mut C, usize) {
+        (self.0.as_mut_ptr(), self.0.len())
+    }
 }
+
+// TODO: Need to allow multiple borrows by checking that entity IDs do not
+// overlap.
+pub type ColumnIter<'a, C> = slice::Iter<'a, C>;

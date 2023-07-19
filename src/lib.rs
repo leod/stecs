@@ -15,11 +15,12 @@ macro_rules! smaller_tuples_too {
 mod archetype;
 mod archetype_set;
 mod column;
+mod query;
 
 pub use archetype::{Archetype, Entity, EntityColumns, EntityKey};
-pub use archetype_set::{ArchetypeSet, EntityId, EntityInArchetypeSet};
+pub use archetype_set::{ArchetypeSet, EntityId, InArchetypeSet};
 pub use column::Column;
-//pub use query::{BorrowChecker, EntityIdGetter, Getter, GetterIter, Query};
+pub use query::Query;
 
 pub trait Component: 'static {}
 
