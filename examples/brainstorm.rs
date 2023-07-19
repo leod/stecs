@@ -1,9 +1,14 @@
-use std::{any::TypeId, fmt::Debug, iter::Chain};
+use std::{
+    any::{Any, TypeId},
+    cell::RefCell,
+    fmt::Debug,
+    iter::Chain,
+    marker::PhantomData,
+};
 
-use frunk::{HCons, HNil};
 use stecs::{
-    arena, Archetype, ArchetypeInSet, ArchetypeSet, Arena, BorrowChecker, Entity, EntityId,
-    EntityIdGetter, GetterIter, Query,
+    Archetype, ArchetypeSet, Column, Component, Entity, EntityColumns, EntityId,
+    EntityInArchetypeSet, EntityKey,
 };
 
 #[derive(Clone)]
@@ -23,26 +28,48 @@ struct Player {
 }
 
 // generated
-unsafe impl Archetype for Player {
-    type Components = HCons<Position, HCons<Velocity, HCons<Color, HNil>>>;
+#[derive(Default, Clone)]
+struct PlayerColumns {
+    pos: RefCell<Column<Position>>,
+    vel: RefCell<Column<Velocity>>,
+    col: RefCell<Column<Color>>,
+}
 
-    fn offset_of<C: stecs::Component>() -> Option<usize> {
-        let type_id = TypeId::of::<C>();
+impl EntityColumns for PlayerColumns {
+    type Entity = Player;
 
-        if type_id == TypeId::of::<Position>() {
-            Some(memoffset::offset_of!(Player, pos))
-        } else if type_id == TypeId::of::<Velocity>() {
-            Some(memoffset::offset_of!(Player, vel))
-        } else if type_id == TypeId::of::<Color>() {
-            Some(memoffset::offset_of!(Player, col))
+    fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>> {
+        if TypeId::of::<C>() == TypeId::of::<Position>() {
+            (&self.pos as &dyn Any).downcast_ref()
+        } else if TypeId::of::<C>() == TypeId::of::<Velocity>() {
+            (&self.vel as &dyn Any).downcast_ref()
+        } else if TypeId::of::<C>() == TypeId::of::<Color>() {
+            (&self.col as &dyn Any).downcast_ref()
         } else {
             None
         }
     }
+
+    fn push(&mut self, entity: Self::Entity) {
+        self.pos.borrow_mut().push(entity.pos);
+        self.vel.borrow_mut().push(entity.vel);
+    }
+
+    fn remove(&mut self, index: usize) -> Self::Entity {
+        Player {
+            pos: self.pos.borrow_mut().remove(index),
+            vel: self.vel.borrow_mut().remove(index),
+            col: self.col.borrow_mut().remove(index),
+        }
+    }
+}
+
+impl Entity for Player {
+    type Columns = PlayerColumns;
 }
 
 #[derive(Clone, Debug)]
-struct Target(EntityId<MyWorld>);
+struct Target(EntityId<World>);
 
 #[derive(Clone)]
 struct Enemy {
@@ -51,64 +78,99 @@ struct Enemy {
 }
 
 // generated
-unsafe impl Archetype for Enemy {
-    type Components = HCons<Position, HNil>;
+#[derive(Default, Clone)]
+struct EnemyColumns {
+    pos: RefCell<Column<Position>>,
+    target: RefCell<Column<Target>>,
+}
 
-    fn offset_of<C: stecs::Component>() -> Option<usize> {
-        let type_id = TypeId::of::<C>();
+impl EntityColumns for EnemyColumns {
+    type Entity = Enemy;
 
-        if type_id == TypeId::of::<Position>() {
-            Some(memoffset::offset_of!(Enemy, pos))
-        } else if type_id == TypeId::of::<Target>() {
-            Some(memoffset::offset_of!(Enemy, target))
+    fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>> {
+        if TypeId::of::<C>() == TypeId::of::<Position>() {
+            (&self.pos as &dyn Any).downcast_ref()
+        } else if TypeId::of::<C>() == TypeId::of::<Target>() {
+            (&self.target as &dyn Any).downcast_ref()
         } else {
             None
         }
     }
+
+    fn push(&mut self, entity: Self::Entity) {
+        self.pos.borrow_mut().push(entity.pos);
+        self.target.borrow_mut().push(entity.target);
+    }
+
+    fn remove(&mut self, index: usize) -> Self::Entity {
+        Enemy {
+            pos: self.pos.borrow_mut().remove(index),
+            target: self.target.borrow_mut().remove(index),
+        }
+    }
+}
+
+impl Entity for Enemy {
+    type Columns = EnemyColumns;
 }
 
 #[derive(Default, Clone)]
-struct MyWorld {
-    players: Arena<Player>,
-    enemies: Arena<Enemy>,
+struct World {
+    players: Archetype<Player>,
+    enemies: Archetype<Enemy>,
 }
 
 // generated
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+#[derive(Clone, Copy)]
 enum WorldEntityId {
-    Player(arena::Index),
-    Enemy(arena::Index),
+    Player(EntityKey<Player>),
+    Enemy(EntityKey<Enemy>),
 }
 
-enum WorldAnyEntity {
+enum WorldEntity {
     Player(Player),
     Enemy(Enemy),
 }
 
-impl From<Player> for WorldAnyEntity {
+impl From<Player> for WorldEntity {
     fn from(entity: Player) -> Self {
         Self::Player(entity)
     }
 }
 
-impl From<Enemy> for WorldAnyEntity {
+impl From<Enemy> for WorldEntity {
     fn from(entity: Enemy) -> Self {
         Self::Enemy(entity)
     }
 }
 
-impl stecs::ArchetypeSet for MyWorld {
+impl stecs::ArchetypeSet for World {
     type EntityId = WorldEntityId;
 
-    type Entity = WorldAnyEntity;
+    type Entity = WorldEntity;
 
+    fn spawn<E: EntityInArchetypeSet<Self>>(&mut self, entity: E) -> Self::EntityId {
+        match entity.into_entity() {
+            WorldEntity::Player(entity) => WorldEntityId::Player(self.players.spawn(entity)),
+            WorldEntity::Enemy(entity) => WorldEntityId::Enemy(self.enemies.spawn(entity)),
+        }
+    }
+
+    fn despawn(&mut self, id: Self::EntityId) -> Option<Self::Entity> {
+        match id {
+            WorldEntityId::Player(key) => self.players.despawn(key).map(WorldEntity::Player),
+            WorldEntityId::Enemy(key) => self.enemies.despawn(key).map(WorldEntity::Enemy),
+        }
+    }
+
+    /*
     type QueryIter<'a, Q: Query<'a, Self>> = Chain<
         GetterIter<'a, Self, Player, Q::Getter<Player>>,
         GetterIter<'a, Self, Enemy, Q::Getter<Enemy>>,
     >;
 
     fn spawn<A: ArchetypeInSet<Self>>(&mut self, entity: A) -> Self::EntityId {
-        match entity.into_any() {
+        match entity.into_entity() {
             WorldAnyEntity::Player(entity) => WorldEntityId::Player(self.players.insert(entity)),
             WorldAnyEntity::Enemy(entity) => WorldEntityId::Enemy(self.enemies.insert(entity)),
         }
@@ -127,28 +189,30 @@ impl stecs::ArchetypeSet for MyWorld {
 
         iter
     }
+    */
 }
 
-impl ArchetypeInSet<MyWorld> for Player {
-    fn id(index: arena::Index) -> EntityId<MyWorld> {
-        EntityId::<MyWorld>::Player(index)
+impl EntityInArchetypeSet<World> for Player {
+    fn id(key: EntityKey<Self>) -> EntityId<World> {
+        EntityId::<World>::Player(key)
     }
 
-    fn into_any(self) -> Entity<MyWorld> {
-        Entity::<MyWorld>::Player(self)
-    }
-}
-
-impl ArchetypeInSet<MyWorld> for Enemy {
-    fn id(index: arena::Index) -> EntityId<MyWorld> {
-        EntityId::<MyWorld>::Enemy(index)
-    }
-
-    fn into_any(self) -> Entity<MyWorld> {
-        Entity::<MyWorld>::Enemy(self)
+    fn into_entity(self) -> <World as ArchetypeSet>::Entity {
+        WorldEntity::Player(self)
     }
 }
 
+impl EntityInArchetypeSet<World> for Enemy {
+    fn id(key: EntityKey<Self>) -> EntityId<World> {
+        EntityId::<World>::Enemy(key)
+    }
+
+    fn into_entity(self) -> <World as ArchetypeSet>::Entity {
+        WorldEntity::Enemy(self)
+    }
+}
+
+/*
 impl<'a> Query<'a, MyWorld> for WorldEntityId {
     type Getter<A> = EntityIdGetter
     where
@@ -163,11 +227,12 @@ impl<'a> Query<'a, MyWorld> for WorldEntityId {
         Some(EntityIdGetter)
     }
 }
+*/
 
 fn main() {
     //let id = EntityId::<World>::Player(0);
 
-    let mut world = MyWorld::default();
+    let mut world = World::default();
 
     let p0 = world.spawn(Player {
         pos: Position(1.0),
@@ -228,13 +293,13 @@ fn main() {
 
     dbg!("--");
 
-    for (id, _) in world.query::<(EntityId<MyWorld>, &Position)>() {
+    for (id, _) in world.query::<(EntityId<World>, &Position)>() {
         dbg!(id);
     }
 
     dbg!("--");
 
-    for (id, target) in world.query::<(EntityId<MyWorld>, &Target)>() {
+    for (id, target) in world.query::<(EntityId<World>, &Target)>() {
         println!("{:?} targeting {:?}", id, target);
     }
 

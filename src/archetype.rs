@@ -1,31 +1,67 @@
 use std::{cell::RefCell, marker::PhantomData};
 
-use crate::{Column, ColumnKey, Component};
+use thunderdome::Arena;
+
+use crate::{column::Column, Component};
 
 // TODO: Debug, PartialEq, Eq, Hash, PartialOrd, Ord.
 // https://github.com/rust-lang/rust/issues/26925
-pub struct EntityKey<A>(ColumnKey, PhantomData<A>);
+pub struct EntityKey<E>(thunderdome::Index, PhantomData<E>);
 
-impl<A> Clone for EntityKey<A> {
+impl<E> Clone for EntityKey<E> {
     fn clone(&self) -> Self {
-        Self(self.0.clone(), self.1.clone())
+        Self(self.0.clone(), PhantomData)
     }
 }
 
-impl<A> Copy for EntityKey<A> {}
+impl<E> Copy for EntityKey<E> {}
 
-pub trait ArchetypeStorage {
-    type Archetype: Archetype;
+pub trait EntityColumns: Default {
+    type Entity: Entity<Columns = Self>;
 
     fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>>;
 
-    fn spawn(&mut self, entity: Self::Archetype) -> EntityKey<Self::Archetype>;
+    fn push(&mut self, entity: Self::Entity);
 
-    fn despawn(&mut self, key: EntityKey<Self::Archetype>) -> Option<Self::Archetype>;
+    fn remove(&mut self, index: usize) -> Self::Entity;
 }
 
-pub trait Archetype: Sized {
-    type Storage: ArchetypeStorage;
+pub trait Entity: Sized {
+    type Columns: EntityColumns<Entity = Self>;
 }
 
-pub type Storage<A> = <A as Archetype>::Storage;
+#[derive(Clone)]
+pub struct Archetype<E: Entity> {
+    indices: Arena<usize>,
+    ids: Column<EntityKey<E>>,
+    columns: E::Columns,
+}
+
+impl<E: Entity> Archetype<E> {
+    pub fn spawn(&mut self, entity: E) -> EntityKey<E> {
+        let index = self.ids.len();
+        let key = EntityKey(self.indices.insert(index), PhantomData);
+
+        self.ids.push(key);
+        self.columns.push(entity);
+
+        key
+    }
+
+    pub fn despawn(&mut self, key: EntityKey<E>) -> Option<E> {
+        let index = self.indices.remove(key.0)?;
+
+        self.ids.remove(index);
+        Some(self.columns.remove(index))
+    }
+}
+
+impl<E: Entity> Default for Archetype<E> {
+    fn default() -> Self {
+        Self {
+            indices: Default::default(),
+            ids: Default::default(),
+            columns: Default::default(),
+        }
+    }
+}
