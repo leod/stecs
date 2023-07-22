@@ -19,7 +19,7 @@ impl<E> Copy for EntityKey<E> {}
 pub trait EntityColumns: Default {
     type Entity: Entity<Columns = Self>;
 
-    fn column<C: Component>(&mut self) -> Option<(*mut C, usize)>;
+    fn column<C: Component>(&mut self) -> Option<RefCell<Column<C>>>;
 
     fn push(&mut self, entity: Self::Entity);
 

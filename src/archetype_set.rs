@@ -27,7 +27,7 @@ pub trait ArchetypeSet: Default + Sized {
         Self: 'a,
         Q: Query<'a, Self>;
 
-    fn query<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
+    fn iter<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
     where
         Q: Query<'a, Self>;
 }

@@ -168,7 +168,7 @@ impl stecs::ArchetypeSet for World {
         Self: 'a,
         Q: Query<'a, Self>;
 
-    fn query<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
+    fn iter<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
     where
         Q: Query<'a, Self>,
     {
@@ -271,30 +271,53 @@ fn main() {
         target: Target(p0),
     });
 
-    for p in world.query::<&mut Position>() {
+    for p in world.iter::<&mut Position>() {
         dbg!(p.0);
         p.0 += 3.0;
     }
 
     dbg!("--");
 
-    for p in world.query::<&Position>() {
+    for p in world.iter::<&Position>() {
         dbg!(p.0);
     }
 
     dbg!("--");
 
-    for (p, v) in world.query::<(&Position, &Velocity)>() {
+    for (p, v) in world.iter::<(&Position, &Velocity)>() {
         dbg!(p.0, v.0);
     }
 
     dbg!("--");
 
-    for (p, v) in world.query::<(&mut Position, &Velocity)>() {
+    for (p, v) in world.iter::<(&mut Position, &Velocity)>() {
         p.0 += v.0;
     }
 
     dbg!("--");
+
+    while let Some((p, v, join)) = world
+        .stream::<(&mut Position, &Velocity)>()
+        .join::<&mut Position>()
+    {
+        for p in join.iter() {}
+    }
+
+    struct RopeNode {
+        next: EntityId<World>,
+    }
+
+    while let Some(((node, pos), join)) = world
+        .stream::<(&mut RopeNode, &Position)>()
+        .join::<(&mut RopeNode, &Position)>()
+    {
+        for (next_node, pos) in join.iter(node.next.into_iter()) {}
+    }
+
+    while let Some(((node, pos), (next_node, next_pos))) = world
+        .stream::<(&RopeNode, &mut Position)>()
+        .join_flat::<(&RopeNode, &mut Position)>(|(node, _)| node.next.into_iter())
+    {}
 
     /*for (p, q) in world.query::<(&mut Position, &mut Position)>() {
         p.0 += q.0;

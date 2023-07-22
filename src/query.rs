@@ -4,9 +4,15 @@ use crate::{Archetype, ArchetypeSet, Component, Entity, InArchetypeSet};
 
 // TODO: `Query` probably does not need a lifetime.
 pub trait Query<'a, S: ArchetypeSet> {
-    type Iter<E: Entity>: Iterator<Item = Self>;
+    type Iter<E: Entity>: Iterator<Item = Self>
+    where
+        E: 'a;
 
-    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &mut Archetype<E>) -> Option<Self::Iter<E>>;
+    fn iter_archetype<E: InArchetypeSet<S>>(
+        archetype: &'a mut Archetype<E>,
+    ) -> Option<Self::Iter<E>>
+    where
+        E: 'a;
 }
 
 impl<'a, C, S> Query<'a, S> for &'a C
@@ -14,9 +20,12 @@ where
     C: Component,
     S: ArchetypeSet,
 {
-    type Iter<E: Entity> = UnsafeColumnIter<'a, C>;
+    type Iter<E: Entity> = UnsafeColumnIter<'a, C> where E: 'a;
 
-    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &mut Archetype<E>) -> Option<Self::Iter<E>> {
+    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &mut Archetype<E>) -> Option<Self::Iter<E>>
+    where
+        E: 'a,
+    {
         let (ptr, len) = archetype.column::<C>()?;
 
         Some(UnsafeColumnIter {
@@ -32,9 +41,12 @@ where
     C: Component,
     S: ArchetypeSet,
 {
-    type Iter<E: Entity> = UnsafeColumnIterMut<'a, C>;
+    type Iter<E: Entity> = UnsafeColumnIterMut<'a, C> where E: 'a;
 
-    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &mut Archetype<E>) -> Option<Self::Iter<E>> {
+    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &mut Archetype<E>) -> Option<Self::Iter<E>>
+    where
+        E: 'a,
+    {
         let (ptr, len) = archetype.column::<C>()?;
 
         Some(UnsafeColumnIterMut {
@@ -51,9 +63,11 @@ where
     Q1: Query<'a, S>,
     S: ArchetypeSet,
 {
-    type Iter<E: Entity> = Zip<Q0::Iter<E>, Q1::Iter<E>>;
+    type Iter<E: Entity> = Zip<Q0::Iter<E>, Q1::Iter<E>> where E: 'a;
 
-    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &mut Archetype<E>) -> Option<Self::Iter<E>> {
+    fn iter_archetype<E: InArchetypeSet<S>>(
+        archetype: &'a mut Archetype<E>,
+    ) -> Option<Self::Iter<E>> {
         Some(Q0::iter_archetype(archetype)?.zip(Q1::iter_archetype(archetype)?))
     }
 }
