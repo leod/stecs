@@ -6,13 +6,13 @@ use std::marker::PhantomData;
 use crate::{
     archetype_set::ArchetypeSetFetch,
     column::{ColumnRawParts, ColumnRawPartsMut},
-    Archetype, ArchetypeSet, Component, Entity, InArchetypeSet,
+    Archetype, ArchetypeSet, Component, Entity, EntityColumns, InArchetypeSet,
 };
 
-pub trait Fetch<'a, S: ArchetypeSet>: Sized {
+pub trait Fetch<'a, S: ArchetypeSet>: Copy {
     type Query;
 
-    fn new<E: InArchetypeSet<S>>(archetype: &'a Archetype<E>) -> Option<Self>;
+    fn new<E: InArchetypeSet<S>>(columns: &'a E::Columns) -> Option<Self>;
 
     fn len(&self) -> usize;
 
@@ -26,8 +26,8 @@ where
 {
     type Query = &'a C;
 
-    fn new<E: InArchetypeSet<S>>(archetype: &'a Archetype<E>) -> Option<Self> {
-        archetype
+    fn new<E: InArchetypeSet<S>>(columns: &'a E::Columns) -> Option<Self> {
+        columns
             .column::<C>()
             .map(|column| column.borrow().as_raw_parts())
     }
@@ -50,8 +50,8 @@ where
 {
     type Query = &'a mut C;
 
-    fn new<E: Entity>(archetype: &'a Archetype<E>) -> Option<Self> {
-        archetype
+    fn new<E: Entity>(columns: &'a E::Columns) -> Option<Self> {
+        columns
             .column::<C>()
             .map(|column| column.borrow_mut().as_raw_parts_mut())
     }
@@ -75,9 +75,9 @@ where
 {
     type Query = (F0::Query, F1::Query);
 
-    fn new<E: InArchetypeSet<S>>(archetype: &'a Archetype<E>) -> Option<Self> {
-        let f0 = F0::new(archetype)?;
-        let f1 = F1::new(archetype)?;
+    fn new<E: InArchetypeSet<S>>(columns: &'a E::Columns) -> Option<Self> {
+        let f0 = F0::new::<E>(columns)?;
+        let f1 = F1::new::<E>(columns)?;
 
         assert_eq!(f0.len(), f1.len());
 

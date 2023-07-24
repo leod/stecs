@@ -9,6 +9,7 @@ use stecs::{
     Archetype, ArchetypeSet, ArchetypeSetFetch, Column, Component, Entity, EntityColumns, EntityId,
     EntityKey, Fetch, InArchetypeSet, Query,
 };
+use thunderdome::Arena;
 
 #[derive(Clone)]
 struct Position(f32);
@@ -144,9 +145,8 @@ impl From<Enemy> for WorldEntity {
 }
 
 struct WorldFetch<'a, F> {
-    world: &'a mut World,
-    players: Option<F>,
-    enemies: Option<F>,
+    players: Option<(&'a Arena<usize>, F)>,
+    enemies: Option<(&'a Arena<usize>, F)>,
 }
 
 impl<'a, F> ArchetypeSetFetch<'a, World> for WorldFetch<'a, F>
@@ -155,23 +155,28 @@ where
 {
     type Fetch = F;
 
-    type Iter = std::array::IntoIter<F, 2>;
+    type Iter = std::iter::Flatten<std::array::IntoIter<Option<F>, 2>>;
 
     unsafe fn get(&self, id: EntityId<World>) -> Option<F::Query> {
         match id {
             WorldEntityId::Player(key) => self
                 .players
                 .as_ref()
-                .and_then(|fetch| self.world.players.index(key).map(|index| fetch.get(index))),
+                .and_then(|(arena, fetch)| arena.get(key.0).map(|&index| fetch.get(index))),
             WorldEntityId::Enemy(key) => self
                 .enemies
                 .as_ref()
-                .and_then(|fetch| self.world.enemies.index(key).map(|index| fetch.get(index))),
+                .and_then(|(arena, fetch)| arena.get(key.0).map(|&index| fetch.get(index))),
         }
     }
 
     fn iter(&mut self) -> Self::Iter {
-        todo!()
+        [
+            self.players.as_ref().map(|(_, fetch)| *fetch),
+            self.enemies.as_ref().map(|(_, fetch)| *fetch),
+        ]
+        .into_iter()
+        .flatten()
     }
 }
 
@@ -200,14 +205,12 @@ impl stecs::ArchetypeSet for World {
     where
         F: Fetch<'a, Self>,
     {
-        let players = F::new(&self.players);
-        let enemies = F::new(&self.enemies);
+        let players =
+            F::new::<Player>(self.players.columns()).map(|fetch| (self.players.indices(), fetch));
+        let enemies =
+            F::new::<Enemy>(self.enemies.columns()).map(|fetch| (self.enemies.indices(), fetch));
 
-        WorldFetch {
-            world: self,
-            players,
-            enemies,
-        }
+        WorldFetch { players, enemies }
     }
 }
 

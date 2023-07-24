@@ -1,12 +1,12 @@
 use std::{cell::RefCell, marker::PhantomData};
 
-use thunderdome::Arena;
+pub use thunderdome::Arena;
 
 use crate::{column::Column, Component};
 
 // TODO: Debug, PartialEq, Eq, Hash, PartialOrd, Ord.
 // https://github.com/rust-lang/rust/issues/26925
-pub struct EntityKey<E>(thunderdome::Index, PhantomData<E>);
+pub struct EntityKey<E>(pub thunderdome::Index, PhantomData<E>);
 
 impl<E> Clone for EntityKey<E> {
     fn clone(&self) -> Self {
@@ -42,8 +42,12 @@ impl<E: Entity> Archetype<E> {
         self.columns.column::<C>()
     }
 
-    pub fn index(&self, key: EntityKey<E>) -> Option<usize> {
-        self.indices.get(key.0).copied()
+    pub fn indices(&self) -> &Arena<usize> {
+        &self.indices
+    }
+
+    pub fn columns(&self) -> &E::Columns {
+        &self.columns
     }
 
     pub fn spawn(&mut self, entity: E) -> EntityKey<E> {

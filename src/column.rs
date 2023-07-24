@@ -55,10 +55,32 @@ pub struct ColumnRawParts<C> {
     pub len: usize,
 }
 
+impl<C> Clone for ColumnRawParts<C> {
+    fn clone(&self) -> Self {
+        Self {
+            ptr: self.ptr,
+            len: self.len,
+        }
+    }
+}
+
+impl<C> Copy for ColumnRawParts<C> {}
+
 pub struct ColumnRawPartsMut<C> {
     pub ptr: *mut C,
     pub len: usize,
 }
+
+impl<C> Clone for ColumnRawPartsMut<C> {
+    fn clone(&self) -> Self {
+        Self {
+            ptr: self.ptr,
+            len: self.len,
+        }
+    }
+}
+
+impl<C> Copy for ColumnRawPartsMut<C> {}
 
 // TODO: Need to allow multiple borrows by checking that entity IDs do not
 // overlap.
