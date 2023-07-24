@@ -93,6 +93,8 @@ where
     {
         assert!(index < <Self as Fetch<S>>::len(self));
 
+        println!("getting {:?} + {}", self.ptr, index);
+
         unsafe { &mut *self.ptr.add(index) }
     }
 }
@@ -516,7 +518,7 @@ pub struct JoinIter<'a, 'b, J, S, I>
 where
     J: Fetch<'a, S>,
     S: ArchetypeSet + 'a,
-    'b: 'a,
+    'a: 'b,
 {
     join: &'b Join<'a, J, S>,
     iter: I,
@@ -527,7 +529,7 @@ where
     J: Fetch<'a, S>,
     S: ArchetypeSet + 'a,
     I: Iterator<Item = S::EntityId>,
-    'b: 'a,
+    'a: 'b,
 {
     type Item = J::Item<'b>;
 
@@ -560,6 +562,7 @@ where
 
     // This has to take an exclusive `self` reference for the same reason as
     // `get()`.
+    // FIXME: This does not prevent aliasing.
     pub fn iter<'b, I>(&'b mut self, iter: I) -> JoinIter<'a, 'b, J, S, I>
     where
         'a: 'b,

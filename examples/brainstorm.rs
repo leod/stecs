@@ -1,5 +1,5 @@
 use std::{
-    any::{Any, TypeId},
+    any::{type_name, Any, TypeId},
     cell::RefCell,
 };
 
@@ -158,6 +158,7 @@ where
     type Iter = std::iter::Flatten<std::array::IntoIter<Option<F>, 2>>;
 
     unsafe fn get<'b>(&self, id: EntityId<World>) -> Option<F::Item<'b>> {
+        println!("getting {:?} {}", id, type_name::<F>());
         match id {
             WorldEntityId::Player(key) => self
                 .players
@@ -379,6 +380,13 @@ fn main() {
 
         // FIXME
         let violation: Vec<&mut Position> = join.iter([target.0, target.0].into_iter()).collect();
+
+        println!(
+            "{} {:?} {:?}",
+            violation.len(),
+            violation[0] as *const _,
+            violation[1] as *const _
+        );
     }
 
     /*
