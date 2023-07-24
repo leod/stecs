@@ -1,5 +1,6 @@
 use std::{
     any::{Any, TypeId},
+    cell::RefCell,
     iter::{Chain, Flatten},
     option::IntoIter,
 };
@@ -28,37 +29,42 @@ struct Player {
 // generated
 #[derive(Default, Clone)]
 struct PlayerColumns {
-    pos: Column<Position>,
-    vel: Column<Velocity>,
-    col: Column<Color>,
+    pos: RefCell<Column<Position>>,
+    vel: RefCell<Column<Velocity>>,
+    col: RefCell<Column<Color>>,
 }
 
 impl EntityColumns for PlayerColumns {
     type Entity = Player;
 
-    fn column<C: Component>(&mut self) -> Option<(*mut C, usize)> {
+    fn column<C: Component>(&self) -> Option<(*mut C, usize)> {
         if TypeId::of::<C>() == TypeId::of::<Position>() {
-            (&mut self.pos as &mut dyn Any).downcast_mut::<Column<C>>()
+            (&mut *self.pos.borrow_mut() as &mut dyn Any)
+                .downcast_mut::<Column<C>>()
+                .map(|column| column.as_raw_parts())
         } else if TypeId::of::<C>() == TypeId::of::<Velocity>() {
-            (&mut self.vel as &mut dyn Any).downcast_mut::<Column<C>>()
+            (&mut *self.vel.borrow_mut() as &mut dyn Any)
+                .downcast_mut::<Column<C>>()
+                .map(|column| column.as_raw_parts())
         } else if TypeId::of::<C>() == TypeId::of::<Color>() {
-            (&mut self.col as &mut dyn Any).downcast_mut::<Column<C>>()
+            (&mut *self.col.borrow_mut() as &mut dyn Any)
+                .downcast_mut::<Column<C>>()
+                .map(|column| column.as_raw_parts())
         } else {
             None
         }
-        .map(|column| column.as_raw_parts())
     }
 
     fn push(&mut self, entity: Self::Entity) {
-        self.pos.push(entity.pos);
-        self.vel.push(entity.vel);
+        self.pos.borrow_mut().push(entity.pos);
+        self.vel.borrow_mut().push(entity.vel);
     }
 
     fn remove(&mut self, index: usize) -> Self::Entity {
         Player {
-            pos: self.pos.remove(index),
-            vel: self.vel.remove(index),
-            col: self.col.remove(index),
+            pos: self.pos.borrow_mut().remove(index),
+            vel: self.vel.borrow_mut().remove(index),
+            col: self.col.borrow_mut().remove(index),
         }
     }
 }
@@ -79,33 +85,36 @@ struct Enemy {
 // generated
 #[derive(Default, Clone)]
 struct EnemyColumns {
-    pos: Column<Position>,
-    target: Column<Target>,
+    pos: RefCell<Column<Position>>,
+    target: RefCell<Column<Target>>,
 }
 
 impl EntityColumns for EnemyColumns {
     type Entity = Enemy;
 
-    fn column<C: Component>(&mut self) -> Option<(*mut C, usize)> {
+    fn column<C: Component>(&self) -> Option<(*mut C, usize)> {
         if TypeId::of::<C>() == TypeId::of::<Position>() {
-            (&mut self.pos as &mut dyn Any).downcast_mut::<Column<C>>()
+            (&mut *self.pos.borrow_mut() as &mut dyn Any)
+                .downcast_mut::<Column<C>>()
+                .map(|column| column.as_raw_parts())
         } else if TypeId::of::<C>() == TypeId::of::<Target>() {
-            (&mut self.target as &mut dyn Any).downcast_mut::<Column<C>>()
+            (&mut *self.target.borrow_mut() as &mut dyn Any)
+                .downcast_mut::<Column<C>>()
+                .map(|column| column.as_raw_parts())
         } else {
             None
         }
-        .map(|column| column.as_raw_parts())
     }
 
     fn push(&mut self, entity: Self::Entity) {
-        self.pos.push(entity.pos);
-        self.target.push(entity.target);
+        self.pos.borrow_mut().push(entity.pos);
+        self.target.borrow_mut().push(entity.target);
     }
 
     fn remove(&mut self, index: usize) -> Self::Entity {
         Enemy {
-            pos: self.pos.remove(index),
-            target: self.target.remove(index),
+            pos: self.pos.borrow_mut().remove(index),
+            target: self.target.borrow_mut().remove(index),
         }
     }
 }
@@ -172,8 +181,14 @@ impl stecs::ArchetypeSet for World {
     where
         Q: Query<'a, Self>,
     {
-        let iter = Q::iter_archetype(&mut self.players).into_iter().flatten();
-        let iter = iter.chain(Q::iter_archetype(&mut self.enemies).into_iter().flatten());
+        let iter = unsafe { Q::iter_archetype(&self.players) }
+            .into_iter()
+            .flatten();
+        let iter = iter.chain(
+            unsafe { Q::iter_archetype(&self.enemies) }
+                .into_iter()
+                .flatten(),
+        );
 
         iter
     }
@@ -296,17 +311,27 @@ fn main() {
 
     dbg!("--");
 
+    /*
     while let Some((p, v, join)) = world
         .stream::<(&mut Position, &Velocity)>()
         .join::<&mut Position>()
     {
         for p in join.iter() {}
     }
+    */
+
+    struct Link {}
 
     struct RopeNode {
-        next: EntityId<World>,
+        next: Option<(EntityId<World>, f32)>,
     }
 
+    struct RopeNodePair {
+        a: EntityId<World>,
+        b: EntityId<World>,
+    }
+
+    /*
     while let Some(((node, pos), join)) = world
         .stream::<(&mut RopeNode, &Position)>()
         .join::<(&mut RopeNode, &Position)>()
@@ -318,10 +343,11 @@ fn main() {
         .stream::<(&RopeNode, &mut Position)>()
         .join_flat::<(&RopeNode, &mut Position)>(|(node, _)| node.next.into_iter())
     {}
+    */
 
-    /*for (p, q) in world.query::<(&mut Position, &mut Position)>() {
+    for (p, q) in world.iter::<(&mut Position, &mut Position)>() {
         p.0 += q.0;
-    }*/
+    }
 
     /*for (p, q) in world.query::<(&mut Position, &Position)>() {
         p.0 += q.0;

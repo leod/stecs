@@ -8,9 +8,7 @@ pub trait Query<'a, S: ArchetypeSet> {
     where
         E: 'a;
 
-    fn iter_archetype<E: InArchetypeSet<S>>(
-        archetype: &'a mut Archetype<E>,
-    ) -> Option<Self::Iter<E>>
+    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &'a Archetype<E>) -> Option<Self::Iter<E>>
     where
         E: 'a;
 }
@@ -22,7 +20,7 @@ where
 {
     type Iter<E: Entity> = UnsafeColumnIter<'a, C> where E: 'a;
 
-    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &mut Archetype<E>) -> Option<Self::Iter<E>>
+    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &Archetype<E>) -> Option<Self::Iter<E>>
     where
         E: 'a,
     {
@@ -43,7 +41,7 @@ where
 {
     type Iter<E: Entity> = UnsafeColumnIterMut<'a, C> where E: 'a;
 
-    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &mut Archetype<E>) -> Option<Self::Iter<E>>
+    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &Archetype<E>) -> Option<Self::Iter<E>>
     where
         E: 'a,
     {
@@ -65,9 +63,7 @@ where
 {
     type Iter<E: Entity> = Zip<Q0::Iter<E>, Q1::Iter<E>> where E: 'a;
 
-    fn iter_archetype<E: InArchetypeSet<S>>(
-        archetype: &'a mut Archetype<E>,
-    ) -> Option<Self::Iter<E>> {
+    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &'a Archetype<E>) -> Option<Self::Iter<E>> {
         Some(Q0::iter_archetype(archetype)?.zip(Q1::iter_archetype(archetype)?))
     }
 }

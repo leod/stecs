@@ -19,7 +19,7 @@ impl<E> Copy for EntityKey<E> {}
 pub trait EntityColumns: Default {
     type Entity: Entity<Columns = Self>;
 
-    fn column<C: Component>(&mut self) -> Option<RefCell<Column<C>>>;
+    fn column<C: Component>(&self) -> Option<(*mut C, usize)>;
 
     fn push(&mut self, entity: Self::Entity);
 
@@ -38,7 +38,7 @@ pub struct Archetype<E: Entity> {
 }
 
 impl<E: Entity> Archetype<E> {
-    pub fn column<C: Component>(&mut self) -> Option<(*mut C, usize)> {
+    pub(crate) fn column<C: Component>(&self) -> Option<(*mut C, usize)> {
         self.columns.column::<C>()
     }
 
