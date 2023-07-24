@@ -1,10 +1,11 @@
 mod iter;
 mod stream;
 
-use std::marker::PhantomData;
+use std::{any::type_name, marker::PhantomData};
 
 use crate::{
     archetype_set::ArchetypeSetFetch,
+    borrow_checker::BorrowChecker,
     column::{ColumnRawParts, ColumnRawPartsMut},
     Archetype, ArchetypeSet, Component, Entity, EntityColumns, InArchetypeSet,
 };
@@ -95,6 +96,8 @@ where
 
 pub trait Query<'a, S: ArchetypeSet> {
     type Fetch: Fetch<'a, S, Query = Self>;
+
+    fn check_borrows(checker: &mut BorrowChecker);
 }
 
 impl<'a, C, S> Query<'a, S> for &'a C
@@ -103,6 +106,10 @@ where
     S: ArchetypeSet,
 {
     type Fetch = ColumnRawParts<C>;
+
+    fn check_borrows(checker: &mut BorrowChecker) {
+        checker.borrow::<C>();
+    }
 }
 
 impl<'a, C, S> Query<'a, S> for &'a mut C
@@ -111,6 +118,10 @@ where
     S: ArchetypeSet,
 {
     type Fetch = ColumnRawPartsMut<C>;
+
+    fn check_borrows(checker: &mut BorrowChecker) {
+        checker.borrow_mut::<C>();
+    }
 }
 
 impl<'a, Q0, Q1, S> Query<'a, S> for (Q0, Q1)
@@ -120,6 +131,11 @@ where
     S: ArchetypeSet,
 {
     type Fetch = (Q0::Fetch, Q1::Fetch);
+
+    fn check_borrows(checker: &mut BorrowChecker) {
+        Q0::check_borrows(checker);
+        Q1::check_borrows(checker);
+    }
 }
 
 pub struct QueryResult<'a, Q, S> {
@@ -209,6 +225,10 @@ where
     type IntoIter = ArchetypeSetFetchIter<'a, S::Fetch<'a, Q::Fetch>, S>;
 
     fn into_iter(self) -> Self::IntoIter {
+        // Safety: Check that the query does not specify borrows that violate
+        // Rust's borrowing rules.
+        Q::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+
         let mut archetype_set_iter = self.archetype_set.fetch::<Q::Fetch>().iter();
         let current_fetch_iter = archetype_set_iter.next().map(FetchIter::new);
 

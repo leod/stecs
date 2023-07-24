@@ -14,6 +14,7 @@ macro_rules! smaller_tuples_too {
 
 mod archetype;
 mod archetype_set;
+mod borrow_checker;
 mod column;
 mod query;
 
