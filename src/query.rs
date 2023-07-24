@@ -1,7 +1,7 @@
 mod iter;
 mod stream;
 
-use std::{any::type_name, marker::PhantomData};
+use std::{any::type_name, iter::FilterMap, marker::PhantomData};
 
 use crate::{
     archetype_set::ArchetypeSetFetch,
@@ -490,12 +490,40 @@ where
     fetch: S::Fetch<'a, J>,
 }
 
+pub struct JoinIter<'a, J, S, I>
+where
+    J: Fetch<'a, S>,
+    S: ArchetypeSet + 'a,
+{
+    join: &'a Join<'a, J, S>,
+    iter: I,
+}
+
+impl<'a, J, S, I> Iterator for JoinIter<'a, J, S, I>
+where
+    J: Fetch<'a, S>,
+    S: ArchetypeSet + 'a,
+    I: Iterator<Item = S::EntityId>,
+{
+    type Item = J::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let id = self.iter.next()?;
+
+        // Safety: TODO
+        unsafe { self.join.fetch.get(id) }
+    }
+}
+
 impl<'a, J, S> Join<'a, J, S>
 where
     J: Fetch<'a, S>,
     S: ArchetypeSet + 'a,
 {
-    pub fn get(&self, id: S::EntityId) -> Option<J::Item> {
+    // This has to take an exclusive `self` reference to prevent violating
+    // Rust's borrowing rules if `J` contains an exclusive borrow, since `get()`
+    // could be called multiple times with the same `id`.
+    pub fn get(&'a mut self, id: S::EntityId) -> Option<J::Item> {
         if let Some(ignore_id) = self.ignore_id {
             if ignore_id == id {
                 // TODO: Consider panicking.
@@ -504,6 +532,15 @@ where
         }
 
         unsafe { self.fetch.get(id) }
+    }
+
+    // This has to take an exclusive `self` reference for the same reason as
+    // `get()`.
+    pub fn iter<I>(&'a mut self, iter: I) -> JoinIter<'a, J, S, I>
+    where
+        I: Iterator<Item = S::EntityId>,
+    {
+        JoinIter { join: self, iter }
     }
 }
 

@@ -367,15 +367,15 @@ fn main() {
     }
 
     println!("EntityId, Target, join with Position");
-    for ((id, target), join) in world
+    for ((id, target), mut join) in world
         .query::<(EntityId<World>, &Target)>()
-        .join::<&Position>()
+        .join::<&mut Position>()
     {
         let Some(target_pos) = join.get(target.0) else {
             continue;
         };
 
-        println!("{:?} targeting {:?} @ {:?}", id, target, target_pos.0);
+        // println!("{:?} targeting {:?} @ {:?}", id, target, target_pos.0);
     }
 
     /*
