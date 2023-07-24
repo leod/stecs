@@ -120,7 +120,7 @@ struct World {
 }
 
 // generated
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum WorldEntityId {
     Player(EntityKey<Player>),
     Enemy(EntityKey<Enemy>),
@@ -143,6 +143,7 @@ impl From<Enemy> for WorldEntity {
     }
 }
 
+#[derive(Clone)]
 struct WorldFetch<'a, F> {
     players: Option<(&'a Arena<usize>, F)>,
     enemies: Option<(&'a Arena<usize>, F)>,
@@ -200,7 +201,7 @@ impl stecs::ArchetypeSet for World {
         }
     }
 
-    fn fetch<'a, F>(&'a mut self) -> Self::Fetch<'a, F>
+    fn fetch<'a, F>(&'a self) -> Self::Fetch<'a, F>
     where
         F: Fetch<'a, Self>,
     {
@@ -363,6 +364,18 @@ fn main() {
     println!("EntityId, Target");
     for (id, target) in world.query::<(EntityId<World>, &Target)>() {
         println!("{:?} targeting {:?}", id, target);
+    }
+
+    println!("EntityId, Target, join with Position");
+    for ((id, target), join) in world
+        .query::<(EntityId<World>, &Target)>()
+        .join::<&Position>()
+    {
+        let Some(target_pos) = join.get(target.0) else {
+            continue;
+        };
+
+        println!("{:?} targeting {:?} @ {:?}", id, target, target_pos.0);
     }
 
     /*

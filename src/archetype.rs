@@ -33,6 +33,12 @@ impl<E> Debug for EntityKey<E> {
     }
 }
 
+impl<E> PartialEq for EntityKey<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
 pub trait EntityColumns: Default {
     type Entity: Entity<Columns = Self>;
 

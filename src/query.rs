@@ -10,7 +10,7 @@ use crate::{
     ArchetypeSet, Column, Component, Entity, EntityColumns, InArchetypeSet,
 };
 
-pub trait Fetch<'a, S: ArchetypeSet>: Copy {
+pub trait Fetch<'a, S: ArchetypeSet>: Copy + 'a {
     type Item: 'a;
 
     fn new<E: InArchetypeSet<S>>(
@@ -151,13 +151,6 @@ where
     }
 }
 
-pub trait Query<'a, S: ArchetypeSet> {
-    type Fetch: Fetch<'a, S>;
-
-    #[doc(hidden)]
-    fn check_borrows(checker: &mut BorrowChecker);
-}
-
 #[derive(Clone, Copy)]
 pub struct FetchWith<F, R> {
     fetch: F,
@@ -232,6 +225,13 @@ where
     unsafe fn get(&self, index: usize) -> Self::Item {
         self.fetch.get(index)
     }
+}
+
+pub trait Query<'a, S: ArchetypeSet>: 'a {
+    type Fetch: Fetch<'a, S>;
+
+    #[doc(hidden)]
+    fn check_borrows(checker: &mut BorrowChecker);
 }
 
 impl<'a, C, S> Query<'a, S> for &'a C
@@ -345,19 +345,19 @@ where
 
 pub struct ArchetypeSetFetchIter<'a, F, S>
 where
-    F: ArchetypeSetFetch<'a, S>,
+    F: Fetch<'a, S>,
     S: ArchetypeSet,
 {
-    archetype_set_iter: F::Iter,
-    current_fetch_iter: Option<FetchIter<'a, F::Fetch, S>>,
+    archetype_set_iter: <S::Fetch<'a, F> as ArchetypeSetFetch<'a, S>>::Iter,
+    current_fetch_iter: Option<FetchIter<'a, F, S>>,
 }
 
 impl<'a, F, S> Iterator for ArchetypeSetFetchIter<'a, F, S>
 where
-    F: ArchetypeSetFetch<'a, S>,
+    F: Fetch<'a, S>,
     S: ArchetypeSet,
 {
-    type Item = <F::Fetch as Fetch<'a, S>>::Item;
+    type Item = <F as Fetch<'a, S>>::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -377,6 +377,23 @@ where
     }
 }
 
+impl<'a, F, S> ArchetypeSetFetchIter<'a, F, S>
+where
+    F: Fetch<'a, S>,
+    S: ArchetypeSet,
+{
+    unsafe fn new(archetype_set: &'a S) -> Self {
+        let mut archetype_set_iter = archetype_set.fetch::<F>().iter();
+
+        let current_fetch_iter = archetype_set_iter.next().map(FetchIter::new);
+
+        Self {
+            archetype_set_iter,
+            current_fetch_iter,
+        }
+    }
+}
+
 pub struct QueryResult<'a, Q, S> {
     archetype_set: &'a mut S,
     _phantom: PhantomData<Q>,
@@ -389,7 +406,7 @@ where
 {
     type Item = <Q::Fetch as Fetch<'a, S>>::Item;
 
-    type IntoIter = ArchetypeSetFetchIter<'a, S::Fetch<'a, Q::Fetch>, S>;
+    type IntoIter = ArchetypeSetFetchIter<'a, Q::Fetch, S>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
@@ -401,18 +418,15 @@ where
         // maintaining the lifetime `'a`. Thus, it is not possible to construct
         // references to entities in `archetype_set` outside of the returned
         // iterator, thereby satisfying the requirement of `FetchIter`.
-        let mut archetype_set_iter = self.archetype_set.fetch::<Q::Fetch>().iter();
-
-        let current_fetch_iter = archetype_set_iter.next().map(FetchIter::new);
-
-        ArchetypeSetFetchIter {
-            archetype_set_iter,
-            current_fetch_iter,
-        }
+        unsafe { ArchetypeSetFetchIter::new(self.archetype_set) }
     }
 }
 
-impl<'a, Q, S> QueryResult<'a, Q, S> {
+impl<'a, Q, S> QueryResult<'a, Q, S>
+where
+    Q: Query<'a, S>,
+    S: ArchetypeSet,
+{
     pub(crate) fn new(archetype_set: &'a mut S) -> Self {
         Self {
             archetype_set,
@@ -420,11 +434,167 @@ impl<'a, Q, S> QueryResult<'a, Q, S> {
         }
     }
 
-    pub fn with<R>(self) -> QueryResult<'a, With<Q, R>, S> {
+    pub fn with<R>(self) -> QueryResult<'a, With<Q, R>, S>
+    where
+        R: Query<'a, S>,
+    {
         QueryResult::new(self.archetype_set)
     }
 
-    pub fn without<R>(self) -> QueryResult<'a, Without<Q, R>, S> {
+    pub fn without<R>(self) -> QueryResult<'a, Without<Q, R>, S>
+    where
+        R: Query<'a, S>,
+    {
         QueryResult::new(self.archetype_set)
+    }
+
+    pub fn join<J>(self) -> JoinQueryResult<'a, Q, J, S>
+    where
+        J: Query<'a, S>,
+    {
+        JoinQueryResult {
+            archetype_set: self.archetype_set,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn join_stream<J>(self) -> JoinStreamQueryResult<'a, Q, J, S>
+    where
+        J: Query<'a, S>,
+    {
+        // Safety: Check that the query does not specify borrows that violate
+        // Rust's borrowing rules. Note that `JoinStreamQueryResult` ensures
+        // that `Q` and `J` never borrow the same entity simultaneously, so we
+        // can get away with checking their borrows separately. In fact, this
+        // separation is the whole purpose of `join_stream`.
+        Q::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        J::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
+
+        // Safety: TODO
+        let query_iter = unsafe { ArchetypeSetFetchIter::new(self.archetype_set) };
+        let join_fetch = self.archetype_set.fetch();
+
+        JoinStreamQueryResult {
+            query_iter,
+            join_fetch,
+        }
+    }
+}
+
+pub struct Join<'a, J, S>
+where
+    J: Fetch<'a, S>,
+    S: ArchetypeSet + 'a,
+{
+    ignore_id: Option<S::EntityId>,
+    fetch: S::Fetch<'a, J>,
+}
+
+impl<'a, J, S> Join<'a, J, S>
+where
+    J: Fetch<'a, S>,
+    S: ArchetypeSet + 'a,
+{
+    pub fn get(&self, id: S::EntityId) -> Option<J::Item> {
+        if let Some(ignore_id) = self.ignore_id {
+            if ignore_id == id {
+                // TODO: Consider panicking.
+                return None;
+            }
+        }
+
+        unsafe { self.fetch.get(id) }
+    }
+}
+
+pub struct JoinArchetypeSetFetchIter<'a, F, J, S>
+where
+    F: Fetch<'a, S>,
+    J: Fetch<'a, S>,
+    S: ArchetypeSet,
+{
+    query_iter: ArchetypeSetFetchIter<'a, F, S>,
+    join_fetch: S::Fetch<'a, J>,
+}
+
+impl<'a, F, J, S> Iterator for JoinArchetypeSetFetchIter<'a, F, J, S>
+where
+    F: Fetch<'a, S>,
+    J: Fetch<'a, S>,
+    S: ArchetypeSet,
+{
+    type Item = (<F as Fetch<'a, S>>::Item, Join<'a, J, S>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let item = self.query_iter.next()?;
+        let join = Join {
+            ignore_id: None,
+            fetch: self.join_fetch.clone(),
+        };
+
+        Some((item, join))
+    }
+}
+
+pub struct JoinQueryResult<'a, Q, J, S> {
+    archetype_set: &'a mut S,
+    _phantom: PhantomData<(Q, J)>,
+}
+
+impl<'a, Q, J, S> IntoIterator for JoinQueryResult<'a, Q, J, S>
+where
+    Q: Query<'a, S>,
+    J: Query<'a, S>,
+    S: ArchetypeSet,
+{
+    type Item = (<Q::Fetch as Fetch<'a, S>>::Item, Join<'a, J::Fetch, S>);
+
+    type IntoIter = JoinArchetypeSetFetchIter<'a, Q::Fetch, J::Fetch, S>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        // Safety: Check that the query does not specify borrows that violate
+        // Rust's borrowing rules.
+        Q::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+
+        // Safety: TODO
+        let query_iter = unsafe { ArchetypeSetFetchIter::new(self.archetype_set) };
+        let join_fetch = self.archetype_set.fetch();
+
+        JoinArchetypeSetFetchIter {
+            query_iter,
+            join_fetch,
+        }
+    }
+}
+
+pub struct JoinStreamQueryResult<'a, Q, J, S>
+where
+    Q: Query<'a, S>,
+    J: Query<'a, S>,
+    S: ArchetypeSet,
+{
+    query_iter: ArchetypeSetFetchIter<'a, (FetchEntityId<S::EntityId>, Q::Fetch), S>,
+    join_fetch: S::Fetch<'a, J::Fetch>,
+}
+
+impl<'a, Q, J, S> JoinStreamQueryResult<'a, Q, J, S>
+where
+    Q: Query<'a, S>,
+    J: Query<'a, S>,
+    S: ArchetypeSet,
+{
+    pub fn fetch_next(
+        &'a mut self,
+    ) -> Option<(<Q::Fetch as Fetch<S>>::Item, Join<'a, J::Fetch, S>)> {
+        let Some((id, item)) = self.query_iter.next() else {
+            return None;
+        };
+
+        let join = Join {
+            ignore_id: Some(id),
+            fetch: self.join_fetch.clone(),
+        };
+
+        Some((item, join))
     }
 }

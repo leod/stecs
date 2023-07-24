@@ -15,11 +15,11 @@ pub trait ArchetypeSetFetch<'a, S: ArchetypeSet> {
 }
 
 pub trait ArchetypeSet: Default + Sized {
-    type EntityId: Copy + Debug + for<'a> Query<'a, Self> + 'static;
+    type EntityId: Copy + Debug + PartialEq + for<'a> Query<'a, Self> + 'static;
 
     type Entity;
 
-    type Fetch<'a, F: Fetch<'a, Self>>: ArchetypeSetFetch<'a, Self, Fetch = F>
+    type Fetch<'a, F: Fetch<'a, Self>>: ArchetypeSetFetch<'a, Self, Fetch = F> + Clone
     where
         Self: 'a;
 
@@ -27,7 +27,8 @@ pub trait ArchetypeSet: Default + Sized {
 
     fn despawn(&mut self, id: Self::EntityId) -> Option<Self::Entity>;
 
-    fn fetch<'a, F>(&'a mut self) -> Self::Fetch<'a, F>
+    #[doc(hidden)]
+    fn fetch<'a, F>(&'a self) -> Self::Fetch<'a, F>
     where
         F: Fetch<'a, Self>;
 
