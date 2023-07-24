@@ -1,9 +1,6 @@
 use std::{
     any::{Any, TypeId},
     cell::RefCell,
-    iter::{Chain, Flatten},
-    marker::PhantomData,
-    option::IntoIter,
 };
 
 use stecs::{
@@ -159,7 +156,7 @@ where
 
     type Iter = std::iter::Flatten<std::array::IntoIter<Option<F>, 2>>;
 
-    unsafe fn get(&self, id: EntityId<World>) -> Option<F::Query> {
+    unsafe fn get(&self, id: EntityId<World>) -> Option<F::Item> {
         match id {
             WorldEntityId::Player(key) => self
                 .players
@@ -282,20 +279,17 @@ fn main() {
         p.0 += 3.0;
     }
 
-    dbg!("--");
-
+    println!("Position");
     for p in world.query::<&Position>() {
         dbg!(p.0);
     }
 
-    dbg!("--");
-
+    println!("Position, Velocity");
     for (p, v) in world.query::<(&Position, &Velocity)>() {
         dbg!(p.0, v.0);
     }
 
-    dbg!("--");
-
+    println!("mut Position, Velocity");
     for (p, v) in world.query::<(&mut Position, &Velocity)>() {
         p.0 += v.0;
     }
@@ -340,21 +334,34 @@ fn main() {
         p.0 += q.0;
     }*/
 
-    /*for (p, q) in world.query::<(&mut Position, &Position)>() {
-        p.0 += q.0;
-    }*/
+    println!("Position, Position");
+    for (p, q) in world.query::<(&Position, &Position)>() {
+        dbg!(p.0, q.0);
+    }
 
-    for (p, q) in world.query::<(&Position, &Position)>() {}
-
-    dbg!("--");
-
+    println!("EntityId, Position");
     for (id, _) in world.query::<(EntityId<World>, &Position)>() {
         dbg!(id);
     }
 
-    dbg!("--");
+    println!("EntityId, Position, With<Target>");
+    for (id, pos) in world
+        .query::<(EntityId<World>, &Position)>()
+        .with::<&Target>()
+    {
+        dbg!(id, pos.0);
+    }
 
-    for (id, target) in world.query::<(&EntityId<World>, &Target)>() {
+    println!("EntityId, Position, Without<Target>");
+    for (id, pos) in world
+        .query::<(EntityId<World>, &Position)>()
+        .without::<&Target>()
+    {
+        dbg!(id, pos.0);
+    }
+
+    println!("EntityId, Target");
+    for (id, target) in world.query::<(EntityId<World>, &Target)>() {
         println!("{:?} targeting {:?}", id, target);
     }
 
@@ -366,4 +373,10 @@ fn main() {
         WorldEntityId::Enemy(_) => todo!(),
     }
     */
+
+    // This panics:
+    println!("mut Position, Position");
+    for (p, q) in world.query::<(&mut Position, &Position)>() {
+        p.0 += q.0;
+    }
 }

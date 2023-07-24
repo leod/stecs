@@ -1,4 +1,4 @@
-use std::{fmt::Debug, marker::PhantomData};
+use std::fmt::Debug;
 
 use crate::{
     query::{Fetch, QueryResult},
@@ -9,13 +9,13 @@ pub trait ArchetypeSetFetch<'a, S: ArchetypeSet> {
     type Fetch: Fetch<'a, S>;
     type Iter: Iterator<Item = Self::Fetch>;
 
-    unsafe fn get(&self, id: S::EntityId) -> Option<<Self::Fetch as Fetch<'a, S>>::Query>;
+    unsafe fn get(&self, id: S::EntityId) -> Option<<Self::Fetch as Fetch<'a, S>>::Item>;
 
     fn iter(&mut self) -> Self::Iter;
 }
 
 pub trait ArchetypeSet: Default + Sized {
-    type EntityId: Copy + Debug + for<'a> Query<'a, Self>;
+    type EntityId: Copy + Debug + for<'a> Query<'a, Self> + 'static;
 
     type Entity;
 
@@ -35,10 +35,7 @@ pub trait ArchetypeSet: Default + Sized {
     where
         Q: Query<'a, Self>,
     {
-        QueryResult {
-            archetype_set: self,
-            _phantom: PhantomData,
-        }
+        QueryResult::new(self)
     }
 }
 

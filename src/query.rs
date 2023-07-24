@@ -7,11 +7,11 @@ use crate::{
     archetype_set::ArchetypeSetFetch,
     borrow_checker::BorrowChecker,
     column::{ColumnRawParts, ColumnRawPartsMut},
-    ArchetypeSet, Column, Component, Entity, EntityColumns, EntityKey, InArchetypeSet,
+    ArchetypeSet, Column, Component, Entity, EntityColumns, InArchetypeSet,
 };
 
 pub trait Fetch<'a, S: ArchetypeSet>: Copy {
-    type Query;
+    type Item: 'a;
 
     fn new<E: InArchetypeSet<S>>(
         untyped_keys: &Column<thunderdome::Index>,
@@ -33,7 +33,7 @@ pub trait Fetch<'a, S: ArchetypeSet>: Copy {
     /// rules to the caller. In particular, the caller has to ensure that this
     /// method is not called on an `index` whose components are already borrowed
     /// elsewhere (be it through `self` or not through `self`).
-    unsafe fn get(&self, index: usize) -> Self::Query;
+    unsafe fn get(&self, index: usize) -> Self::Item;
 }
 
 impl<'a, C, S> Fetch<'a, S> for ColumnRawParts<C>
@@ -41,7 +41,7 @@ where
     C: Component,
     S: ArchetypeSet,
 {
-    type Query = &'a C;
+    type Item = &'a C;
 
     fn new<E: InArchetypeSet<S>>(
         _: &Column<thunderdome::Index>,
@@ -56,7 +56,7 @@ where
         self.len
     }
 
-    unsafe fn get(&self, index: usize) -> Self::Query {
+    unsafe fn get(&self, index: usize) -> Self::Item {
         assert!(index < <Self as Fetch<S>>::len(self));
 
         unsafe { &*self.ptr.add(index) }
@@ -68,7 +68,7 @@ where
     C: Component,
     S: ArchetypeSet,
 {
-    type Query = &'a mut C;
+    type Item = &'a mut C;
 
     fn new<E: Entity>(_: &Column<thunderdome::Index>, columns: &'a E::Columns) -> Option<Self> {
         columns
@@ -80,7 +80,7 @@ where
         self.len
     }
 
-    unsafe fn get(&self, index: usize) -> Self::Query {
+    unsafe fn get(&self, index: usize) -> Self::Item {
         assert!(index < <Self as Fetch<S>>::len(self));
 
         unsafe { &mut *self.ptr.add(index) }
@@ -93,7 +93,7 @@ where
     F1: Fetch<'a, S>,
     S: ArchetypeSet,
 {
-    type Query = (F0::Query, F1::Query);
+    type Item = (F0::Item, F1::Item);
 
     fn new<E: InArchetypeSet<S>>(
         untypes_keys: &Column<thunderdome::Index>,
@@ -111,7 +111,7 @@ where
         self.0.len()
     }
 
-    unsafe fn get(&self, index: usize) -> Self::Query {
+    unsafe fn get(&self, index: usize) -> Self::Item {
         (self.0.get(index), self.1.get(index))
     }
 }
@@ -126,7 +126,7 @@ impl<'a, S> Fetch<'a, S> for FetchEntityId<S::EntityId>
 where
     S: ArchetypeSet,
 {
-    type Query = S::EntityId;
+    type Item = S::EntityId;
 
     fn new<E: InArchetypeSet<S>>(
         untyped_keys: &Column<thunderdome::Index>,
@@ -142,7 +142,7 @@ where
         self.raw_parts.len
     }
 
-    unsafe fn get(&self, index: usize) -> Self::Query {
+    unsafe fn get(&self, index: usize) -> Self::Item {
         assert!(index < <Self as Fetch<S>>::len(self));
 
         let untyped_key = unsafe { *self.raw_parts.ptr.add(index) };
@@ -152,10 +152,86 @@ where
 }
 
 pub trait Query<'a, S: ArchetypeSet> {
-    type Fetch: Fetch<'a, S, Query = Self>;
+    type Fetch: Fetch<'a, S>;
 
     #[doc(hidden)]
     fn check_borrows(checker: &mut BorrowChecker);
+}
+
+#[derive(Clone, Copy)]
+pub struct FetchWith<F, R> {
+    fetch: F,
+    _phantom: PhantomData<R>,
+}
+
+impl<'a, F, R, S> Fetch<'a, S> for FetchWith<F, R>
+where
+    F: Fetch<'a, S>,
+    R: Fetch<'a, S>,
+    S: ArchetypeSet,
+{
+    type Item = F::Item;
+
+    fn new<E: InArchetypeSet<S>>(
+        untyped_keys: &Column<thunderdome::Index>,
+        columns: &'a E::Columns,
+    ) -> Option<Self> {
+        let fetch = F::new::<E>(untyped_keys, columns)?;
+
+        R::new::<E>(untyped_keys, columns)?;
+
+        Some(Self {
+            fetch,
+            _phantom: PhantomData,
+        })
+    }
+
+    fn len(&self) -> usize {
+        self.fetch.len()
+    }
+
+    unsafe fn get(&self, index: usize) -> Self::Item {
+        self.fetch.get(index)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct FetchWithout<F, R> {
+    fetch: F,
+    _phantom: PhantomData<R>,
+}
+
+impl<'a, F, R, S> Fetch<'a, S> for FetchWithout<F, R>
+where
+    F: Fetch<'a, S>,
+    R: Fetch<'a, S>,
+    S: ArchetypeSet,
+{
+    type Item = F::Item;
+
+    fn new<E: InArchetypeSet<S>>(
+        untyped_keys: &Column<thunderdome::Index>,
+        columns: &'a E::Columns,
+    ) -> Option<Self> {
+        let fetch = F::new::<E>(untyped_keys, columns)?;
+
+        if R::new::<E>(untyped_keys, columns).is_some() {
+            return None;
+        }
+
+        Some(Self {
+            fetch,
+            _phantom: PhantomData,
+        })
+    }
+
+    fn len(&self) -> usize {
+        self.fetch.len()
+    }
+
+    unsafe fn get(&self, index: usize) -> Self::Item {
+        self.fetch.get(index)
+    }
 }
 
 impl<'a, C, S> Query<'a, S> for &'a C
@@ -196,9 +272,34 @@ where
     }
 }
 
-pub struct QueryResult<'a, Q, S> {
-    pub(crate) archetype_set: &'a mut S,
-    pub(crate) _phantom: PhantomData<Q>,
+pub struct With<Q, R>(PhantomData<(Q, R)>);
+
+impl<'a, Q, R, S> Query<'a, S> for With<Q, R>
+where
+    Q: Query<'a, S>,
+    R: Query<'a, S>,
+    S: ArchetypeSet,
+{
+    type Fetch = FetchWith<Q::Fetch, R::Fetch>;
+
+    fn check_borrows(checker: &mut BorrowChecker) {
+        Q::check_borrows(checker);
+    }
+}
+
+pub struct Without<Q, R>(PhantomData<(Q, R)>);
+
+impl<'a, Q, R, S> Query<'a, S> for Without<Q, R>
+where
+    Q: Query<'a, S>,
+    R: Query<'a, S>,
+    S: ArchetypeSet,
+{
+    type Fetch = FetchWithout<Q::Fetch, R::Fetch>;
+
+    fn check_borrows(checker: &mut BorrowChecker) {
+        Q::check_borrows(checker);
+    }
 }
 
 // Safety: Before constructing a `FetchIter`, use `BorrowChecker` to ensure that
@@ -226,7 +327,7 @@ where
     F: Fetch<'a, S>,
     S: ArchetypeSet,
 {
-    type Item = F::Query;
+    type Item = F::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.i == self.fetch.len() {
@@ -256,7 +357,7 @@ where
     F: ArchetypeSetFetch<'a, S>,
     S: ArchetypeSet,
 {
-    type Item = <F::Fetch as Fetch<'a, S>>::Query;
+    type Item = <F::Fetch as Fetch<'a, S>>::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_fetch_iter.is_none() {
@@ -267,7 +368,11 @@ where
             let item = current_fetch_iter.next();
 
             if item.is_none() {
-                self.current_fetch_iter = None;
+                self.current_fetch_iter = self.archetype_set_iter.next().map(FetchIter::new);
+
+                if let Some(current_fetch_iter) = self.current_fetch_iter.as_mut() {
+                    return current_fetch_iter.next();
+                }
             }
 
             item
@@ -277,12 +382,17 @@ where
     }
 }
 
+pub struct QueryResult<'a, Q, S> {
+    pub(crate) archetype_set: &'a mut S,
+    pub(crate) _phantom: PhantomData<Q>,
+}
+
 impl<'a, Q, S> IntoIterator for QueryResult<'a, Q, S>
 where
     Q: Query<'a, S>,
     S: ArchetypeSet,
 {
-    type Item = Q;
+    type Item = <Q::Fetch as Fetch<'a, S>>::Item;
 
     type IntoIter = ArchetypeSetFetchIter<'a, S::Fetch<'a, Q::Fetch>, S>;
 
@@ -304,5 +414,22 @@ where
             archetype_set_iter,
             current_fetch_iter,
         }
+    }
+}
+
+impl<'a, Q, S> QueryResult<'a, Q, S> {
+    pub(crate) fn new(archetype_set: &'a mut S) -> Self {
+        Self {
+            archetype_set,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn with<R>(self) -> QueryResult<'a, With<Q, R>, S> {
+        QueryResult::new(self.archetype_set)
+    }
+
+    pub fn without<R>(self) -> QueryResult<'a, Without<Q, R>, S> {
+        QueryResult::new(self.archetype_set)
     }
 }
