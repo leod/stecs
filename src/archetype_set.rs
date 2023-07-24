@@ -9,7 +9,7 @@ pub trait ArchetypeSetFetch<'a, S: ArchetypeSet> {
     type Fetch: Fetch<'a, S>;
     type Iter: Iterator<Item = Self::Fetch>;
 
-    unsafe fn get(&self, id: S::EntityId) -> Option<<Self::Fetch as Fetch<'a, S>>::Item>;
+    unsafe fn get<'b>(&self, id: S::EntityId) -> Option<<Self::Fetch as Fetch<'a, S>>::Item<'b>>;
 
     fn iter(&mut self) -> Self::Iter;
 }

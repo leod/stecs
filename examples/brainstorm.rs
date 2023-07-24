@@ -157,7 +157,7 @@ where
 
     type Iter = std::iter::Flatten<std::array::IntoIter<Option<F>, 2>>;
 
-    unsafe fn get(&self, id: EntityId<World>) -> Option<F::Item> {
+    unsafe fn get<'b>(&self, id: EntityId<World>) -> Option<F::Item<'b>> {
         match id {
             WorldEntityId::Player(key) => self
                 .players
@@ -375,7 +375,10 @@ fn main() {
             continue;
         };
 
-        // println!("{:?} targeting {:?} @ {:?}", id, target, target_pos.0);
+        println!("{:?} targeting {:?} @ {:?}", id, target, target_pos.0);
+
+        // FIXME
+        let violation: Vec<&mut Position> = join.iter([target.0, target.0].into_iter()).collect();
     }
 
     /*
