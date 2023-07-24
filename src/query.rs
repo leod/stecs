@@ -360,31 +360,26 @@ where
     type Item = <F::Fetch as Fetch<'a, S>>::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_fetch_iter.is_none() {
-            self.current_fetch_iter = self.archetype_set_iter.next().map(FetchIter::new);
-        }
-
-        if let Some(current_fetch_iter) = self.current_fetch_iter.as_mut() {
-            let item = current_fetch_iter.next();
-
-            if item.is_none() {
-                self.current_fetch_iter = self.archetype_set_iter.next().map(FetchIter::new);
-
-                if let Some(current_fetch_iter) = self.current_fetch_iter.as_mut() {
-                    return current_fetch_iter.next();
-                }
+        loop {
+            if let Some(item) = self
+                .current_fetch_iter
+                .as_mut()
+                .and_then(|fetch_iter| fetch_iter.next())
+            {
+                return Some(item);
             }
 
-            item
-        } else {
-            None
+            self.current_fetch_iter = self.archetype_set_iter.next().map(FetchIter::new);
+            if self.current_fetch_iter.is_none() {
+                return None;
+            }
         }
     }
 }
 
 pub struct QueryResult<'a, Q, S> {
-    pub(crate) archetype_set: &'a mut S,
-    pub(crate) _phantom: PhantomData<Q>,
+    archetype_set: &'a mut S,
+    _phantom: PhantomData<Q>,
 }
 
 impl<'a, Q, S> IntoIterator for QueryResult<'a, Q, S>
