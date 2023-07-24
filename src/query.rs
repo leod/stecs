@@ -1,16 +1,100 @@
-use std::{iter::Zip, marker::PhantomData};
+mod iter;
+mod stream;
 
-use crate::{Archetype, ArchetypeSet, Component, Entity, InArchetypeSet};
+use std::marker::PhantomData;
 
-// TODO: `Query` probably does not need a lifetime.
+use crate::{
+    archetype_set::ArchetypeSetFetch,
+    column::{ColumnRawParts, ColumnRawPartsMut},
+    Archetype, ArchetypeSet, Component, Entity, InArchetypeSet,
+};
+
+pub trait Fetch<'a, S: ArchetypeSet>: Sized {
+    type Query;
+
+    fn new<E: InArchetypeSet<S>>(archetype: &'a Archetype<E>) -> Option<Self>;
+
+    fn len(&self) -> usize;
+
+    unsafe fn get(&self, index: usize) -> Self::Query;
+}
+
+impl<'a, C, S> Fetch<'a, S> for ColumnRawParts<C>
+where
+    C: Component,
+    S: ArchetypeSet,
+{
+    type Query = &'a C;
+
+    fn new<E: InArchetypeSet<S>>(archetype: &'a Archetype<E>) -> Option<Self> {
+        archetype
+            .column::<C>()
+            .map(|column| column.borrow().as_raw_parts())
+    }
+
+    fn len(&self) -> usize {
+        self.len
+    }
+
+    unsafe fn get(&self, index: usize) -> Self::Query {
+        assert!(index < <Self as Fetch<S>>::len(self));
+
+        unsafe { &*self.ptr.add(index) }
+    }
+}
+
+impl<'a, C, S> Fetch<'a, S> for ColumnRawPartsMut<C>
+where
+    C: Component,
+    S: ArchetypeSet,
+{
+    type Query = &'a mut C;
+
+    fn new<E: Entity>(archetype: &'a Archetype<E>) -> Option<Self> {
+        archetype
+            .column::<C>()
+            .map(|column| column.borrow_mut().as_raw_parts_mut())
+    }
+
+    fn len(&self) -> usize {
+        self.len
+    }
+
+    unsafe fn get(&self, index: usize) -> Self::Query {
+        assert!(index < <Self as Fetch<S>>::len(self));
+
+        unsafe { &mut *self.ptr.add(index) }
+    }
+}
+
+impl<'a, F0, F1, S> Fetch<'a, S> for (F0, F1)
+where
+    F0: Fetch<'a, S>,
+    F1: Fetch<'a, S>,
+    S: ArchetypeSet,
+{
+    type Query = (F0::Query, F1::Query);
+
+    fn new<E: InArchetypeSet<S>>(archetype: &'a Archetype<E>) -> Option<Self> {
+        let f0 = F0::new(archetype)?;
+        let f1 = F1::new(archetype)?;
+
+        assert_eq!(f0.len(), f1.len());
+
+        Some((f0, f1))
+    }
+
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    unsafe fn get(&self, index: usize) -> Self::Query {
+        (self.0.get(index), self.1.get(index))
+    }
+}
+
 pub trait Query<'a, S: ArchetypeSet> {
-    type Iter<E: Entity>: Iterator<Item = Self>
-    where
-        E: 'a;
-
-    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &'a Archetype<E>) -> Option<Self::Iter<E>>
-    where
-        E: 'a;
+    type Fetch: Fetch<'a, S, Query = Self>;
 }
 
 impl<'a, C, S> Query<'a, S> for &'a C
@@ -18,20 +102,7 @@ where
     C: Component,
     S: ArchetypeSet,
 {
-    type Iter<E: Entity> = UnsafeColumnIter<'a, C> where E: 'a;
-
-    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &Archetype<E>) -> Option<Self::Iter<E>>
-    where
-        E: 'a,
-    {
-        let (ptr, len) = archetype.column::<C>()?;
-
-        Some(UnsafeColumnIter {
-            ptr,
-            len,
-            _phantom: PhantomData,
-        })
-    }
+    type Fetch = ColumnRawParts<C>;
 }
 
 impl<'a, C, S> Query<'a, S> for &'a mut C
@@ -39,20 +110,7 @@ where
     C: Component,
     S: ArchetypeSet,
 {
-    type Iter<E: Entity> = UnsafeColumnIterMut<'a, C> where E: 'a;
-
-    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &Archetype<E>) -> Option<Self::Iter<E>>
-    where
-        E: 'a,
-    {
-        let (ptr, len) = archetype.column::<C>()?;
-
-        Some(UnsafeColumnIterMut {
-            ptr,
-            len,
-            _phantom: PhantomData,
-        })
-    }
+    type Fetch = ColumnRawPartsMut<C>;
 }
 
 impl<'a, Q0, Q1, S> Query<'a, S> for (Q0, Q1)
@@ -61,55 +119,102 @@ where
     Q1: Query<'a, S>,
     S: ArchetypeSet,
 {
-    type Iter<E: Entity> = Zip<Q0::Iter<E>, Q1::Iter<E>> where E: 'a;
-
-    fn iter_archetype<E: InArchetypeSet<S>>(archetype: &'a Archetype<E>) -> Option<Self::Iter<E>> {
-        Some(Q0::iter_archetype(archetype)?.zip(Q1::iter_archetype(archetype)?))
-    }
+    type Fetch = (Q0::Fetch, Q1::Fetch);
 }
 
-pub struct UnsafeColumnIter<'a, C> {
-    ptr: *const C,
-    len: usize,
-    _phantom: PhantomData<&'a C>,
+pub struct QueryResult<'a, Q, S> {
+    pub(crate) archetype_set: &'a mut S,
+    pub(crate) _phantom: PhantomData<Q>,
 }
 
-impl<'a, C> Iterator for UnsafeColumnIter<'a, C> {
-    type Item = &'a C;
+pub struct FetchIter<'a, F, S> {
+    i: usize,
+    fetch: F,
+    _phantom: PhantomData<&'a S>,
+}
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.len == 0 {
-            None
-        } else {
-            let ptr = self.ptr;
-
-            self.ptr = unsafe { self.ptr.add(1) };
-            self.len -= 1;
-
-            Some(unsafe { &*ptr })
+impl<'a, F, S> FetchIter<'a, F, S> {
+    pub fn new(fetch: F) -> Self {
+        Self {
+            i: 0,
+            fetch,
+            _phantom: PhantomData,
         }
     }
 }
 
-pub struct UnsafeColumnIterMut<'a, C> {
-    ptr: *mut C,
-    len: usize,
-    _phantom: PhantomData<&'a C>,
-}
-
-impl<'a, C> Iterator for UnsafeColumnIterMut<'a, C> {
-    type Item = &'a mut C;
+impl<'a, F, S> Iterator for FetchIter<'a, F, S>
+where
+    F: Fetch<'a, S>,
+    S: ArchetypeSet,
+{
+    type Item = F::Query;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.len == 0 {
+        if self.i == self.fetch.len() {
             None
         } else {
-            let ptr = self.ptr;
+            // Safety: TODO
+            let item = unsafe { self.fetch.get(self.i) };
 
-            self.ptr = unsafe { self.ptr.add(1) };
-            self.len -= 1;
+            self.i += 1;
 
-            Some(unsafe { &mut *ptr })
+            Some(item)
+        }
+    }
+}
+
+pub struct ArchetypeSetFetchIter<'a, F, S>
+where
+    F: ArchetypeSetFetch<'a, S>,
+    S: ArchetypeSet,
+{
+    archetype_set_iter: F::Iter,
+    current_fetch_iter: Option<FetchIter<'a, F::Fetch, S>>,
+}
+
+impl<'a, F, S> Iterator for ArchetypeSetFetchIter<'a, F, S>
+where
+    F: ArchetypeSetFetch<'a, S>,
+    S: ArchetypeSet,
+{
+    type Item = <F::Fetch as Fetch<'a, S>>::Query;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_fetch_iter.is_none() {
+            self.current_fetch_iter = self.archetype_set_iter.next().map(FetchIter::new);
+        }
+
+        if let Some(current_fetch_iter) = self.current_fetch_iter.as_mut() {
+            let item = current_fetch_iter.next();
+
+            if item.is_none() {
+                self.current_fetch_iter = None;
+            }
+
+            item
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a, Q, S> IntoIterator for QueryResult<'a, Q, S>
+where
+    Q: Query<'a, S>,
+    S: ArchetypeSet,
+{
+    type Item = Q;
+
+    type IntoIter = ArchetypeSetFetchIter<'a, S::Fetch<'a, Q::Fetch>, S>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let mut archetype_set_iter = self.archetype_set.fetch::<Q::Fetch>().iter();
+        let current_fetch_iter = archetype_set_iter.next().map(FetchIter::new);
+
+        ArchetypeSetFetchIter {
+            archetype_set_iter,
+            current_fetch_iter,
         }
     }
 }

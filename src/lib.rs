@@ -18,9 +18,9 @@ mod column;
 mod query;
 
 pub use archetype::{Archetype, Entity, EntityColumns, EntityKey};
-pub use archetype_set::{ArchetypeSet, EntityId, InArchetypeSet};
+pub use archetype_set::{ArchetypeSet, ArchetypeSetFetch, EntityId, InArchetypeSet};
 pub use column::Column;
-pub use query::Query;
+pub use query::{Fetch, Query};
 
 pub trait Component: 'static {}
 

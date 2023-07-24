@@ -1,35 +1,45 @@
-use std::{fmt::Debug, hash::Hash};
+use std::marker::PhantomData;
 
-use crate::{Entity, EntityKey, Query};
+use crate::{
+    query::{Fetch, QueryResult},
+    Entity, EntityKey, Query,
+};
+
+pub trait ArchetypeSetFetch<'a, S: ArchetypeSet> {
+    type Fetch: Fetch<'a, S>;
+    type Iter: Iterator<Item = Self::Fetch>;
+
+    unsafe fn get(&self, id: S::EntityId) -> Option<<Self::Fetch as Fetch<'a, S>>::Query>;
+
+    fn iter(&mut self) -> Self::Iter;
+}
 
 pub trait ArchetypeSet: Default + Sized {
     type EntityId: Copy;
 
     type Entity;
 
+    type Fetch<'a, F: Fetch<'a, Self>>: ArchetypeSetFetch<'a, Self, Fetch = F>
+    where
+        Self: 'a;
+
     fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::EntityId;
 
     fn despawn(&mut self, id: Self::EntityId) -> Option<Self::Entity>;
 
-    /*
-    type QueryIter<'a, Q>: Iterator<Item = Q>;
+    fn fetch<'a, F>(&'a mut self) -> Self::Fetch<'a, F>
     where
-        Self: 'a,
-        Q: Query<'a, Self>;
+        F: Fetch<'a, Self>;
 
-    fn query<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
+    fn query<'a, Q>(&'a mut self) -> QueryResult<'a, Q, Self>
     where
-        Q: Query<'a, Self>;
-    */
-
-    type QueryIter<'a, Q>: Iterator<Item = Q>
-    where
-        Self: 'a,
-        Q: Query<'a, Self>;
-
-    fn iter<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
-    where
-        Q: Query<'a, Self>;
+        Q: Query<'a, Self>,
+    {
+        QueryResult {
+            archetype_set: self,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 pub type EntityId<S> = <S as ArchetypeSet>::EntityId;

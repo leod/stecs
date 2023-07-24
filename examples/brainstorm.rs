@@ -6,8 +6,8 @@ use std::{
 };
 
 use stecs::{
-    Archetype, ArchetypeSet, Column, Component, Entity, EntityColumns, EntityId, EntityKey,
-    InArchetypeSet, Query,
+    Archetype, ArchetypeSet, ArchetypeSetFetch, Column, Component, Entity, EntityColumns, EntityId,
+    EntityKey, Fetch, InArchetypeSet, Query,
 };
 
 #[derive(Clone)]
@@ -37,19 +37,13 @@ struct PlayerColumns {
 impl EntityColumns for PlayerColumns {
     type Entity = Player;
 
-    fn column<C: Component>(&self) -> Option<(*mut C, usize)> {
+    fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>> {
         if TypeId::of::<C>() == TypeId::of::<Position>() {
-            (&mut *self.pos.borrow_mut() as &mut dyn Any)
-                .downcast_mut::<Column<C>>()
-                .map(|column| column.as_raw_parts())
+            (&self.pos as &dyn Any).downcast_ref::<RefCell<Column<C>>>()
         } else if TypeId::of::<C>() == TypeId::of::<Velocity>() {
-            (&mut *self.vel.borrow_mut() as &mut dyn Any)
-                .downcast_mut::<Column<C>>()
-                .map(|column| column.as_raw_parts())
+            (&self.vel as &dyn Any).downcast_ref::<RefCell<Column<C>>>()
         } else if TypeId::of::<C>() == TypeId::of::<Color>() {
-            (&mut *self.col.borrow_mut() as &mut dyn Any)
-                .downcast_mut::<Column<C>>()
-                .map(|column| column.as_raw_parts())
+            (&self.col as &dyn Any).downcast_ref::<RefCell<Column<C>>>()
         } else {
             None
         }
@@ -92,15 +86,11 @@ struct EnemyColumns {
 impl EntityColumns for EnemyColumns {
     type Entity = Enemy;
 
-    fn column<C: Component>(&self) -> Option<(*mut C, usize)> {
+    fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>> {
         if TypeId::of::<C>() == TypeId::of::<Position>() {
-            (&mut *self.pos.borrow_mut() as &mut dyn Any)
-                .downcast_mut::<Column<C>>()
-                .map(|column| column.as_raw_parts())
+            (&self.pos as &dyn Any).downcast_ref::<RefCell<Column<C>>>()
         } else if TypeId::of::<C>() == TypeId::of::<Target>() {
-            (&mut *self.target.borrow_mut() as &mut dyn Any)
-                .downcast_mut::<Column<C>>()
-                .map(|column| column.as_raw_parts())
+            (&self.target as &dyn Any).downcast_ref::<RefCell<Column<C>>>()
         } else {
             None
         }
@@ -153,10 +143,44 @@ impl From<Enemy> for WorldEntity {
     }
 }
 
+struct WorldFetch<'a, F> {
+    world: &'a mut World,
+    players: Option<F>,
+    enemies: Option<F>,
+}
+
+impl<'a, F> ArchetypeSetFetch<'a, World> for WorldFetch<'a, F>
+where
+    F: Fetch<'a, World>,
+{
+    type Fetch = F;
+
+    type Iter = std::array::IntoIter<F, 2>;
+
+    unsafe fn get(&self, id: EntityId<World>) -> Option<F::Query> {
+        match id {
+            WorldEntityId::Player(key) => self
+                .players
+                .as_ref()
+                .and_then(|fetch| self.world.players.index(key).map(|index| fetch.get(index))),
+            WorldEntityId::Enemy(key) => self
+                .enemies
+                .as_ref()
+                .and_then(|fetch| self.world.enemies.index(key).map(|index| fetch.get(index))),
+        }
+    }
+
+    fn iter(&mut self) -> Self::Iter {
+        todo!()
+    }
+}
+
 impl stecs::ArchetypeSet for World {
     type EntityId = WorldEntityId;
 
     type Entity = WorldEntity;
+
+    type Fetch<'a, F: Fetch<'a, Self>> = WorldFetch<'a, F>;
 
     fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::EntityId {
         match entity.into_entity() {
@@ -172,54 +196,19 @@ impl stecs::ArchetypeSet for World {
         }
     }
 
-    type QueryIter<'a, Q> = Chain<Flatten<IntoIter<Q::Iter<Player>>>, Flatten<IntoIter<Q::Iter<Enemy>>>>
+    fn fetch<'a, F>(&'a mut self) -> Self::Fetch<'a, F>
     where
-        Self: 'a,
-        Q: Query<'a, Self>;
-
-    fn iter<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
-    where
-        Q: Query<'a, Self>,
+        F: Fetch<'a, Self>,
     {
-        let iter = unsafe { Q::iter_archetype(&self.players) }
-            .into_iter()
-            .flatten();
-        let iter = iter.chain(
-            unsafe { Q::iter_archetype(&self.enemies) }
-                .into_iter()
-                .flatten(),
-        );
+        let players = F::new(&self.players);
+        let enemies = F::new(&self.enemies);
 
-        iter
-    }
-
-    /*
-    type QueryIter<'a, Q: Query<'a, Self>> = Chain<
-        GetterIter<'a, Self, Player, Q::Getter<Player>>,
-        GetterIter<'a, Self, Enemy, Q::Getter<Enemy>>,
-    >;
-
-    fn spawn<A: ArchetypeInSet<Self>>(&mut self, entity: A) -> Self::EntityId {
-        match entity.into_entity() {
-            WorldAnyEntity::Player(entity) => WorldEntityId::Player(self.players.insert(entity)),
-            WorldAnyEntity::Enemy(entity) => WorldEntityId::Enemy(self.enemies.insert(entity)),
+        WorldFetch {
+            world: self,
+            players,
+            enemies,
         }
     }
-
-    fn despawn(&mut self, id: Self::EntityId) -> Option<Self::Entity> {
-        todo!()
-    }
-
-    fn query<'a, Q>(&'a mut self) -> Self::QueryIter<'a, Q>
-    where
-        Q: Query<'a, Self>,
-    {
-        let iter = GetterIter::new::<Q>(self.players.iter_mut());
-        let iter = iter.chain(GetterIter::new::<Q>(self.enemies.iter_mut()));
-
-        iter
-    }
-    */
 }
 
 impl InArchetypeSet<World> for Player {
@@ -286,26 +275,26 @@ fn main() {
         target: Target(p0),
     });
 
-    for p in world.iter::<&mut Position>() {
+    for p in world.query::<&mut Position>() {
         dbg!(p.0);
         p.0 += 3.0;
     }
 
     dbg!("--");
 
-    for p in world.iter::<&Position>() {
+    for p in world.query::<&Position>() {
         dbg!(p.0);
     }
 
     dbg!("--");
 
-    for (p, v) in world.iter::<(&Position, &Velocity)>() {
+    for (p, v) in world.query::<(&Position, &Velocity)>() {
         dbg!(p.0, v.0);
     }
 
     dbg!("--");
 
-    for (p, v) in world.iter::<(&mut Position, &Velocity)>() {
+    for (p, v) in world.query::<(&mut Position, &Velocity)>() {
         p.0 += v.0;
     }
 
@@ -345,7 +334,7 @@ fn main() {
     {}
     */
 
-    for (p, q) in world.iter::<(&mut Position, &mut Position)>() {
+    for (p, q) in world.query::<(&mut Position, &mut Position)>() {
         p.0 += q.0;
     }
 

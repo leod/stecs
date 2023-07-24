@@ -35,9 +35,29 @@ impl<C> Column<C> {
         self.0.last()
     }
 
-    pub fn as_raw_parts(&mut self) -> (*mut C, usize) {
-        (self.0.as_mut_ptr(), self.0.len())
+    pub fn as_raw_parts(&self) -> ColumnRawParts<C> {
+        ColumnRawParts {
+            ptr: self.0.as_ptr(),
+            len: self.0.len(),
+        }
     }
+
+    pub fn as_raw_parts_mut(&mut self) -> ColumnRawPartsMut<C> {
+        ColumnRawPartsMut {
+            ptr: self.0.as_mut_ptr(),
+            len: self.0.len(),
+        }
+    }
+}
+
+pub struct ColumnRawParts<C> {
+    pub ptr: *const C,
+    pub len: usize,
+}
+
+pub struct ColumnRawPartsMut<C> {
+    pub ptr: *mut C,
+    pub len: usize,
 }
 
 // TODO: Need to allow multiple borrows by checking that entity IDs do not
