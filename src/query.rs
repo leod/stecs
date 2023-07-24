@@ -7,16 +7,32 @@ use crate::{
     archetype_set::ArchetypeSetFetch,
     borrow_checker::BorrowChecker,
     column::{ColumnRawParts, ColumnRawPartsMut},
-    Archetype, ArchetypeSet, Component, Entity, EntityColumns, InArchetypeSet,
+    ArchetypeSet, Column, Component, Entity, EntityColumns, EntityKey, InArchetypeSet,
 };
 
 pub trait Fetch<'a, S: ArchetypeSet>: Copy {
     type Query;
 
-    fn new<E: InArchetypeSet<S>>(columns: &'a E::Columns) -> Option<Self>;
+    fn new<E: InArchetypeSet<S>>(
+        untyped_keys: &Column<thunderdome::Index>,
+        columns: &'a E::Columns,
+    ) -> Option<Self>;
 
     fn len(&self) -> usize;
 
+    /// Fetches the components specified by `Self::Query` for the entity stored
+    /// at `index`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index >= self.len()`.
+    ///
+    /// # Safety
+    ///
+    /// This is unsafe because it shifts the burden of checking Rust's borrowing
+    /// rules to the caller. In particular, the caller has to ensure that this
+    /// method is not called on an `index` whose components are already borrowed
+    /// elsewhere (be it through `self` or not through `self`).
     unsafe fn get(&self, index: usize) -> Self::Query;
 }
 
@@ -27,7 +43,10 @@ where
 {
     type Query = &'a C;
 
-    fn new<E: InArchetypeSet<S>>(columns: &'a E::Columns) -> Option<Self> {
+    fn new<E: InArchetypeSet<S>>(
+        _: &Column<thunderdome::Index>,
+        columns: &'a E::Columns,
+    ) -> Option<Self> {
         columns
             .column::<C>()
             .map(|column| column.borrow().as_raw_parts())
@@ -51,7 +70,7 @@ where
 {
     type Query = &'a mut C;
 
-    fn new<E: Entity>(columns: &'a E::Columns) -> Option<Self> {
+    fn new<E: Entity>(_: &Column<thunderdome::Index>, columns: &'a E::Columns) -> Option<Self> {
         columns
             .column::<C>()
             .map(|column| column.borrow_mut().as_raw_parts_mut())
@@ -76,9 +95,12 @@ where
 {
     type Query = (F0::Query, F1::Query);
 
-    fn new<E: InArchetypeSet<S>>(columns: &'a E::Columns) -> Option<Self> {
-        let f0 = F0::new::<E>(columns)?;
-        let f1 = F1::new::<E>(columns)?;
+    fn new<E: InArchetypeSet<S>>(
+        untypes_keys: &Column<thunderdome::Index>,
+        columns: &'a E::Columns,
+    ) -> Option<Self> {
+        let f0 = F0::new::<E>(untypes_keys, columns)?;
+        let f1 = F1::new::<E>(untypes_keys, columns)?;
 
         assert_eq!(f0.len(), f1.len());
 
@@ -94,9 +116,45 @@ where
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct FetchEntityId<EntityId> {
+    raw_parts: ColumnRawParts<thunderdome::Index>,
+    untyped_key_to_id: fn(thunderdome::Index) -> EntityId,
+}
+
+impl<'a, S> Fetch<'a, S> for FetchEntityId<S::EntityId>
+where
+    S: ArchetypeSet,
+{
+    type Query = S::EntityId;
+
+    fn new<E: InArchetypeSet<S>>(
+        untyped_keys: &Column<thunderdome::Index>,
+        _: &'a E::Columns,
+    ) -> Option<Self> {
+        Some(Self {
+            raw_parts: untyped_keys.as_raw_parts(),
+            untyped_key_to_id: |key| E::key_to_id(E::untyped_key_to_key(key)),
+        })
+    }
+
+    fn len(&self) -> usize {
+        self.raw_parts.len
+    }
+
+    unsafe fn get(&self, index: usize) -> Self::Query {
+        assert!(index < <Self as Fetch<S>>::len(self));
+
+        let untyped_key = unsafe { *self.raw_parts.ptr.add(index) };
+
+        (self.untyped_key_to_id)(untyped_key)
+    }
+}
+
 pub trait Query<'a, S: ArchetypeSet> {
     type Fetch: Fetch<'a, S, Query = Self>;
 
+    #[doc(hidden)]
     fn check_borrows(checker: &mut BorrowChecker);
 }
 
@@ -143,6 +201,10 @@ pub struct QueryResult<'a, Q, S> {
     pub(crate) _phantom: PhantomData<Q>,
 }
 
+// Safety: Before constructing a `FetchIter`, use `BorrowChecker` to ensure that
+// the query does not specify borrows that violate Rust's borrowing rules. Also,
+// do not allow constructing references to the entity at which the `FetchIter`
+// currently points.
 pub struct FetchIter<'a, F, S> {
     i: usize,
     fetch: F,
@@ -170,7 +232,7 @@ where
         if self.i == self.fetch.len() {
             None
         } else {
-            // Safety: TODO
+            // Safety: See the comment on `FetchIter`.
             let item = unsafe { self.fetch.get(self.i) };
 
             self.i += 1;
@@ -229,7 +291,13 @@ where
         // Rust's borrowing rules.
         Q::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
 
+        // Safety: A `QueryResult` exclusively borrows the `archetype_set: &'a
+        // mut S`. Also, `into_iter` consumes the `QueryResult` while
+        // maintaining the lifetime `'a`. Thus, it is not possible to construct
+        // references to entities in `archetype_set` outside of the returned
+        // iterator, thereby satisfying the requirement of `FetchIter`.
         let mut archetype_set_iter = self.archetype_set.fetch::<Q::Fetch>().iter();
+
         let current_fetch_iter = archetype_set_iter.next().map(FetchIter::new);
 
         ArchetypeSetFetchIter {

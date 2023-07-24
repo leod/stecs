@@ -2,10 +2,12 @@ use std::{
     any::{Any, TypeId},
     cell::RefCell,
     iter::{Chain, Flatten},
+    marker::PhantomData,
     option::IntoIter,
 };
 
 use stecs::{
+    internal::{BorrowChecker, FetchEntityId},
     Archetype, ArchetypeSet, ArchetypeSetFetch, Column, Component, Entity, EntityColumns, EntityId,
     EntityKey, Fetch, InArchetypeSet, Query,
 };
@@ -68,7 +70,7 @@ impl Entity for Player {
     type Columns = PlayerColumns;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Target(EntityId<World>);
 
 #[derive(Clone)]
@@ -121,7 +123,7 @@ struct World {
 }
 
 // generated
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum WorldEntityId {
     Player(EntityKey<Player>),
     Enemy(EntityKey<Enemy>),
@@ -205,17 +207,21 @@ impl stecs::ArchetypeSet for World {
     where
         F: Fetch<'a, Self>,
     {
-        let players =
-            F::new::<Player>(self.players.columns()).map(|fetch| (self.players.indices(), fetch));
-        let enemies =
-            F::new::<Enemy>(self.enemies.columns()).map(|fetch| (self.enemies.indices(), fetch));
+        let players = F::new::<Player>(self.players.untyped_keys(), self.players.columns())
+            .map(|fetch| (self.players.indices(), fetch));
+        let enemies = F::new::<Enemy>(self.enemies.untyped_keys(), self.enemies.columns())
+            .map(|fetch| (self.enemies.indices(), fetch));
 
         WorldFetch { players, enemies }
     }
 }
 
 impl InArchetypeSet<World> for Player {
-    fn id(key: EntityKey<Self>) -> EntityId<World> {
+    fn untyped_key_to_key(key: thunderdome::Index) -> EntityKey<Self> {
+        EntityKey::new_unchecked(key)
+    }
+
+    fn key_to_id(key: EntityKey<Self>) -> EntityId<World> {
         EntityId::<World>::Player(key)
     }
 
@@ -225,7 +231,11 @@ impl InArchetypeSet<World> for Player {
 }
 
 impl InArchetypeSet<World> for Enemy {
-    fn id(key: EntityKey<Self>) -> EntityId<World> {
+    fn untyped_key_to_key(key: thunderdome::Index) -> EntityKey<Self> {
+        EntityKey::new_unchecked(key)
+    }
+
+    fn key_to_id(key: EntityKey<Self>) -> EntityId<World> {
         EntityId::<World>::Enemy(key)
     }
 
@@ -234,22 +244,11 @@ impl InArchetypeSet<World> for Enemy {
     }
 }
 
-/*
-impl<'a> Query<'a, MyWorld> for WorldEntityId {
-    type Getter<A> = EntityIdGetter
-    where
-        A: 'a + ArchetypeInSet<MyWorld>;
+impl<'a> Query<'a, World> for WorldEntityId {
+    type Fetch = FetchEntityId<WorldEntityId>;
 
-    fn check_borrows(_: &mut BorrowChecker) {}
-
-    fn getter<A>() -> Option<Self::Getter<A>>
-    where
-        A: 'a + ArchetypeInSet<MyWorld>,
-    {
-        Some(EntityIdGetter)
-    }
+    fn check_borrows(checker: &mut BorrowChecker) {}
 }
-*/
 
 fn main() {
     //let id = EntityId::<World>::Player(0);
@@ -337,29 +336,27 @@ fn main() {
     {}
     */
 
-    for (p, q) in world.query::<(&mut Position, &mut Position)>() {
+    /*for (p, q) in world.query::<(&mut Position, &mut Position)>() {
         p.0 += q.0;
-    }
+    }*/
 
     /*for (p, q) in world.query::<(&mut Position, &Position)>() {
         p.0 += q.0;
-    }
+    }*/
 
-    for (p, q) in world.query::<(&Position, &Position)>() {}*/
+    for (p, q) in world.query::<(&Position, &Position)>() {}
 
     dbg!("--");
 
-    /*
     for (id, _) in world.query::<(EntityId<World>, &Position)>() {
         dbg!(id);
     }
 
     dbg!("--");
 
-    for (id, target) in world.query::<(EntityId<World>, &Target)>() {
+    for (id, target) in world.query::<(&EntityId<World>, &Target)>() {
         println!("{:?} targeting {:?}", id, target);
     }
-    */
 
     /*
     let id: EntityId<MyWorld> = todo!();

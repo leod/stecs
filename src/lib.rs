@@ -18,6 +18,8 @@ mod borrow_checker;
 mod column;
 mod query;
 
+pub use thunderdome;
+
 pub use archetype::{Archetype, Entity, EntityColumns, EntityKey};
 pub use archetype_set::{ArchetypeSet, ArchetypeSetFetch, EntityId, InArchetypeSet};
 pub use column::Column;
@@ -26,3 +28,8 @@ pub use query::{Fetch, Query};
 pub trait Component: 'static {}
 
 impl<T> Component for T where T: 'static {}
+
+// Hidden unstable symbols, needed for `stecs-derive`.
+pub mod internal {
+    pub use super::{borrow_checker::BorrowChecker, query::FetchEntityId};
+}

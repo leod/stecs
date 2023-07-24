@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{fmt::Debug, marker::PhantomData};
 
 use crate::{
     query::{Fetch, QueryResult},
@@ -15,7 +15,7 @@ pub trait ArchetypeSetFetch<'a, S: ArchetypeSet> {
 }
 
 pub trait ArchetypeSet: Default + Sized {
-    type EntityId: Copy;
+    type EntityId: Copy + Debug + for<'a> Query<'a, Self>;
 
     type Entity;
 
@@ -45,7 +45,9 @@ pub trait ArchetypeSet: Default + Sized {
 pub type EntityId<S> = <S as ArchetypeSet>::EntityId;
 
 pub trait InArchetypeSet<S: ArchetypeSet>: Entity {
-    fn id(key: EntityKey<Self>) -> S::EntityId;
+    fn untyped_key_to_key(key: thunderdome::Index) -> EntityKey<Self>;
+
+    fn key_to_id(key: EntityKey<Self>) -> S::EntityId;
 
     fn into_entity(self) -> S::Entity;
 }
