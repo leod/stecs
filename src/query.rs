@@ -5,14 +5,15 @@ pub mod iter;
 use std::{any::type_name, marker::PhantomData};
 
 use crate::{
+    archetype_set::InArchetypeSet,
     column::{ColumnRawParts, ColumnRawPartsMut},
     entity::EntityBorrow,
-    ArchetypeSet, Component, Entity, EntityRef, EntityRefMut,
+    ArchetypeSet, Component, Entity, EntityId, EntityRef, EntityRefMut,
 };
 
 use self::{
     borrow_checker::BorrowChecker,
-    fetch::{Fetch, FetchFromSet, FetchWith, FetchWithout},
+    fetch::{Fetch, FetchEntityId, FetchFromSet, FetchWith, FetchWithout},
     iter::{ArchetypeSetFetchIter, Nest, NestArchetypeSetFetchIter},
 };
 
@@ -85,6 +86,14 @@ where
     S: ArchetypeSet,
 {
     type Fetch<'w> = FetchWithout<Q::Fetch<'w>, R::Fetch<'w>>;
+}
+
+impl<E, S> Query<S> for EntityId<E>
+where
+    E: InArchetypeSet<S>,
+    S: ArchetypeSet,
+{
+    type Fetch<'w> = FetchEntityId<E>;
 }
 
 pub struct QueryResult<'w, Q, S> {

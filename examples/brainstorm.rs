@@ -3,7 +3,7 @@ use std::any::type_name;
 use stecs::{
     archetype_set::{ArchetypeSetFetch, InArchetypeSet},
     internal::BorrowChecker,
-    query::fetch::{FetchEntityId, FetchFromSet},
+    query::fetch::{FetchAnyEntityId, FetchFromSet},
     AnyEntityId, Archetype, ArchetypeSet, Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
 use thunderdome::Arena;
@@ -177,7 +177,7 @@ impl InArchetypeSet<World> for Enemy {
 }
 
 impl Query<World> for WorldEntityId {
-    type Fetch<'f> = FetchEntityId<World>;
+    type Fetch<'f> = FetchAnyEntityId<World>;
 }
 
 fn main() {

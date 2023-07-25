@@ -1,10 +1,21 @@
+use std::{
+    any::TypeId,
+    iter,
+    mem::{self, transmute},
+    option,
+};
+
 use thunderdome::Arena;
 
 use crate::{
+    archetype_set::{ArchetypeSetFetch, InArchetypeSet},
     column::Column,
     entity::{Columns, EntityBorrow},
-    query::{fetch::Fetch, iter::FetchIter},
-    Entity, EntityId,
+    query::{
+        fetch::{Fetch, FetchFromSet},
+        iter::FetchIter,
+    },
+    ArchetypeSet, Entity, EntityId,
 };
 
 #[derive(Clone)]
@@ -119,10 +130,6 @@ impl<E: Entity> Archetype<E> {
     }
 }
 
-// TODO: impl<E: Entity> IntoIterator for Archetype<E>
-// TODO: impl<'a, E: Entity> IntoIterator for &'a mut Archetype<E>
-// TODO: impl<'a, E: Entity> IntoIterator for &'a Archetype<E>
-
 impl<E: Entity> Default for Archetype<E> {
     fn default() -> Self {
         Self {
@@ -130,5 +137,73 @@ impl<E: Entity> Default for Archetype<E> {
             ids: Default::default(),
             columns: Default::default(),
         }
+    }
+}
+
+// TODO: impl<E: Entity> IntoIterator for Archetype<E>
+// TODO: impl<'a, E: Entity> IntoIterator for &'a mut Archetype<E>
+// TODO: impl<'a, E: Entity> IntoIterator for &'a Archetype<E>
+
+#[derive(Clone, Copy)]
+pub struct SingletonFetch<'w, F>(&'w Arena<usize>, Option<F>);
+
+impl<'w, E, F> ArchetypeSetFetch<Archetype<E>> for SingletonFetch<'w, F>
+where
+    E: Entity,
+    F: FetchFromSet<Archetype<E>>,
+{
+    type Fetch = F;
+
+    type Iter = option::IntoIter<F>;
+
+    unsafe fn get<'f>(&self, id: EntityId<E>) -> Option<F::Item<'f>>
+    where
+        Self: 'f,
+    {
+        self.1
+            .and_then(|fetch| self.0.get(id.0).map(|&index| fetch.get(index)))
+    }
+
+    fn iter(&mut self) -> Self::Iter {
+        self.1.into_iter()
+    }
+}
+
+impl<E: Entity> ArchetypeSet for Archetype<E> {
+    type AnyEntityId = EntityId<E>;
+
+    type AnyEntity = E;
+
+    type Fetch<'w, F: FetchFromSet<Self> + 'w> = SingletonFetch<'w, F>
+    where
+        Self: 'w;
+
+    fn spawn<F: InArchetypeSet<Self>>(&mut self, entity: F) -> Self::AnyEntityId {
+        self.spawn(entity.into_any_entity())
+    }
+
+    fn despawn(&mut self, id: Self::AnyEntityId) -> Option<Self::AnyEntity> {
+        self.despawn(id)
+    }
+
+    fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
+    where
+        F: FetchFromSet<Self> + 'w,
+    {
+        todo!()
+    }
+}
+
+impl<E: Entity> InArchetypeSet<Archetype<E>> for E {
+    fn entity_id(id: thunderdome::Index) -> EntityId<Self> {
+        EntityId::new_unchecked(id)
+    }
+
+    fn any_entity_id(id: EntityId<Self>) -> EntityId<Self> {
+        id
+    }
+
+    fn into_any_entity(self) -> E {
+        self
     }
 }
