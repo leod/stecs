@@ -98,7 +98,7 @@ where
     J: FetchFromSet<S> + 'w,
     S: ArchetypeSet + 'w,
 {
-    pub(crate) ignore_id: Option<S::EntityId>,
+    pub(crate) ignore_id: Option<S::AnyEntityId>,
     pub(crate) fetch: S::Fetch<'w, J>,
 }
 
@@ -139,7 +139,7 @@ where
     // This has to take an exclusive `self` reference to prevent violating
     // Rust's borrowing rules if `J` contains an exclusive borrow, since `get()`
     // could be called multiple times with the same `id`.
-    pub fn get(&mut self, id: S::EntityId) -> Option<J::Item<'_>> {
+    pub fn get(&mut self, id: S::AnyEntityId) -> Option<J::Item<'_>> {
         if let Some(ignore_id) = self.ignore_id {
             if ignore_id == id {
                 // TODO: Consider panicking.

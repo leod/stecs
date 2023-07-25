@@ -153,7 +153,7 @@ where
     S: ArchetypeSet,
 {
     raw_parts: ColumnRawParts<thunderdome::Index>,
-    untyped_key_to_id: fn(thunderdome::Index) -> S::EntityId,
+    untyped_key_to_id: fn(thunderdome::Index) -> S::AnyEntityId,
 }
 
 impl<S> Clone for FetchEntityId<S>
@@ -171,7 +171,7 @@ unsafe impl<S> Fetch for FetchEntityId<S>
 where
     S: ArchetypeSet,
 {
-    type Item<'f> = S::EntityId where Self: 'f;
+    type Item<'f> = S::AnyEntityId where Self: 'f;
 
     fn len(&self) -> usize {
         self.raw_parts.len

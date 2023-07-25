@@ -115,20 +115,20 @@ where
 }
 
 impl stecs::ArchetypeSet for World {
-    type EntityId = WorldEntityId;
+    type AnyEntityId = WorldEntityId;
 
-    type Entity = WorldEntity;
+    type AnyEntity = WorldEntity;
 
     type Fetch<'w, F: FetchFromSet<Self> + 'w> = WorldFetch<'w, F>;
 
-    fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::EntityId {
+    fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::AnyEntityId {
         match entity.into_entity() {
             WorldEntity::Player(entity) => WorldEntityId::Player(self.players.spawn(entity)),
             WorldEntity::Enemy(entity) => WorldEntityId::Enemy(self.enemies.spawn(entity)),
         }
     }
 
-    fn despawn(&mut self, id: Self::EntityId) -> Option<Self::Entity> {
+    fn despawn(&mut self, id: Self::AnyEntityId) -> Option<Self::AnyEntity> {
         match id {
             WorldEntityId::Player(key) => self.players.despawn(key).map(WorldEntity::Player),
             WorldEntityId::Enemy(key) => self.enemies.despawn(key).map(WorldEntity::Enemy),
@@ -157,7 +157,7 @@ impl InArchetypeSet<World> for Player {
         EntityId::<World>::Player(key)
     }
 
-    fn into_entity(self) -> <World as ArchetypeSet>::Entity {
+    fn into_entity(self) -> <World as ArchetypeSet>::AnyEntity {
         WorldEntity::Player(self)
     }
 }
@@ -171,7 +171,7 @@ impl InArchetypeSet<World> for Enemy {
         EntityId::<World>::Enemy(key)
     }
 
-    fn into_entity(self) -> <World as ArchetypeSet>::Entity {
+    fn into_entity(self) -> <World as ArchetypeSet>::AnyEntity {
         WorldEntity::Enemy(self)
     }
 }
