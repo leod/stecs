@@ -26,7 +26,7 @@ impl<'w, 'f, F, S> FetchIter<'w, 'f, F, S> {
 
 impl<'w, 'f, F, S> Iterator for FetchIter<'w, 'f, F, S>
 where
-    F: FetchFromSet<'w, S>,
+    F: FetchFromSet<S> + 'w,
     S: ArchetypeSet,
     'w: 'f,
 {
@@ -48,7 +48,7 @@ where
 
 pub struct ArchetypeSetFetchIter<'w, 'f, F, S>
 where
-    F: FetchFromSet<'w, S>,
+    F: FetchFromSet<S>,
     S: ArchetypeSet,
     'w: 'f,
 {
@@ -58,11 +58,11 @@ where
 
 impl<'w, 'f, F, S> Iterator for ArchetypeSetFetchIter<'w, 'f, F, S>
 where
-    F: FetchFromSet<'w, S>,
+    F: FetchFromSet<S> + 'w,
     S: ArchetypeSet,
     'w: 'f,
 {
-    type Item = <F as Fetch<'w>>::Item<'f>;
+    type Item = <F as Fetch>::Item<'f>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -84,7 +84,7 @@ where
 
 impl<'w, 'f, F, S> ArchetypeSetFetchIter<'w, 'f, F, S>
 where
-    F: FetchFromSet<'w, S>,
+    F: FetchFromSet<S>,
     S: ArchetypeSet,
 {
     pub(crate) unsafe fn new(archetype_set: &'w S) -> Self {
@@ -101,7 +101,7 @@ where
 
 pub struct Join<'a, J, S>
 where
-    J: FetchFromSet<'a, S>,
+    J: FetchFromSet<S>,
     S: ArchetypeSet + 'a,
 {
     pub(crate) ignore_id: Option<S::EntityId>,
@@ -110,8 +110,8 @@ where
 
 pub struct JoinArchetypeSetFetchIter<'w, F, J, S>
 where
-    F: FetchFromSet<'w, S>,
-    J: FetchFromSet<'w, S>,
+    F: FetchFromSet<S>,
+    J: FetchFromSet<S>,
     S: ArchetypeSet,
 {
     pub(crate) query_iter: ArchetypeSetFetchIter<'w, 'w, F, S>,
@@ -120,11 +120,11 @@ where
 
 impl<'w, F, J, S> Iterator for JoinArchetypeSetFetchIter<'w, F, J, S>
 where
-    F: FetchFromSet<'w, S>,
-    J: FetchFromSet<'w, S>,
+    F: FetchFromSet<S> + 'w,
+    J: FetchFromSet<S>,
     S: ArchetypeSet,
 {
-    type Item = (<F as Fetch<'w>>::Item<'w>, Join<'w, J, S>);
+    type Item = (<F as Fetch>::Item<'w>, Join<'w, J, S>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = self.query_iter.next()?;
@@ -139,7 +139,7 @@ where
 
 pub struct JoinIter<'a, 'b, J, S, I>
 where
-    J: FetchFromSet<'a, S>,
+    J: FetchFromSet<S>,
     S: ArchetypeSet + 'a,
     'a: 'b,
 {
@@ -149,7 +149,7 @@ where
 
 impl<'a, 'b, J, S, I> Iterator for JoinIter<'a, 'b, J, S, I>
 where
-    J: FetchFromSet<'a, S>,
+    J: FetchFromSet<S>,
     S: ArchetypeSet + 'a,
     I: Iterator<Item = S::EntityId>,
     'a: 'b,
@@ -166,7 +166,7 @@ where
 
 impl<'a, J, S> Join<'a, J, S>
 where
-    J: FetchFromSet<'a, S>,
+    J: FetchFromSet<S>,
     S: ArchetypeSet + 'a,
 {
     // This has to take an exclusive `self` reference to prevent violating

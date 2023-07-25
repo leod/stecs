@@ -39,17 +39,14 @@ struct PlayerRefMutFetch {
     col: ColumnRawPartsMut<Color>,
 }
 
-unsafe impl<'w> Fetch<'w> for PlayerRefMutFetch {
-    type Item<'f> = PlayerRefMut<'f> where 'w: 'f;
+unsafe impl Fetch for PlayerRefMutFetch {
+    type Item<'f> = PlayerRefMut<'f>;
 
     fn len(&self) -> usize {
         self.pos.len
     }
 
-    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
-    where
-        'w: 'f,
-    {
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f> {
         assert!(index < self.len());
 
         PlayerRefMut {
@@ -130,7 +127,7 @@ struct WorldFetch<'a, F> {
 
 impl<'a, F> ArchetypeSetFetch<'a, World> for WorldFetch<'a, F>
 where
-    F: FetchFromSet<'a, World>,
+    F: FetchFromSet<World>,
 {
     type Fetch = F;
 
@@ -165,7 +162,7 @@ impl stecs::ArchetypeSet for World {
 
     type Entity = WorldEntity;
 
-    type Fetch<'w, F: FetchFromSet<'w, Self>> = WorldFetch<'w, F>;
+    type Fetch<'w, F: FetchFromSet<Self>> = WorldFetch<'w, F>;
 
     fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::EntityId {
         match entity.into_entity() {
@@ -183,7 +180,7 @@ impl stecs::ArchetypeSet for World {
 
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where
-        F: FetchFromSet<'w, Self>,
+        F: FetchFromSet<Self>,
     {
         let players = F::new::<Player>(self.players.untyped_keys(), self.players.columns())
             .map(|fetch| (self.players.indices(), fetch));

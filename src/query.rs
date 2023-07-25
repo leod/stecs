@@ -15,7 +15,7 @@ use self::{
 };
 
 pub trait Query<S: ArchetypeSet> {
-    type Fetch<'w>: FetchFromSet<'w, S>;
+    type Fetch<'w>: FetchFromSet<S> + 'w;
 
     #[doc(hidden)]
     fn check_borrows(checker: &mut BorrowChecker);
@@ -99,7 +99,7 @@ where
     Q: Query<S>,
     S: ArchetypeSet,
 {
-    type Item = <Q::Fetch<'w> as Fetch<'w>>::Item<'w>;
+    type Item = <Q::Fetch<'w> as Fetch>::Item<'w>;
 
     type IntoIter = ArchetypeSetFetchIter<'w, 'w, Q::Fetch<'w>, S>;
 
@@ -152,28 +152,6 @@ where
             _phantom: PhantomData,
         }
     }
-
-    pub fn join_stream<J>(self) -> JoinStreamQueryResult<'w, Q, J, S>
-    where
-        J: Query<S>,
-    {
-        // Safety: Check that the query does not specify borrows that violate
-        // Rust's borrowing rules. Note that `JoinStreamQueryResult` ensures
-        // that `Q` and `J` never borrow the same entity simultaneously, so we
-        // can get away with checking their borrows separately. In fact, this
-        // separation is the whole purpose of `join_stream`.
-        Q::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
-        J::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
-
-        // Safety: TODO
-        let query_iter = unsafe { ArchetypeSetFetchIter::new(self.archetype_set) };
-        let join_fetch = self.archetype_set.fetch();
-
-        JoinStreamQueryResult {
-            query_iter,
-            join_fetch,
-        }
-    }
 }
 
 pub struct JoinQueryResult<'a, Q, J, S> {
@@ -187,10 +165,7 @@ where
     J: Query<S>,
     S: ArchetypeSet,
 {
-    type Item = (
-        <Q::Fetch<'w> as Fetch<'w>>::Item<'w>,
-        Join<'w, J::Fetch<'w>, S>,
-    );
+    type Item = (<Q::Fetch<'w> as Fetch>::Item<'w>, Join<'w, J::Fetch<'w>, S>);
 
     type IntoIter = JoinArchetypeSetFetchIter<'w, Q::Fetch<'w>, J::Fetch<'w>, S>;
 
@@ -207,40 +182,5 @@ where
             query_iter,
             join_fetch,
         }
-    }
-}
-
-pub struct JoinStreamQueryResult<'w, Q, J, S>
-where
-    Q: Query<S>,
-    J: Query<S>,
-    S: ArchetypeSet,
-{
-    query_iter: ArchetypeSetFetchIter<'w, 'w, (FetchEntityId<S>, Q::Fetch<'w>), S>,
-    join_fetch: S::Fetch<'w, J::Fetch<'w>>,
-}
-
-impl<'w, Q, J, S> JoinStreamQueryResult<'w, Q, J, S>
-where
-    Q: Query<S>,
-    J: Query<S>,
-    S: ArchetypeSet,
-{
-    pub fn fetch_next(
-        &'w mut self,
-    ) -> Option<(
-        <Q::Fetch<'w> as Fetch<'w>>::Item<'w>,
-        Join<'w, J::Fetch<'w>, S>,
-    )> {
-        let Some((id, item)) = self.query_iter.next() else {
-            return None;
-        };
-
-        let join = Join {
-            ignore_id: Some(id),
-            fetch: self.join_fetch.clone(),
-        };
-
-        Some((item, join))
     }
 }

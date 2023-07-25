@@ -56,7 +56,7 @@ pub trait Columns: Default {
 pub trait BorrowEntity<'f> {
     type Entity: Entity;
 
-    type Fetch<'w>: Fetch<'w, Item<'f> = Self>
+    type Fetch<'w>: Fetch<Item<'f> = Self> + 'w
     where
         'w: 'f;
 

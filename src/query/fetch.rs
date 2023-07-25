@@ -8,12 +8,11 @@ use crate::{
     ArchetypeSet, Component, Entity,
 };
 
-// TODO: 'w maybe not needed.
 // TODO: unsafe maybe not needed.
-pub unsafe trait Fetch<'w>: Copy + 'w {
+pub unsafe trait Fetch: Copy {
     type Item<'f>
     where
-        'w: 'f;
+        Self: 'f;
 
     fn len(&self) -> usize;
 
@@ -32,23 +31,23 @@ pub unsafe trait Fetch<'w>: Copy + 'w {
     /// elsewhere (be it through `self` or not through `self`).
     unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'w: 'f;
+        Self: 'f;
 }
 
 // TODO: 'w maybe not needed.
 // TODO: unsafe maybe not needed.
-pub unsafe trait FetchFromSet<'w, S: ArchetypeSet>: Fetch<'w> {
+pub unsafe trait FetchFromSet<S: ArchetypeSet>: Fetch {
     fn new<E: InArchetypeSet<S>>(
-        untyped_keys: &'w Column<thunderdome::Index>,
-        columns: &'w E::Columns,
+        untyped_keys: &Column<thunderdome::Index>,
+        columns: &E::Columns,
     ) -> Option<Self>;
 }
 
-unsafe impl<'w, C> Fetch<'w> for ColumnRawParts<C>
+unsafe impl<C> Fetch for ColumnRawParts<C>
 where
     C: Component,
 {
-    type Item<'f> = &'f C where 'w: 'f;
+    type Item<'f> = &'f C where Self: 'f;
 
     fn len(&self) -> usize {
         self.len
@@ -56,7 +55,7 @@ where
 
     unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'w: 'f,
+        Self: 'f,
     {
         assert!(index < <Self as Fetch>::len(self));
 
@@ -64,14 +63,14 @@ where
     }
 }
 
-unsafe impl<'w, C, S> FetchFromSet<'w, S> for ColumnRawParts<C>
+unsafe impl<C, S> FetchFromSet<S> for ColumnRawParts<C>
 where
     C: Component,
     S: ArchetypeSet,
 {
     fn new<E: InArchetypeSet<S>>(
         _: &Column<thunderdome::Index>,
-        columns: &'w E::Columns,
+        columns: &E::Columns,
     ) -> Option<Self> {
         columns
             .column::<C>()
@@ -79,11 +78,11 @@ where
     }
 }
 
-unsafe impl<'w, C> Fetch<'w> for ColumnRawPartsMut<C>
+unsafe impl<C> Fetch for ColumnRawPartsMut<C>
 where
     C: Component,
 {
-    type Item<'f> = &'f mut C where 'w: 'f;
+    type Item<'f> = &'f mut C where Self: 'f;
 
     fn len(&self) -> usize {
         self.len
@@ -91,7 +90,7 @@ where
 
     unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'w: 'f,
+        Self: 'f,
     {
         assert!(index < <Self as Fetch>::len(self));
 
@@ -99,24 +98,24 @@ where
     }
 }
 
-unsafe impl<'w, C, S> FetchFromSet<'w, S> for ColumnRawPartsMut<C>
+unsafe impl<C, S> FetchFromSet<S> for ColumnRawPartsMut<C>
 where
     C: Component,
     S: ArchetypeSet,
 {
-    fn new<E: Entity>(_: &'w Column<thunderdome::Index>, columns: &'w E::Columns) -> Option<Self> {
+    fn new<E: Entity>(_: &Column<thunderdome::Index>, columns: &E::Columns) -> Option<Self> {
         columns
             .column::<C>()
             .map(|column| column.borrow_mut().as_raw_parts_mut())
     }
 }
 
-unsafe impl<'w, F0, F1> Fetch<'w> for (F0, F1)
+unsafe impl<F0, F1> Fetch for (F0, F1)
 where
-    F0: Fetch<'w>,
-    F1: Fetch<'w>,
+    F0: Fetch,
+    F1: Fetch,
 {
-    type Item<'f> = (F0::Item<'f>, F1::Item<'f>) where 'w: 'f;
+    type Item<'f> = (F0::Item<'f>, F1::Item<'f>) where Self: 'f;
 
     fn len(&self) -> usize {
         self.0.len()
@@ -124,21 +123,21 @@ where
 
     unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'w: 'f,
+        Self: 'f,
     {
         (self.0.get(index), self.1.get(index))
     }
 }
 
-unsafe impl<'w, F0, F1, S> FetchFromSet<'w, S> for (F0, F1)
+unsafe impl<F0, F1, S> FetchFromSet<S> for (F0, F1)
 where
-    F0: FetchFromSet<'w, S>,
-    F1: FetchFromSet<'w, S>,
+    F0: FetchFromSet<S>,
+    F1: FetchFromSet<S>,
     S: ArchetypeSet,
 {
     fn new<E: InArchetypeSet<S>>(
-        untypes_keys: &'w Column<thunderdome::Index>,
-        columns: &'w E::Columns,
+        untypes_keys: &Column<thunderdome::Index>,
+        columns: &E::Columns,
     ) -> Option<Self> {
         let f0 = F0::new::<E>(untypes_keys, columns)?;
         let f1 = F1::new::<E>(untypes_keys, columns)?;
@@ -171,11 +170,11 @@ where
 
 impl<S> Copy for FetchEntityId<S> where S: ArchetypeSet {}
 
-unsafe impl<'w, S> Fetch<'w> for FetchEntityId<S>
+unsafe impl<S> Fetch for FetchEntityId<S>
 where
-    S: ArchetypeSet + 'w,
+    S: ArchetypeSet,
 {
-    type Item<'f> = S::EntityId where 'w: 'f;
+    type Item<'f> = S::EntityId where Self: 'f;
 
     fn len(&self) -> usize {
         self.raw_parts.len
@@ -183,7 +182,7 @@ where
 
     unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'w: 'f,
+        Self: 'f,
     {
         assert!(index < <Self as Fetch>::len(self));
 
@@ -193,13 +192,13 @@ where
     }
 }
 
-unsafe impl<'w, S> FetchFromSet<'w, S> for FetchEntityId<S>
+unsafe impl<S> FetchFromSet<S> for FetchEntityId<S>
 where
-    S: ArchetypeSet + 'w,
+    S: ArchetypeSet,
 {
     fn new<E: InArchetypeSet<S>>(
         untyped_keys: &Column<thunderdome::Index>,
-        _: &'w E::Columns,
+        _: &E::Columns,
     ) -> Option<Self> {
         Some(Self {
             raw_parts: untyped_keys.as_raw_parts(),
@@ -214,12 +213,12 @@ pub struct FetchWith<F, R> {
     _phantom: PhantomData<R>,
 }
 
-unsafe impl<'w, F, R> Fetch<'w> for FetchWith<F, R>
+unsafe impl<F, R> Fetch for FetchWith<F, R>
 where
-    F: Fetch<'w>,
-    R: Fetch<'w>,
+    F: Fetch,
+    R: Fetch,
 {
-    type Item<'f> = F::Item<'f> where 'w: 'f;
+    type Item<'f> = F::Item<'f> where Self: 'f;
 
     fn len(&self) -> usize {
         self.fetch.len()
@@ -227,21 +226,21 @@ where
 
     unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'w: 'f,
+        Self: 'f,
     {
         self.fetch.get(index)
     }
 }
 
-unsafe impl<'w, F, R, S> FetchFromSet<'w, S> for FetchWith<F, R>
+unsafe impl<F, R, S> FetchFromSet<S> for FetchWith<F, R>
 where
-    F: FetchFromSet<'w, S>,
-    R: FetchFromSet<'w, S>,
+    F: FetchFromSet<S>,
+    R: FetchFromSet<S>,
     S: ArchetypeSet,
 {
     fn new<E: InArchetypeSet<S>>(
-        untyped_keys: &'w Column<thunderdome::Index>,
-        columns: &'w E::Columns,
+        untyped_keys: &Column<thunderdome::Index>,
+        columns: &E::Columns,
     ) -> Option<Self> {
         let fetch = F::new::<E>(untyped_keys, columns)?;
 
@@ -260,12 +259,12 @@ pub struct FetchWithout<F, R> {
     _phantom: PhantomData<R>,
 }
 
-unsafe impl<'w, F, R> Fetch<'w> for FetchWithout<F, R>
+unsafe impl<F, R> Fetch for FetchWithout<F, R>
 where
-    F: Fetch<'w>,
-    R: Fetch<'w>,
+    F: Fetch,
+    R: Fetch,
 {
-    type Item<'f> = F::Item<'f> where 'w: 'f;
+    type Item<'f> = F::Item<'f> where Self: 'f;
 
     fn len(&self) -> usize {
         self.fetch.len()
@@ -273,21 +272,21 @@ where
 
     unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'w: 'f,
+        Self: 'f,
     {
         self.fetch.get(index)
     }
 }
 
-unsafe impl<'w, F, R, S> FetchFromSet<'w, S> for FetchWithout<F, R>
+unsafe impl<F, R, S> FetchFromSet<S> for FetchWithout<F, R>
 where
-    F: FetchFromSet<'w, S>,
-    R: FetchFromSet<'w, S>,
+    F: FetchFromSet<S>,
+    R: FetchFromSet<S>,
     S: ArchetypeSet,
 {
     fn new<E: InArchetypeSet<S>>(
-        untyped_keys: &'w Column<thunderdome::Index>,
-        columns: &'w E::Columns,
+        untyped_keys: &Column<thunderdome::Index>,
+        columns: &E::Columns,
     ) -> Option<Self> {
         let fetch = F::new::<E>(untyped_keys, columns)?;
 
