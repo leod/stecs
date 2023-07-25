@@ -33,6 +33,14 @@ impl<C> Column<C> {
         self.0.last()
     }
 
+    pub fn as_slice(&self) -> &[C] {
+        self.0.as_slice()
+    }
+
+    pub fn into_vec(self) -> Vec<C> {
+        self.0
+    }
+
     pub fn as_raw_parts(&self) -> ColumnRawParts<C> {
         ColumnRawParts {
             ptr: self.0.as_ptr(),

@@ -146,6 +146,10 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
             where
                 '__stecs_w: #lifetime,
             {
+                #(
+                    ::std::debug_assert_eq!(len, columns.#field_idents.borrow().len());
+                )*
+
                 #ident_ref_mut_fetch {
                     __stecs__len: len,
                     #(

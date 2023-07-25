@@ -86,7 +86,6 @@ where
     type Iter = std::iter::Flatten<std::array::IntoIter<Option<F>, 2>>;
 
     unsafe fn get<'b>(&self, id: EntityId<World>) -> Option<F::Item<'b>> {
-        println!("getting {:?} {}", id, type_name::<F>());
         match id {
             WorldEntityId::Player(key) => self
                 .players
@@ -200,7 +199,7 @@ fn main() {
     });
 
     world.spawn(Enemy {
-        pos: Position(-1.5),
+        pos: Position(-1.6),
         target: Target(p0),
     });
 
@@ -332,6 +331,13 @@ fn main() {
         WorldEntityId::Enemy(_) => todo!(),
     }
     */
+
+    println!("Enemies");
+    let iter = world.enemies.iter_mut();
+
+    for (key, enemy) in iter {
+        dbg!(key, enemy.target.0, enemy.pos.0);
+    }
 
     // This panics:
     println!("mut Position, Position");

@@ -8,13 +8,13 @@ use super::fetch::{Fetch, FetchFromSet};
 // the query does not specify borrows that violate Rust's borrowing rules. Also,
 // do not allow constructing references to the entity at which the `FetchIter`
 // currently points that would violate Rust's borrowing rules.
-struct FetchIter<'f, F, S> {
+pub(crate) struct FetchIter<'f, F> {
     i: usize,
     fetch: F,
-    _phantom: PhantomData<&'f S>,
+    _phantom: PhantomData<&'f ()>,
 }
 
-impl<'f, F, S> FetchIter<'f, F, S> {
+impl<'f, F> FetchIter<'f, F> {
     pub fn new(fetch: F) -> Self {
         Self {
             i: 0,
@@ -24,10 +24,9 @@ impl<'f, F, S> FetchIter<'f, F, S> {
     }
 }
 
-impl<'f, F, S> Iterator for FetchIter<'f, F, S>
+impl<'f, F> Iterator for FetchIter<'f, F>
 where
-    F: FetchFromSet<S> + 'f,
-    S: ArchetypeSet,
+    F: Fetch + 'f,
 {
     type Item = F::Item<'f>;
 
@@ -51,7 +50,7 @@ where
     S: ArchetypeSet + 'w,
 {
     archetype_set_iter: <S::Fetch<'w, F> as ArchetypeSetFetch<S>>::Iter,
-    current_fetch_iter: Option<FetchIter<'w, F, S>>,
+    current_fetch_iter: Option<FetchIter<'w, F>>,
 }
 
 impl<'w, F, S> Iterator for ArchetypeSetFetchIter<'w, F, S>
