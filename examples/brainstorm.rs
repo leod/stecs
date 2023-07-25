@@ -188,7 +188,7 @@ fn main() {
         col: Color(3.0),
     });
 
-    world.spawn(Player {
+    let p1 = world.players.spawn(Player {
         pos: Position(1.5),
         vel: Velocity(2.0),
         col: Color(3.0),
@@ -209,6 +209,8 @@ fn main() {
         p.0 += 3.0;
     }
 
+    println!("p0: {:?}", world.players.get_mut(p1).unwrap().pos.0);
+
     println!("Position");
     for p in world.query::<&Position>() {
         dbg!(p.0);
@@ -223,6 +225,8 @@ fn main() {
     for (p, v) in world.query::<(&mut Position, &Velocity)>() {
         p.0 += v.0;
     }
+
+    println!("p0: {:?}", world.players.get_mut(p1).unwrap().pos.0);
 
     dbg!("--");
 
