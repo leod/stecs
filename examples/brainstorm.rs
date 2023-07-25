@@ -389,6 +389,13 @@ fn main() {
         );
     }
 
+    let foo: Vec<_> = world
+        .query::<&Target>()
+        .join::<&mut Position>()
+        .into_iter()
+        .map(|(target, mut join)| join.get(target.0))
+        .collect();
+
     /*
     let id: EntityId<MyWorld> = todo!();
 
