@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use crate::{
-    query::{Fetch, QueryResult},
+    query::{fetch::Fetch, QueryResult},
     Entity, EntityKey, Query,
 };
 

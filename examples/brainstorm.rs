@@ -4,9 +4,10 @@ use std::{
 };
 
 use stecs::{
-    internal::{BorrowChecker, FetchEntityId},
+    internal::BorrowChecker,
+    query::fetch::{Fetch, FetchEntityId},
     Archetype, ArchetypeSet, ArchetypeSetFetch, Column, Component, Entity, EntityColumns, EntityId,
-    EntityKey, Fetch, InArchetypeSet, Query,
+    EntityKey, InArchetypeSet, Query,
 };
 use thunderdome::Arena;
 
@@ -389,12 +390,14 @@ fn main() {
         );
     }
 
+    /*
     let foo: Vec<_> = world
         .query::<&Target>()
         .join::<&mut Position>()
         .into_iter()
         .map(|(target, mut join)| join.get(target.0))
         .collect();
+    */
 
     /*
     let id: EntityId<MyWorld> = todo!();
