@@ -1,8 +1,11 @@
 use std::marker::PhantomData;
 
 use crate::{
+    archetype::Columns,
+    archetype_set::InArchetypeSet,
     column::{ColumnRawParts, ColumnRawPartsMut},
-    ArchetypeSet, Column, Component, Entity, EntityColumns, InArchetypeSet,
+    internal::Column,
+    ArchetypeSet, Component, Entity,
 };
 
 // TODO: 'w maybe not needed.

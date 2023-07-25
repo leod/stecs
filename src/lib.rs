@@ -12,32 +12,32 @@ macro_rules! smaller_tuples_too {
     };
 }
 
-mod archetype_set;
 mod borrow_checker;
 mod column;
 
 pub mod archetype;
+pub mod archetype_set;
 pub mod query;
 
 pub use thunderdome;
 
-pub use archetype_set::{ArchetypeSet, ArchetypeSetFetch, EntityId, InArchetypeSet};
-pub use column::Column;
+pub use stecs_derive::Entity;
 
 #[doc(inline)]
-pub use query::Query;
-
-#[doc(inline)]
-pub use archetype::{Archetype, Entity, EntityColumns, EntityKey};
-
+pub use self::{
+    archetype::{Archetype, Entity, EntityKey},
+    archetype_set::{ArchetypeSet, EntityId},
+    query::Query,
+};
 pub trait Component: 'static {}
 
 impl<T> Component for T where T: 'static {}
 
 // Hidden unstable symbols, needed for `stecs-derive`.
+#[doc(hidden)]
 pub mod internal {
     pub use super::{
         borrow_checker::BorrowChecker,
-        column::{ColumnRawParts, ColumnRawPartsMut},
+        column::{Column, ColumnRawParts, ColumnRawPartsMut},
     };
 }

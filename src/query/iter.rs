@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{ArchetypeSet, ArchetypeSetFetch};
+use crate::{archetype_set::ArchetypeSetFetch, ArchetypeSet};
 
 use super::fetch::{Fetch, FetchFromSet};
 

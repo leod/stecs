@@ -1,15 +1,11 @@
-use std::{
-    any::{type_name, Any, TypeId},
-    cell::RefCell,
-    marker::PhantomData,
-};
+use std::any::type_name;
 
 use stecs::{
     archetype::BorrowEntity,
-    internal::{BorrowChecker, ColumnRawParts, ColumnRawPartsMut},
+    archetype_set::{ArchetypeSetFetch, InArchetypeSet},
+    internal::{BorrowChecker, ColumnRawPartsMut},
     query::fetch::{Fetch, FetchEntityId, FetchFromSet},
-    Archetype, ArchetypeSet, ArchetypeSetFetch, Column, Component, Entity, EntityColumns, EntityId,
-    EntityKey, InArchetypeSet, Query,
+    Archetype, ArchetypeSet, Entity, EntityId, EntityKey, Query,
 };
 use thunderdome::Arena;
 
@@ -22,7 +18,7 @@ struct Velocity(f32);
 #[derive(Clone)]
 struct Color(f32);
 
-#[derive(Clone)]
+#[derive(Entity, Clone)]
 struct Player {
     pos: Position,
     vel: Velocity,
@@ -30,42 +26,6 @@ struct Player {
 }
 
 // generated
-#[derive(Default, Clone)]
-struct PlayerColumns {
-    pos: RefCell<Column<Position>>,
-    vel: RefCell<Column<Velocity>>,
-    col: RefCell<Column<Color>>,
-}
-
-impl EntityColumns for PlayerColumns {
-    type Entity = Player;
-
-    fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>> {
-        if TypeId::of::<C>() == TypeId::of::<Position>() {
-            (&self.pos as &dyn Any).downcast_ref::<RefCell<Column<C>>>()
-        } else if TypeId::of::<C>() == TypeId::of::<Velocity>() {
-            (&self.vel as &dyn Any).downcast_ref::<RefCell<Column<C>>>()
-        } else if TypeId::of::<C>() == TypeId::of::<Color>() {
-            (&self.col as &dyn Any).downcast_ref::<RefCell<Column<C>>>()
-        } else {
-            None
-        }
-    }
-
-    fn push(&mut self, entity: Self::Entity) {
-        self.pos.borrow_mut().push(entity.pos);
-        self.vel.borrow_mut().push(entity.vel);
-    }
-
-    fn remove(&mut self, index: usize) -> Self::Entity {
-        Player {
-            pos: self.pos.borrow_mut().remove(index),
-            vel: self.vel.borrow_mut().remove(index),
-            col: self.col.borrow_mut().remove(index),
-        }
-    }
-}
-
 struct PlayerRefMut<'f> {
     pos: &'f mut Position,
     vel: &'f mut Velocity,
@@ -73,17 +33,14 @@ struct PlayerRefMut<'f> {
 }
 
 #[derive(Clone, Copy)]
-struct PlayerRefMutFetch<'w> {
+struct PlayerRefMutFetch {
     pos: ColumnRawPartsMut<Position>,
     vel: ColumnRawPartsMut<Velocity>,
     col: ColumnRawPartsMut<Color>,
-    _phantom: PhantomData<&'w ()>,
 }
 
-unsafe impl<'w> Fetch<'w> for PlayerRefMutFetch<'w> {
-    type Item<'f> = PlayerRefMut<'f>
-    where
-        'w: 'f;
+unsafe impl<'w> Fetch<'w> for PlayerRefMutFetch {
+    type Item<'f> = PlayerRefMut<'f> where 'w: 'f;
 
     fn len(&self) -> usize {
         self.pos.len
@@ -106,14 +63,11 @@ unsafe impl<'w> Fetch<'w> for PlayerRefMutFetch<'w> {
 impl<'f> BorrowEntity<'f> for PlayerRefMut<'f> {
     type Entity = Player;
 
-    type Fetch<'w> = PlayerRefMutFetch<'w> where 'w: 'f;
+    type Fetch<'w> = PlayerRefMutFetch where 'w: 'f;
 
     fn to_entity(&'f self) -> Self::Entity {
-        Player {
-            pos: *self.pos,
-            vel: *self.vel,
-            col: *self.col,
-        }
+        // need clone?!
+        todo!()
     }
 
     fn new_fetch<'w>(columns: &'w <Self::Entity as Entity>::Columns) -> Self::Fetch<'w>
@@ -124,64 +78,21 @@ impl<'f> BorrowEntity<'f> for PlayerRefMut<'f> {
             pos: columns.pos.borrow_mut().as_raw_parts_mut(),
             vel: columns.vel.borrow_mut().as_raw_parts_mut(),
             col: columns.col.borrow_mut().as_raw_parts_mut(),
-            _phantom: PhantomData,
         }
     }
-}
-
-impl Entity for Player {
-    type Columns = PlayerColumns;
-
-    type BorrowMut<'f> = PlayerRefMut<'f>;
 }
 
 #[derive(Clone, Debug)]
 struct Target(EntityId<World>);
 
-#[derive(Clone)]
+#[derive(Entity, Clone)]
 struct Enemy {
     pos: Position,
     target: Target,
 }
 
-// generated
-#[derive(Default, Clone)]
-struct EnemyColumns {
-    pos: RefCell<Column<Position>>,
-    target: RefCell<Column<Target>>,
-}
-
-impl EntityColumns for EnemyColumns {
-    type Entity = Enemy;
-
-    fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>> {
-        if TypeId::of::<C>() == TypeId::of::<Position>() {
-            (&self.pos as &dyn Any).downcast_ref::<RefCell<Column<C>>>()
-        } else if TypeId::of::<C>() == TypeId::of::<Target>() {
-            (&self.target as &dyn Any).downcast_ref::<RefCell<Column<C>>>()
-        } else {
-            None
-        }
-    }
-
-    fn push(&mut self, entity: Self::Entity) {
-        self.pos.borrow_mut().push(entity.pos);
-        self.target.borrow_mut().push(entity.target);
-    }
-
-    fn remove(&mut self, index: usize) -> Self::Entity {
-        Enemy {
-            pos: self.pos.borrow_mut().remove(index),
-            target: self.target.borrow_mut().remove(index),
-        }
-    }
-}
-
-impl Entity for Enemy {
-    type Columns = EnemyColumns;
-}
-
-#[derive(Default, Clone)]
+// TODO: Clone in Derive?
+#[derive(Default)]
 struct World {
     players: Archetype<Player>,
     enemies: Archetype<Enemy>,
@@ -254,7 +165,7 @@ impl stecs::ArchetypeSet for World {
 
     type Entity = WorldEntity;
 
-    type Fetch<'a, F: FetchFromSet<'a, Self>> = WorldFetch<'a, F>;
+    type Fetch<'w, F: FetchFromSet<'w, Self>> = WorldFetch<'w, F>;
 
     fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::EntityId {
         match entity.into_entity() {
@@ -270,9 +181,9 @@ impl stecs::ArchetypeSet for World {
         }
     }
 
-    fn fetch<'a, F>(&'a self) -> Self::Fetch<'a, F>
+    fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where
-        F: FetchFromSet<'a, Self>,
+        F: FetchFromSet<'w, Self>,
     {
         let players = F::new::<Player>(self.players.untyped_keys(), self.players.columns())
             .map(|fetch| (self.players.indices(), fetch));

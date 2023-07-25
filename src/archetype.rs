@@ -43,7 +43,7 @@ impl<E> PartialEq for EntityKey<E> {
     }
 }
 
-pub trait EntityColumns: Default {
+pub trait Columns: Default {
     type Entity: Entity<Columns = Self>;
 
     fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>>;
@@ -68,9 +68,9 @@ pub trait BorrowEntity<'f> {
 }
 
 pub trait Entity: Sized {
-    type BorrowMut<'f>: BorrowEntity<'f, Entity = Self>;
+    //type BorrowMut<'f>: BorrowEntity<'f, Entity = Self>;
 
-    type Columns: EntityColumns<Entity = Self>;
+    type Columns: Columns<Entity = Self>;
 }
 
 #[derive(Clone)]
@@ -115,7 +115,7 @@ impl<E: Entity> Archetype<E> {
         Some(self.columns.remove(index))
     }
 
-    pub fn get_mut(&mut self, key: EntityKey<E>) -> Option<E::BorrowMut<'_>> {
+    /*pub fn get_mut(&mut self, key: EntityKey<E>) -> Option<E::BorrowMut<'_>> {
         let index = *self.indices.get(key.0)?;
 
         debug_assert!(index < self.untyped_keys.len());
@@ -124,7 +124,7 @@ impl<E: Entity> Archetype<E> {
 
         // Safety: TODO
         Some(unsafe { fetch.get(index) })
-    }
+    }*/
 }
 
 impl<E: Entity> Default for Archetype<E> {
