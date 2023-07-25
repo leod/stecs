@@ -2,7 +2,7 @@ use thunderdome::Arena;
 
 use crate::{
     column::Column,
-    entity::{BorrowEntity, Columns},
+    entity::{Columns, EntityBorrow},
     query::{fetch::Fetch, iter::FetchIter},
     Entity, EntityKey,
 };
@@ -63,7 +63,7 @@ impl<E: Entity> Archetype<E> {
         debug_assert!(index < self.untyped_keys.len());
 
         let fetch =
-            <E::Borrow<'_> as BorrowEntity<'_>>::new_fetch(self.untyped_keys.len(), &self.columns);
+            <E::Borrow<'_> as EntityBorrow<'_>>::new_fetch(self.untyped_keys.len(), &self.columns);
 
         // Safety: TODO
         Some(unsafe { fetch.get(index) })
@@ -72,7 +72,7 @@ impl<E: Entity> Archetype<E> {
     pub fn iter(&self) -> impl Iterator<Item = (EntityKey<E>, E::Borrow<'_>)> + '_ {
         // Safety: TODO
         let fetch =
-            <E::Borrow<'_> as BorrowEntity<'_>>::new_fetch(self.untyped_keys.len(), &self.columns);
+            <E::Borrow<'_> as EntityBorrow<'_>>::new_fetch(self.untyped_keys.len(), &self.columns);
 
         self.untyped_keys
             .as_slice()
@@ -84,7 +84,7 @@ impl<E: Entity> Archetype<E> {
     pub fn values(&self) -> impl Iterator<Item = E::Borrow<'_>> + '_ {
         // Safety: TODO
         let fetch =
-            <E::Borrow<'_> as BorrowEntity<'_>>::new_fetch(self.untyped_keys.len(), &self.columns);
+            <E::Borrow<'_> as EntityBorrow<'_>>::new_fetch(self.untyped_keys.len(), &self.columns);
 
         FetchIter::new(fetch)
     }
@@ -94,7 +94,7 @@ impl<E: Entity> Archetype<E> {
 
         debug_assert!(index < self.untyped_keys.len());
 
-        let fetch = <E::BorrowMut<'_> as BorrowEntity<'_>>::new_fetch(
+        let fetch = <E::BorrowMut<'_> as EntityBorrow<'_>>::new_fetch(
             self.untyped_keys.len(),
             &self.columns,
         );
@@ -105,7 +105,7 @@ impl<E: Entity> Archetype<E> {
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (EntityKey<E>, E::BorrowMut<'_>)> + '_ {
         // Safety: TODO
-        let fetch = <E::BorrowMut<'_> as BorrowEntity<'_>>::new_fetch(
+        let fetch = <E::BorrowMut<'_> as EntityBorrow<'_>>::new_fetch(
             self.untyped_keys.len(),
             &self.columns,
         );
@@ -119,7 +119,7 @@ impl<E: Entity> Archetype<E> {
 
     pub fn values_mut(&mut self) -> impl Iterator<Item = E::BorrowMut<'_>> + '_ {
         // Safety: TODO
-        let fetch = <E::BorrowMut<'_> as BorrowEntity<'_>>::new_fetch(
+        let fetch = <E::BorrowMut<'_> as EntityBorrow<'_>>::new_fetch(
             self.untyped_keys.len(),
             &self.columns,
         );

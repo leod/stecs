@@ -37,7 +37,7 @@ impl<E> PartialEq for EntityKey<E> {
     }
 }
 
-pub trait BorrowEntity<'f> {
+pub trait EntityBorrow<'f> {
     type Entity: Entity;
 
     type Fetch<'w>: Fetch<Item<'f> = Self> + 'w
@@ -62,7 +62,7 @@ pub trait Columns: Default {
 pub trait Entity: Sized {
     type Columns: Columns<Entity = Self>;
 
-    type Borrow<'f>: BorrowEntity<'f, Entity = Self>;
+    type Borrow<'f>: EntityBorrow<'f, Entity = Self>;
 
-    type BorrowMut<'f>: BorrowEntity<'f, Entity = Self>;
+    type BorrowMut<'f>: EntityBorrow<'f, Entity = Self>;
 }

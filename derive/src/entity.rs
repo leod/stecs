@@ -64,8 +64,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
             fn column<__stecs__C: ::stecs::Component>(
                 &self,
             )
-            ->
-            ::std::option::Option<&::std::cell::RefCell<::stecs::internal::Column<__stecs__C>>>
+            -> ::std::option::Option<&::std::cell::RefCell<::stecs::internal::Column<__stecs__C>>>
             {
                 #(
                     if ::std::any::TypeId::of::<__stecs__C>() ==
@@ -143,7 +142,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
             __stecs__phantom: ::std::marker::PhantomData<&#lifetime ()>,
         }
 
-        impl #impl_generics_with_lifetime ::stecs::entity::BorrowEntity<#lifetime>
+        impl #impl_generics_with_lifetime ::stecs::entity::EntityBorrow<#lifetime>
         for #ident_ref #ty_generics_with_lifetime #where_clause_with_lifetime {
             type Entity = #ident #ty_generics;
 
@@ -220,7 +219,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
             __stecs__phantom: ::std::marker::PhantomData<&#lifetime mut ()>,
         }
 
-        impl #impl_generics_with_lifetime ::stecs::entity::BorrowEntity<#lifetime>
+        impl #impl_generics_with_lifetime ::stecs::entity::EntityBorrow<#lifetime>
         for #ident_ref_mut #ty_generics_with_lifetime #where_clause_with_lifetime {
             type Entity = #ident #ty_generics;
 
