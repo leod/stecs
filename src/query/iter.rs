@@ -74,9 +74,7 @@ where
             }
 
             self.current_fetch_iter = self.archetype_set_iter.next().map(FetchIter::new);
-            if self.current_fetch_iter.is_none() {
-                return None;
-            }
+            self.current_fetch_iter.as_ref()?;
         }
     }
 }
@@ -171,7 +169,7 @@ where
     // This has to take an exclusive `self` reference to prevent violating
     // Rust's borrowing rules if `J` contains an exclusive borrow, since `get()`
     // could be called multiple times with the same `id`.
-    pub fn get<'b>(&'b mut self, id: S::EntityId) -> Option<J::Item<'b>> {
+    pub fn get(&mut self, id: S::EntityId) -> Option<J::Item<'_>> {
         if let Some(ignore_id) = self.ignore_id {
             if ignore_id == id {
                 // TODO: Consider panicking.

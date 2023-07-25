@@ -51,8 +51,8 @@ pub fn generics_with_new_lifetime(
 
     let mut new_params: Vec<syn::GenericParam> = Vec::new();
     new_params.push(syn::GenericParam::Lifetime(lifetime_param));
-    new_params.extend(new_generics.params.into_iter());
+    new_params.extend(new_generics.params);
 
-    new_generics.params = syn::punctuated::Punctuated::from_iter(new_params.into_iter());
+    new_generics.params = syn::punctuated::Punctuated::from_iter(new_params);
     new_generics
 }

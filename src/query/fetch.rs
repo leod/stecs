@@ -161,10 +161,7 @@ where
     S: ArchetypeSet,
 {
     fn clone(&self) -> Self {
-        Self {
-            raw_parts: self.raw_parts.clone(),
-            untyped_key_to_id: self.untyped_key_to_id.clone(),
-        }
+        *self
     }
 }
 

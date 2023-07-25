@@ -1,5 +1,3 @@
-use std::slice;
-
 #[derive(Clone, Debug)]
 pub struct Column<C>(Vec<C>);
 
@@ -57,10 +55,7 @@ pub struct ColumnRawParts<C> {
 
 impl<C> Clone for ColumnRawParts<C> {
     fn clone(&self) -> Self {
-        Self {
-            ptr: self.ptr,
-            len: self.len,
-        }
+        *self
     }
 }
 
@@ -73,10 +68,7 @@ pub struct ColumnRawPartsMut<C> {
 
 impl<C> Clone for ColumnRawPartsMut<C> {
     fn clone(&self) -> Self {
-        Self {
-            ptr: self.ptr,
-            len: self.len,
-        }
+        *self
     }
 }
 

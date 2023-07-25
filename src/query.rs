@@ -10,7 +10,7 @@ use crate::{
 };
 
 use self::{
-    fetch::{Fetch, FetchEntityId, FetchFromSet, FetchWith, FetchWithout},
+    fetch::{Fetch, FetchFromSet, FetchWith, FetchWithout},
     iter::{ArchetypeSetFetchIter, Join, JoinArchetypeSetFetchIter},
 };
 
@@ -45,7 +45,7 @@ where
     }
 }
 
-impl<'q, Q0, Q1, S> Query<S> for (Q0, Q1)
+impl<Q0, Q1, S> Query<S> for (Q0, Q1)
 where
     Q0: Query<S>,
     Q1: Query<S>,

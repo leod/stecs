@@ -6,11 +6,7 @@ use std::{
 
 use thunderdome::Arena;
 
-use crate::{
-    column::Column,
-    query::fetch::{Fetch, FetchFromSet},
-    ArchetypeSet, Component,
-};
+use crate::{column::Column, query::fetch::Fetch, Component};
 
 // TODO: PartialEq, Eq, Hash, PartialOrd, Ord.
 // https://github.com/rust-lang/rust/issues/26925
@@ -25,7 +21,7 @@ impl<E> EntityKey<E> {
 
 impl<E> Clone for EntityKey<E> {
     fn clone(&self) -> Self {
-        Self(self.0.clone(), PhantomData)
+        *self
     }
 }
 
