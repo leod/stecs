@@ -6,7 +6,11 @@ use std::{
 
 use thunderdome::Arena;
 
-use crate::{column::Column, query::fetch::FetchFromSet, ArchetypeSet, Component};
+use crate::{
+    column::Column,
+    query::fetch::{Fetch, FetchFromSet},
+    ArchetypeSet, Component,
+};
 
 // TODO: PartialEq, Eq, Hash, PartialOrd, Ord.
 // https://github.com/rust-lang/rust/issues/26925
@@ -49,19 +53,22 @@ pub trait EntityColumns: Default {
     fn remove(&mut self, index: usize) -> Self::Entity;
 }
 
-pub trait EntityRefMut<'f> {
+pub trait BorrowEntity<'f> {
     type Entity: Entity;
 
-    type Fetch<'w, S>: FetchFromSet<'w, S, Item<'f> = Self>
+    type Fetch<'w>: Fetch<'w, Item<'f> = Self>
     where
-        S: ArchetypeSet,
         'w: 'f;
 
     fn to_entity(&'f self) -> Self::Entity;
+
+    fn new_fetch<'w>(columns: &'w <Self::Entity as Entity>::Columns) -> Self::Fetch<'w>
+    where
+        'w: 'f;
 }
 
 pub trait Entity: Sized {
-    // type RefMut<'f>: EntityRefMut<'f, Entity = Self>;
+    type BorrowMut<'f>: BorrowEntity<'f, Entity = Self>;
 
     type Columns: EntityColumns<Entity = Self>;
 }
@@ -108,9 +115,16 @@ impl<E: Entity> Archetype<E> {
         Some(self.columns.remove(index))
     }
 
-    /*pub fn get_mut(&mut self, key: EntityKey<E>) -> E::RefMut<'_> {
-        let fetch = Fetch
-    }*/
+    pub fn get_mut(&mut self, key: EntityKey<E>) -> Option<E::BorrowMut<'_>> {
+        let index = *self.indices.get(key.0)?;
+
+        debug_assert!(index < self.untyped_keys.len());
+
+        let fetch = <E::BorrowMut<'_> as BorrowEntity<'_>>::new_fetch(&self.columns);
+
+        // Safety: TODO
+        Some(unsafe { fetch.get(index) })
+    }
 }
 
 impl<E: Entity> Default for Archetype<E> {

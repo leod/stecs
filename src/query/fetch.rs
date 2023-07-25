@@ -5,6 +5,8 @@ use crate::{
     ArchetypeSet, Column, Component, Entity, EntityColumns, InArchetypeSet,
 };
 
+// TODO: 'w maybe not needed.
+// TODO: unsafe maybe not needed.
 pub unsafe trait Fetch<'w>: Copy + 'w {
     type Item<'f>
     where
@@ -31,6 +33,7 @@ pub unsafe trait Fetch<'w>: Copy + 'w {
 }
 
 // TODO: 'w maybe not needed.
+// TODO: unsafe maybe not needed.
 pub unsafe trait FetchFromSet<'w, S: ArchetypeSet>: Fetch<'w> {
     fn new<E: InArchetypeSet<S>>(
         untyped_keys: &'w Column<thunderdome::Index>,

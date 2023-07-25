@@ -1,11 +1,13 @@
 use std::{
     any::{type_name, Any, TypeId},
     cell::RefCell,
+    marker::PhantomData,
 };
 
 use stecs::{
-    internal::BorrowChecker,
-    query::fetch::{FetchEntityId, FetchFromSet},
+    archetype::BorrowEntity,
+    internal::{BorrowChecker, ColumnRawParts, ColumnRawPartsMut},
+    query::fetch::{Fetch, FetchEntityId, FetchFromSet},
     Archetype, ArchetypeSet, ArchetypeSetFetch, Column, Component, Entity, EntityColumns, EntityId,
     EntityKey, InArchetypeSet, Query,
 };
@@ -64,8 +66,73 @@ impl EntityColumns for PlayerColumns {
     }
 }
 
+struct PlayerRefMut<'f> {
+    pos: &'f mut Position,
+    vel: &'f mut Velocity,
+    col: &'f mut Color,
+}
+
+#[derive(Clone, Copy)]
+struct PlayerRefMutFetch<'w> {
+    pos: ColumnRawPartsMut<Position>,
+    vel: ColumnRawPartsMut<Velocity>,
+    col: ColumnRawPartsMut<Color>,
+    _phantom: PhantomData<&'w ()>,
+}
+
+unsafe impl<'w> Fetch<'w> for PlayerRefMutFetch<'w> {
+    type Item<'f> = PlayerRefMut<'f>
+    where
+        'w: 'f;
+
+    fn len(&self) -> usize {
+        self.pos.len
+    }
+
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+    where
+        'w: 'f,
+    {
+        assert!(index < self.len());
+
+        PlayerRefMut {
+            pos: &mut *unsafe { self.pos.ptr.add(index) },
+            vel: &mut *unsafe { self.vel.ptr.add(index) },
+            col: &mut *unsafe { self.col.ptr.add(index) },
+        }
+    }
+}
+
+impl<'f> BorrowEntity<'f> for PlayerRefMut<'f> {
+    type Entity = Player;
+
+    type Fetch<'w> = PlayerRefMutFetch<'w> where 'w: 'f;
+
+    fn to_entity(&'f self) -> Self::Entity {
+        Player {
+            pos: *self.pos,
+            vel: *self.vel,
+            col: *self.col,
+        }
+    }
+
+    fn new_fetch<'w>(columns: &'w <Self::Entity as Entity>::Columns) -> Self::Fetch<'w>
+    where
+        'w: 'f,
+    {
+        PlayerRefMutFetch {
+            pos: columns.pos.borrow_mut().as_raw_parts_mut(),
+            vel: columns.vel.borrow_mut().as_raw_parts_mut(),
+            col: columns.col.borrow_mut().as_raw_parts_mut(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
 impl Entity for Player {
     type Columns = PlayerColumns;
+
+    type BorrowMut<'f> = PlayerRefMut<'f>;
 }
 
 #[derive(Clone, Debug)]

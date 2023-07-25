@@ -81,7 +81,3 @@ impl<C> Clone for ColumnRawPartsMut<C> {
 }
 
 impl<C> Copy for ColumnRawPartsMut<C> {}
-
-// TODO: Need to allow multiple borrows by checking that entity IDs do not
-// overlap.
-pub type ColumnIter<'a, C> = slice::Iter<'a, C>;
