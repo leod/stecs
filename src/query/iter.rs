@@ -45,23 +45,21 @@ where
     }
 }
 
-pub struct ArchetypeSetFetchIter<'w, 'f, F, S>
+pub struct ArchetypeSetFetchIter<'w, F, S>
 where
     F: FetchFromSet<S>,
     S: ArchetypeSet + 'w,
-    'w: 'f,
 {
     archetype_set_iter: <S::Fetch<'w, F> as ArchetypeSetFetch<S>>::Iter,
-    current_fetch_iter: Option<FetchIter<'f, F, S>>,
+    current_fetch_iter: Option<FetchIter<'w, F, S>>,
 }
 
-impl<'w, 'f, F, S> Iterator for ArchetypeSetFetchIter<'w, 'f, F, S>
+impl<'w, F, S> Iterator for ArchetypeSetFetchIter<'w, F, S>
 where
     F: FetchFromSet<S> + 'w,
     S: ArchetypeSet,
-    'w: 'f,
 {
-    type Item = <F as Fetch>::Item<'f>;
+    type Item = <F as Fetch>::Item<'w>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -79,7 +77,7 @@ where
     }
 }
 
-impl<'w, 'f, F, S> ArchetypeSetFetchIter<'w, 'f, F, S>
+impl<'w, F, S> ArchetypeSetFetchIter<'w, F, S>
 where
     F: FetchFromSet<S>,
     S: ArchetypeSet,
@@ -96,13 +94,13 @@ where
     }
 }
 
-pub struct Join<'a, J, S>
+pub struct Join<'w, J, S>
 where
     J: FetchFromSet<S>,
-    S: ArchetypeSet + 'a,
+    S: ArchetypeSet + 'w,
 {
     pub(crate) ignore_id: Option<S::EntityId>,
-    pub(crate) fetch: S::Fetch<'a, J>,
+    pub(crate) fetch: S::Fetch<'w, J>,
 }
 
 pub struct JoinArchetypeSetFetchIter<'w, F, J, S>
@@ -111,7 +109,7 @@ where
     J: FetchFromSet<S>,
     S: ArchetypeSet,
 {
-    pub(crate) query_iter: ArchetypeSetFetchIter<'w, 'w, F, S>,
+    pub(crate) query_iter: ArchetypeSetFetchIter<'w, F, S>,
     pub(crate) join_fetch: S::Fetch<'w, J>,
 }
 
@@ -134,33 +132,6 @@ where
     }
 }
 
-pub struct JoinIter<'a, 'b, J, S, I>
-where
-    J: FetchFromSet<S>,
-    S: ArchetypeSet + 'a,
-    'a: 'b,
-{
-    join: &'b Join<'a, J, S>,
-    iter: I,
-}
-
-impl<'a, 'b, J, S, I> Iterator for JoinIter<'a, 'b, J, S, I>
-where
-    J: FetchFromSet<S>,
-    S: ArchetypeSet + 'a,
-    I: Iterator<Item = S::EntityId>,
-    'a: 'b,
-{
-    type Item = J::Item<'b>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let id = self.iter.next()?;
-
-        // Safety: TODO
-        unsafe { self.join.fetch.get(id) }
-    }
-}
-
 impl<'a, J, S> Join<'a, J, S>
 where
     J: FetchFromSet<S>,
@@ -178,16 +149,5 @@ where
         }
 
         unsafe { self.fetch.get(id) }
-    }
-
-    // This has to take an exclusive `self` reference for the same reason as
-    // `get()`.
-    // FIXME: This does not prevent aliasing.
-    pub fn iter<'b, I>(&'b mut self, iter: I) -> JoinIter<'a, 'b, J, S, I>
-    where
-        'a: 'b,
-        I: Iterator<Item = S::EntityId>,
-    {
-        JoinIter { join: self, iter }
     }
 }

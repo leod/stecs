@@ -351,18 +351,12 @@ fn main() {
         let Some(target_pos) = join.get(target.0) else {
             continue;
         };
+        /*let Some(target_pos_2) = join.get(target.0) else {
+            continue;
+        };*/
 
         println!("{:?} targeting {:?} @ {:?}", id, target, target_pos.0);
-
-        // FIXME
-        let violation: Vec<&mut Position> = join.iter([target.0, target.0].into_iter()).collect();
-
-        println!(
-            "{} {:?} {:?}",
-            violation.len(),
-            violation[0] as *const _,
-            violation[1] as *const _
-        );
+        //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
     }
 
     /*

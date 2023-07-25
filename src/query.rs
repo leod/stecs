@@ -89,8 +89,8 @@ where
     }
 }
 
-pub struct QueryResult<'a, Q, S> {
-    archetype_set: &'a mut S,
+pub struct QueryResult<'w, Q, S> {
+    archetype_set: &'w mut S,
     _phantom: PhantomData<Q>,
 }
 
@@ -101,16 +101,16 @@ where
 {
     type Item = <Q::Fetch<'w> as Fetch>::Item<'w>;
 
-    type IntoIter = ArchetypeSetFetchIter<'w, 'w, Q::Fetch<'w>, S>;
+    type IntoIter = ArchetypeSetFetchIter<'w, Q::Fetch<'w>, S>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
         Q::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
 
-        // Safety: A `QueryResult` exclusively borrows the `archetype_set: &'a
+        // Safety: A `QueryResult` exclusively borrows the `archetype_set: &'w
         // mut S`. Also, `into_iter` consumes the `QueryResult` while
-        // maintaining the lifetime `'a`. Thus, it is not possible to construct
+        // maintaining the lifetime `'w`. Thus, it is not possible to construct
         // references to entities in `archetype_set` outside of the returned
         // iterator, thereby satisfying the requirement of `FetchIter`.
         unsafe { ArchetypeSetFetchIter::new(self.archetype_set) }
@@ -154,8 +154,8 @@ where
     }
 }
 
-pub struct JoinQueryResult<'a, Q, J, S> {
-    archetype_set: &'a mut S,
+pub struct JoinQueryResult<'w, Q, J, S> {
+    archetype_set: &'w mut S,
     _phantom: PhantomData<(Q, J)>,
 }
 
