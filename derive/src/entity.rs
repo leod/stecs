@@ -38,8 +38,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
 
     let set_param: syn::TypeParam = syn::parse_str("__stecs__S: ::stecs::ArchetypeSet").unwrap();
     let generics_with_set = generics_with_new_type_param(&input.generics, &set_param);
-    let (impl_generics_with_set, ty_generics_with_set, where_clause_with_set) =
-        generics_with_set.split_for_impl();
+    let (impl_generics_with_set, _, _) = generics_with_set.split_for_impl();
 
     Ok(quote! {
         // Columns
@@ -100,7 +99,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
 
         // RefFetch
 
-        #[allow(unused)]
+        #[allow(unused, non_snake_case)]
         struct #ident_ref_fetch #impl_generics #where_clause {
             __stecs__len: usize,
             #(
@@ -172,7 +171,8 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
 
         // Ref
 
-        #[allow(unused)]
+        // FIXME: This should be a tuple struct for tuple structs.
+        #[allow(unused, non_snake_case)]
         struct #ident_ref #impl_generics_with_lifetime #where_clause_with_lifetime {
             #(
                 #field_idents: &#lifetime #field_tys,
@@ -208,7 +208,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
 
         // RefMutFetch
 
-        #[allow(unused)]
+        #[allow(unused, non_snake_case)]
         struct #ident_ref_mut_fetch #impl_generics #where_clause {
             __stecs__len: usize,
             #(
@@ -280,7 +280,8 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
 
         // RefMut
 
-        #[allow(unused)]
+        // FIXME: This should be a tuple struct for tuple structs.
+        #[allow(unused, non_snake_case)]
         struct #ident_ref_mut #impl_generics_with_lifetime #where_clause_with_lifetime {
             #(
                 #field_idents: &#lifetime mut #field_tys,

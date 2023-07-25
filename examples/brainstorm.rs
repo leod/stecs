@@ -2,7 +2,6 @@ use std::any::type_name;
 
 use stecs::{
     archetype_set::{ArchetypeSetFetch, InArchetypeSet},
-    internal::BorrowChecker,
     query::fetch::{FetchAnyEntityId, FetchFromSet},
     AnyEntityId, Archetype, ArchetypeSet, Entity, EntityId, EntityRef, EntityRefMut, Query,
 };

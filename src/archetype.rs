@@ -190,7 +190,7 @@ impl<E: Entity> ArchetypeSet for Archetype<E> {
     where
         F: FetchFromSet<Self> + 'w,
     {
-        todo!()
+        SingletonFetch(&self.indices, F::new::<E>(&self.ids, &self.columns))
     }
 }
 
