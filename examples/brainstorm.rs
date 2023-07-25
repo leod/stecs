@@ -4,7 +4,7 @@ use stecs::{
     archetype_set::{ArchetypeSetFetch, InArchetypeSet},
     internal::BorrowChecker,
     query::fetch::{FetchEntityId, FetchFromSet},
-    Archetype, ArchetypeSet, Entity, EntityId, EntityKey, EntityRef, EntityRefMut, Query,
+    AnyEntityId, Archetype, ArchetypeSet, Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
 use thunderdome::Arena;
 
@@ -32,7 +32,7 @@ struct Boier<T, S> {
 }
 
 #[derive(Clone, Debug)]
-struct Target(EntityId<World>);
+struct Target(AnyEntityId<World>);
 
 #[derive(Entity, Clone)]
 struct Enemy {
@@ -56,8 +56,8 @@ struct World {
 // generated
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum WorldEntityId {
-    Player(EntityKey<Player>),
-    Enemy(EntityKey<Enemy>),
+    Player(EntityId<Player>),
+    Enemy(EntityId<Enemy>),
 }
 
 enum WorldEntity {
@@ -91,7 +91,7 @@ where
 
     type Iter = std::iter::Flatten<std::array::IntoIter<Option<F>, 2>>;
 
-    unsafe fn get<'b>(&self, id: EntityId<World>) -> Option<F::Item<'b>> {
+    unsafe fn get<'b>(&self, id: AnyEntityId<World>) -> Option<F::Item<'b>> {
         match id {
             WorldEntityId::Player(key) => self
                 .players
@@ -122,7 +122,7 @@ impl stecs::ArchetypeSet for World {
     type Fetch<'w, F: FetchFromSet<Self> + 'w> = WorldFetch<'w, F>;
 
     fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::AnyEntityId {
-        match entity.into_entity() {
+        match entity.into_any_entity() {
             WorldEntity::Player(entity) => WorldEntityId::Player(self.players.spawn(entity)),
             WorldEntity::Enemy(entity) => WorldEntityId::Enemy(self.enemies.spawn(entity)),
         }
@@ -139,9 +139,9 @@ impl stecs::ArchetypeSet for World {
     where
         F: FetchFromSet<Self> + 'w,
     {
-        let players = F::new::<Player>(self.players.untyped_keys(), self.players.columns())
+        let players = F::new::<Player>(self.players.ids(), self.players.columns())
             .map(|fetch| (self.players.indices(), fetch));
-        let enemies = F::new::<Enemy>(self.enemies.untyped_keys(), self.enemies.columns())
+        let enemies = F::new::<Enemy>(self.enemies.ids(), self.enemies.columns())
             .map(|fetch| (self.enemies.indices(), fetch));
 
         WorldFetch { players, enemies }
@@ -149,29 +149,29 @@ impl stecs::ArchetypeSet for World {
 }
 
 impl InArchetypeSet<World> for Player {
-    fn untyped_key_to_key(key: thunderdome::Index) -> EntityKey<Self> {
-        EntityKey::new_unchecked(key)
+    fn entity_id(key: thunderdome::Index) -> EntityId<Self> {
+        EntityId::new_unchecked(key)
     }
 
-    fn key_to_id(key: EntityKey<Self>) -> EntityId<World> {
-        EntityId::<World>::Player(key)
+    fn any_entity_id(key: EntityId<Self>) -> AnyEntityId<World> {
+        AnyEntityId::<World>::Player(key)
     }
 
-    fn into_entity(self) -> <World as ArchetypeSet>::AnyEntity {
+    fn into_any_entity(self) -> <World as ArchetypeSet>::AnyEntity {
         WorldEntity::Player(self)
     }
 }
 
 impl InArchetypeSet<World> for Enemy {
-    fn untyped_key_to_key(key: thunderdome::Index) -> EntityKey<Self> {
-        EntityKey::new_unchecked(key)
+    fn entity_id(key: thunderdome::Index) -> EntityId<Self> {
+        EntityId::new_unchecked(key)
     }
 
-    fn key_to_id(key: EntityKey<Self>) -> EntityId<World> {
-        EntityId::<World>::Enemy(key)
+    fn any_entity_id(key: EntityId<Self>) -> AnyEntityId<World> {
+        AnyEntityId::<World>::Enemy(key)
     }
 
-    fn into_entity(self) -> <World as ArchetypeSet>::AnyEntity {
+    fn into_any_entity(self) -> <World as ArchetypeSet>::AnyEntity {
         WorldEntity::Enemy(self)
     }
 }
@@ -245,12 +245,12 @@ fn main() {
     struct Link {}
 
     struct RopeNode {
-        next: Option<(EntityId<World>, f32)>,
+        next: Option<(AnyEntityId<World>, f32)>,
     }
 
     struct RopeNodePair {
-        a: EntityId<World>,
-        b: EntityId<World>,
+        a: AnyEntityId<World>,
+        b: AnyEntityId<World>,
     }
 
     /*
@@ -277,13 +277,13 @@ fn main() {
     }
 
     println!("EntityId, Position");
-    for (id, _) in world.query::<(EntityId<World>, &Position)>() {
+    for (id, _) in world.query::<(AnyEntityId<World>, &Position)>() {
         dbg!(id);
     }
 
     println!("EntityId, Position, With<Target>");
     for (id, pos) in world
-        .query::<(EntityId<World>, &Position)>()
+        .query::<(AnyEntityId<World>, &Position)>()
         .with::<&Target>()
     {
         dbg!(id, pos.0);
@@ -291,20 +291,20 @@ fn main() {
 
     println!("EntityId, Position, Without<Target>");
     for (id, pos) in world
-        .query::<(EntityId<World>, &Position)>()
+        .query::<(AnyEntityId<World>, &Position)>()
         .without::<&Target>()
     {
         dbg!(id, pos.0);
     }
 
     println!("EntityId, Target");
-    for (id, target) in world.query::<(EntityId<World>, &Target)>() {
+    for (id, target) in world.query::<(AnyEntityId<World>, &Target)>() {
         println!("{:?} targeting {:?}", id, target);
     }
 
     println!("EntityId, Target, nest with Position");
     for ((id, target), mut nest) in world
-        .query::<(EntityId<World>, &Target)>()
+        .query::<(AnyEntityId<World>, &Target)>()
         .nest::<&mut Position>()
     {
         let Some(target_pos) = nest.get(target.0) else {
@@ -321,7 +321,7 @@ fn main() {
     println!("EntityId, Target, nest with Position as EntityRefMut");
 
     for ((id, target), mut nest) in world
-        .query::<(EntityId<World>, &Target)>()
+        .query::<(AnyEntityId<World>, &Target)>()
         .nest::<EntityRefMut<Player>>()
     {
         let Some(target_pos) = nest.get(target.0) else {

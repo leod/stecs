@@ -5,7 +5,7 @@ use crate::{
         fetch::{Fetch, FetchFromSet},
         QueryResult,
     },
-    Entity, EntityKey, Query,
+    Entity, EntityId, Query,
 };
 
 pub trait ArchetypeSetFetch<S: ArchetypeSet> {
@@ -32,22 +32,22 @@ pub trait ArchetypeSet: Default + Sized {
 
     fn despawn(&mut self, id: Self::AnyEntityId) -> Option<Self::AnyEntity>;
 
+    fn query<Q: Query<Self>>(&mut self) -> QueryResult<Q, Self> {
+        QueryResult::new(self)
+    }
+
     #[doc(hidden)]
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where
         F: FetchFromSet<Self> + 'w;
-
-    fn query<Q: Query<Self>>(&mut self) -> QueryResult<Q, Self> {
-        QueryResult::new(self)
-    }
 }
 
-pub type EntityId<S> = <S as ArchetypeSet>::AnyEntityId;
+pub type AnyEntityId<S> = <S as ArchetypeSet>::AnyEntityId;
 
 pub trait InArchetypeSet<S: ArchetypeSet>: Entity {
-    fn untyped_key_to_key(key: thunderdome::Index) -> EntityKey<Self>;
+    fn entity_id(id: thunderdome::Index) -> EntityId<Self>;
 
-    fn key_to_id(key: EntityKey<Self>) -> S::AnyEntityId;
+    fn any_entity_id(id: EntityId<Self>) -> S::AnyEntityId;
 
-    fn into_entity(self) -> S::AnyEntity;
+    fn into_any_entity(self) -> S::AnyEntity;
 }

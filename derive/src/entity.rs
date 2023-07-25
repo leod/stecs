@@ -151,7 +151,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
             __stecs__S: ::stecs::ArchetypeSet,
         {
             fn new<E: ::stecs::archetype_set::InArchetypeSet<__stecs__S>>(
-                untyped_keys: &::stecs::internal::Column<thunderdome::Index>,
+                ids: &::stecs::internal::Column<thunderdome::Index>,
                 columns: &E::Columns,
             ) -> ::std::option::Option<Self>
             {
@@ -162,7 +162,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
 
                     Some(
                         <#ident_ref #ty_generics as ::stecs::entity::EntityBorrow<'_>>
-                            ::new_fetch(untyped_keys.len(), columns),
+                            ::new_fetch(ids.len(), columns),
                     )
                 } else {
                     None
@@ -259,7 +259,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
             __stecs__S: ::stecs::ArchetypeSet,
         {
             fn new<E: ::stecs::archetype_set::InArchetypeSet<__stecs__S>>(
-                untyped_keys: &::stecs::internal::Column<thunderdome::Index>,
+                ids: &::stecs::internal::Column<thunderdome::Index>,
                 columns: &E::Columns,
             ) -> ::std::option::Option<Self>
             {
@@ -270,7 +270,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
 
                     Some(
                         <#ident_ref_mut #ty_generics as ::stecs::entity::EntityBorrow<'_>>
-                            ::new_fetch(untyped_keys.len(), columns),
+                            ::new_fetch(ids.len(), columns),
                     )
                 } else {
                     None

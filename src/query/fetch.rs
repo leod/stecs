@@ -43,7 +43,7 @@ pub unsafe trait Fetch: Copy {
 // TODO: unsafe maybe not needed.
 pub unsafe trait FetchFromSet<S: ArchetypeSet>: Fetch {
     fn new<E: InArchetypeSet<S>>(
-        untyped_keys: &Column<thunderdome::Index>,
+        ids: &Column<thunderdome::Index>,
         columns: &E::Columns,
     ) -> Option<Self>;
 }
@@ -154,11 +154,11 @@ where
     S: ArchetypeSet,
 {
     fn new<E: InArchetypeSet<S>>(
-        untypes_keys: &Column<thunderdome::Index>,
+        ids: &Column<thunderdome::Index>,
         columns: &E::Columns,
     ) -> Option<Self> {
-        let f0 = F0::new::<E>(untypes_keys, columns)?;
-        let f1 = F1::new::<E>(untypes_keys, columns)?;
+        let f0 = F0::new::<E>(ids, columns)?;
+        let f1 = F1::new::<E>(ids, columns)?;
 
         assert_eq!(f0.len(), f1.len());
 
@@ -202,12 +202,12 @@ where
     S: ArchetypeSet,
 {
     fn new<E: InArchetypeSet<S>>(
-        untyped_keys: &Column<thunderdome::Index>,
+        ids: &Column<thunderdome::Index>,
         columns: &E::Columns,
     ) -> Option<Self> {
-        let fetch = F::new::<E>(untyped_keys, columns)?;
+        let fetch = F::new::<E>(ids, columns)?;
 
-        R::new::<E>(untyped_keys, columns)?;
+        R::new::<E>(ids, columns)?;
 
         Some(Self {
             fetch,
@@ -252,12 +252,12 @@ where
     S: ArchetypeSet,
 {
     fn new<E: InArchetypeSet<S>>(
-        untyped_keys: &Column<thunderdome::Index>,
+        ids: &Column<thunderdome::Index>,
         columns: &E::Columns,
     ) -> Option<Self> {
-        let fetch = F::new::<E>(untyped_keys, columns)?;
+        let fetch = F::new::<E>(ids, columns)?;
 
-        if R::new::<E>(untyped_keys, columns).is_some() {
+        if R::new::<E>(ids, columns).is_some() {
             return None;
         }
 
@@ -273,7 +273,7 @@ where
     S: ArchetypeSet,
 {
     raw_parts: ColumnRawParts<thunderdome::Index>,
-    untyped_key_to_id: fn(thunderdome::Index) -> S::AnyEntityId,
+    id_to_any_entity_id: fn(thunderdome::Index) -> S::AnyEntityId,
 }
 
 impl<S> Clone for FetchEntityId<S>
@@ -303,9 +303,9 @@ where
     {
         assert!(index < <Self as Fetch>::len(self));
 
-        let untyped_key = unsafe { *self.raw_parts.ptr.add(index) };
+        let id = unsafe { *self.raw_parts.ptr.add(index) };
 
-        (self.untyped_key_to_id)(untyped_key)
+        (self.id_to_any_entity_id)(id)
     }
 
     fn check_borrows(checker: &mut BorrowChecker) {}
@@ -316,12 +316,12 @@ where
     S: ArchetypeSet,
 {
     fn new<E: InArchetypeSet<S>>(
-        untyped_keys: &Column<thunderdome::Index>,
+        ids: &Column<thunderdome::Index>,
         _: &E::Columns,
     ) -> Option<Self> {
         Some(Self {
-            raw_parts: untyped_keys.as_raw_parts(),
-            untyped_key_to_id: |key| E::key_to_id(E::untyped_key_to_key(key)),
+            raw_parts: ids.as_raw_parts(),
+            id_to_any_entity_id: |id| E::any_entity_id(E::entity_id(id)),
         })
     }
 }

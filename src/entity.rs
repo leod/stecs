@@ -9,30 +9,30 @@ use crate::{column::Column, query::fetch::Fetch, Component};
 
 // TODO: Eq, Hash, PartialOrd, Ord.
 // https://github.com/rust-lang/rust/issues/26925
-pub struct EntityKey<E>(pub thunderdome::Index, PhantomData<E>);
+pub struct EntityId<E>(pub thunderdome::Index, PhantomData<E>);
 
-impl<E> EntityKey<E> {
+impl<E> EntityId<E> {
     #[doc(hidden)]
-    pub fn new_unchecked(untyped_key: thunderdome::Index) -> Self {
-        Self(untyped_key, PhantomData)
+    pub fn new_unchecked(id: thunderdome::Index) -> Self {
+        Self(id, PhantomData)
     }
 }
 
-impl<E> Clone for EntityKey<E> {
+impl<E> Clone for EntityId<E> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<E> Copy for EntityKey<E> {}
+impl<E> Copy for EntityId<E> {}
 
-impl<E> Debug for EntityKey<E> {
+impl<E> Debug for EntityId<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("EntityKey").field(&self.0).finish()
+        f.debug_tuple("EntityId").field(&self.0).finish()
     }
 }
 
-impl<E> PartialEq for EntityKey<E> {
+impl<E> PartialEq for EntityId<E> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
