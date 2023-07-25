@@ -8,13 +8,13 @@ use super::fetch::{Fetch, FetchFromSet};
 // the query does not specify borrows that violate Rust's borrowing rules. Also,
 // do not allow constructing references to the entity at which the `FetchIter`
 // currently points that would violate Rust's borrowing rules.
-struct FetchIter<'w, 'f, F, S> {
+struct FetchIter<'f, F, S> {
     i: usize,
     fetch: F,
-    _phantom: PhantomData<&'w &'f S>,
+    _phantom: PhantomData<&'f S>,
 }
 
-impl<'w, 'f, F, S> FetchIter<'w, 'f, F, S> {
+impl<'f, F, S> FetchIter<'f, F, S> {
     pub fn new(fetch: F) -> Self {
         Self {
             i: 0,
@@ -24,11 +24,10 @@ impl<'w, 'f, F, S> FetchIter<'w, 'f, F, S> {
     }
 }
 
-impl<'w, 'f, F, S> Iterator for FetchIter<'w, 'f, F, S>
+impl<'f, F, S> Iterator for FetchIter<'f, F, S>
 where
-    F: FetchFromSet<S> + 'w,
+    F: FetchFromSet<S> + 'f,
     S: ArchetypeSet,
-    'w: 'f,
 {
     type Item = F::Item<'f>;
 
@@ -49,11 +48,11 @@ where
 pub struct ArchetypeSetFetchIter<'w, 'f, F, S>
 where
     F: FetchFromSet<S>,
-    S: ArchetypeSet,
+    S: ArchetypeSet + 'w,
     'w: 'f,
 {
-    archetype_set_iter: <S::Fetch<'w, F> as ArchetypeSetFetch<'w, S>>::Iter,
-    current_fetch_iter: Option<FetchIter<'w, 'f, F, S>>,
+    archetype_set_iter: <S::Fetch<'w, F> as ArchetypeSetFetch<S>>::Iter,
+    current_fetch_iter: Option<FetchIter<'f, F, S>>,
 }
 
 impl<'w, 'f, F, S> Iterator for ArchetypeSetFetchIter<'w, 'f, F, S>

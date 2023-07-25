@@ -8,7 +8,7 @@ use crate::{
     Entity, EntityKey, Query,
 };
 
-pub trait ArchetypeSetFetch<'w, S: ArchetypeSet> {
+pub trait ArchetypeSetFetch<S: ArchetypeSet> {
     type Fetch: FetchFromSet<S>;
     type Iter: Iterator<Item = Self::Fetch>;
 
@@ -22,7 +22,7 @@ pub trait ArchetypeSet: Default + Sized {
 
     type Entity;
 
-    type Fetch<'w, F: FetchFromSet<Self>>: ArchetypeSetFetch<'w, Self, Fetch = F> + Clone
+    type Fetch<'w, F: FetchFromSet<Self>>: ArchetypeSetFetch<Self, Fetch = F> + Clone
     where
         Self: 'w;
 

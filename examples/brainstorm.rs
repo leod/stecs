@@ -125,7 +125,7 @@ struct WorldFetch<'a, F> {
     enemies: Option<(&'a Arena<usize>, F)>,
 }
 
-impl<'a, F> ArchetypeSetFetch<'a, World> for WorldFetch<'a, F>
+impl<'a, F> ArchetypeSetFetch<World> for WorldFetch<'a, F>
 where
     F: FetchFromSet<World>,
 {
