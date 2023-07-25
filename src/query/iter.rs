@@ -47,7 +47,7 @@ where
 
 pub struct ArchetypeSetFetchIter<'w, F, S>
 where
-    F: FetchFromSet<S>,
+    F: FetchFromSet<S> + 'w,
     S: ArchetypeSet + 'w,
 {
     archetype_set_iter: <S::Fetch<'w, F> as ArchetypeSetFetch<S>>::Iter,
@@ -96,7 +96,7 @@ where
 
 pub struct Join<'w, J, S>
 where
-    J: FetchFromSet<S>,
+    J: FetchFromSet<S> + 'w,
     S: ArchetypeSet + 'w,
 {
     pub(crate) ignore_id: Option<S::EntityId>,
@@ -106,7 +106,7 @@ where
 pub struct JoinArchetypeSetFetchIter<'w, F, J, S>
 where
     F: FetchFromSet<S>,
-    J: FetchFromSet<S>,
+    J: FetchFromSet<S> + 'w,
     S: ArchetypeSet,
 {
     pub(crate) query_iter: ArchetypeSetFetchIter<'w, F, S>,
@@ -116,7 +116,7 @@ where
 impl<'w, F, J, S> Iterator for JoinArchetypeSetFetchIter<'w, F, J, S>
 where
     F: FetchFromSet<S> + 'w,
-    J: FetchFromSet<S>,
+    J: FetchFromSet<S> + 'w,
     S: ArchetypeSet,
 {
     type Item = (<F as Fetch>::Item<'w>, Join<'w, J, S>);

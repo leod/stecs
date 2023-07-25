@@ -162,7 +162,7 @@ impl stecs::ArchetypeSet for World {
 
     type Entity = WorldEntity;
 
-    type Fetch<'w, F: FetchFromSet<Self>> = WorldFetch<'w, F>;
+    type Fetch<'w, F: FetchFromSet<Self> + 'w> = WorldFetch<'w, F>;
 
     fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::EntityId {
         match entity.into_entity() {
@@ -180,7 +180,7 @@ impl stecs::ArchetypeSet for World {
 
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where
-        F: FetchFromSet<Self>,
+        F: FetchFromSet<Self> + 'w,
     {
         let players = F::new::<Player>(self.players.untyped_keys(), self.players.columns())
             .map(|fetch| (self.players.indices(), fetch));

@@ -12,7 +12,9 @@ pub trait ArchetypeSetFetch<S: ArchetypeSet> {
     type Fetch: FetchFromSet<S>;
     type Iter: Iterator<Item = Self::Fetch>;
 
-    unsafe fn get<'b>(&self, id: S::EntityId) -> Option<<Self::Fetch as Fetch>::Item<'b>>;
+    unsafe fn get<'f>(&self, id: S::EntityId) -> Option<<Self::Fetch as Fetch>::Item<'f>>
+    where
+        Self: 'f;
 
     fn iter(&mut self) -> Self::Iter;
 }
@@ -22,7 +24,7 @@ pub trait ArchetypeSet: Default + Sized {
 
     type Entity;
 
-    type Fetch<'w, F: FetchFromSet<Self>>: ArchetypeSetFetch<Self, Fetch = F> + Clone
+    type Fetch<'w, F: FetchFromSet<Self> + 'w>: ArchetypeSetFetch<Self, Fetch = F> + Clone + 'w
     where
         Self: 'w;
 
@@ -31,9 +33,9 @@ pub trait ArchetypeSet: Default + Sized {
     fn despawn(&mut self, id: Self::EntityId) -> Option<Self::Entity>;
 
     #[doc(hidden)]
-    fn fetch<F>(&self) -> Self::Fetch<'_, F>
+    fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where
-        F: FetchFromSet<Self>;
+        F: FetchFromSet<Self> + 'w;
 
     fn query<Q: Query<Self>>(&mut self) -> QueryResult<Q, Self> {
         QueryResult::new(self)
