@@ -377,7 +377,7 @@ fn main() {
         *enemy.pos = Position(enemy.pos.0 + 100.0);
     }
 
-    for (key, enemy) in world.enemies.iter() {
+    for (key, enemy) in world.query::<(WorldEntityId, EntityRef<Enemy>)>() {
         dbg!(key, enemy.target.0, enemy.pos.0);
     }
 

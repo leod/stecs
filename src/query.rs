@@ -52,6 +52,7 @@ where
     for<'w> <E::Borrow<'w> as EntityBorrow<'w>>::Fetch<'w>: FetchFromSet<S>,
     S: ArchetypeSet,
 {
+    // FIXME: I'm really not sure if this makes sense at all.
     type Fetch<'w> = <E::Borrow<'w> as EntityBorrow<'w>>::Fetch<'w>;
 
     fn check_borrows(checker: &mut BorrowChecker) {

@@ -2,7 +2,7 @@ use std::{
     cell::RefCell,
     fmt::{self, Debug},
     marker::PhantomData,
-    ops::Deref,
+    ops::{Deref, DerefMut},
 };
 
 use crate::{column::Column, query::fetch::Fetch, Component};
@@ -85,5 +85,11 @@ impl<'f, E: Entity> Deref for EntityRefMut<'f, E> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<'f, E: Entity> DerefMut for EntityRefMut<'f, E> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }

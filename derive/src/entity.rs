@@ -139,6 +139,31 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
             }
         }
 
+        unsafe impl #impl_generics_with_set ::stecs::query::fetch::FetchFromSet<__stecs__S>
+        for #ident_ref_fetch #ty_generics
+        where
+            __stecs__S: ::stecs::ArchetypeSet,
+        {
+            fn new<E: ::stecs::archetype_set::InArchetypeSet<__stecs__S>>(
+                untyped_keys: &::stecs::internal::Column<thunderdome::Index>,
+                columns: &E::Columns,
+            ) -> ::std::option::Option<Self>
+            {
+                if ::std::any::TypeId::of::<E>() ==
+                       ::std::any::TypeId::of::<#ident #ty_generics>() {
+                    let columns: &#ident_columns #ty_generics =
+                        (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
+
+                    Some(
+                        <#ident_ref #ty_generics as ::stecs::entity::EntityBorrow<'_>>
+                            ::new_fetch(untyped_keys.len(), columns),
+                    )
+                } else {
+                    None
+                }
+            }
+        }
+
         // Ref
 
         #[allow(unused)]
