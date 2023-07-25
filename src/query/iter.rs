@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{archetype_set::ArchetypeSetFetch, ArchetypeSet};
 
-use super::fetch::{Fetch, FetchFromSet};
+use super::fetch::Fetch;
 
 // Safety: Before constructing a `FetchIter`, use `BorrowChecker` to ensure that
 // the query does not specify borrows that violate Rust's borrowing rules. Also,
@@ -46,7 +46,7 @@ where
 
 pub struct ArchetypeSetFetchIter<'w, F, S>
 where
-    F: FetchFromSet<S> + 'w,
+    F: Fetch + 'w,
     S: ArchetypeSet + 'w,
 {
     archetype_set_iter: <S::Fetch<'w, F> as ArchetypeSetFetch<S>>::Iter,
@@ -55,7 +55,7 @@ where
 
 impl<'w, F, S> Iterator for ArchetypeSetFetchIter<'w, F, S>
 where
-    F: FetchFromSet<S> + 'w,
+    F: Fetch + 'w,
     S: ArchetypeSet,
 {
     type Item = <F as Fetch>::Item<'w>;
@@ -78,7 +78,7 @@ where
 
 impl<'w, F, S> ArchetypeSetFetchIter<'w, F, S>
 where
-    F: FetchFromSet<S>,
+    F: Fetch,
     S: ArchetypeSet,
 {
     pub(crate) unsafe fn new(archetype_set: &'w S) -> Self {
@@ -95,7 +95,7 @@ where
 
 pub struct Nest<'w, J, S>
 where
-    J: FetchFromSet<S> + 'w,
+    J: Fetch + 'w,
     S: ArchetypeSet + 'w,
 {
     pub(crate) ignore_id: Option<S::AnyEntityId>,
@@ -104,8 +104,8 @@ where
 
 pub struct NestArchetypeSetFetchIter<'w, F, J, S>
 where
-    F: FetchFromSet<S>,
-    J: FetchFromSet<S> + 'w,
+    F: Fetch,
+    J: Fetch + 'w,
     S: ArchetypeSet,
 {
     pub(crate) query_iter: ArchetypeSetFetchIter<'w, F, S>,
@@ -114,8 +114,8 @@ where
 
 impl<'w, F, J, S> Iterator for NestArchetypeSetFetchIter<'w, F, J, S>
 where
-    F: FetchFromSet<S> + 'w,
-    J: FetchFromSet<S> + 'w,
+    F: Fetch + 'w,
+    J: Fetch + 'w,
     S: ArchetypeSet,
 {
     type Item = (<F as Fetch>::Item<'w>, Nest<'w, J, S>);
@@ -133,7 +133,7 @@ where
 
 impl<'a, J, S> Nest<'a, J, S>
 where
-    J: FetchFromSet<S>,
+    J: Fetch,
     S: ArchetypeSet + 'a,
 {
     // This has to take an exclusive `self` reference to prevent violating

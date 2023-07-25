@@ -123,6 +123,25 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         for #ident_ref_fetch #ty_generics #where_clause {
             type Item<#lifetime> = #ident_ref #ty_generics_with_lifetime;
 
+            fn new<__stecs__A: ::stecs::entity::Columns>(
+                ids: &::stecs::internal::Column<thunderdome::Index>,
+                columns: &__stecs__A,
+            ) -> ::std::option::Option<Self>
+            {
+                if ::std::any::TypeId::of::<__stecs__A>() ==
+                       ::std::any::TypeId::of::<#ident #ty_generics>() {
+                    let columns: &#ident_columns #ty_generics =
+                        (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
+
+                    Some(
+                        <#ident_ref #ty_generics as ::stecs::entity::EntityBorrow<'_>>
+                            ::new_fetch(ids.len(), columns),
+                    )
+                } else {
+                    None
+                }
+            }
+
             fn len(&self) -> usize {
                 self.__stecs__len
             }
@@ -142,31 +161,6 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
                 #(
                     checker.borrow::<#field_tys>();
                 )*
-            }
-        }
-
-        unsafe impl #impl_generics_with_set ::stecs::query::fetch::FetchFromSet<__stecs__S>
-        for #ident_ref_fetch #ty_generics
-        where
-            __stecs__S: ::stecs::ArchetypeSet,
-        {
-            fn new<__stecs__E: ::stecs::archetype_set::InArchetypeSet<__stecs__S>>(
-                ids: &::stecs::internal::Column<thunderdome::Index>,
-                columns: &__stecs__E::Columns,
-            ) -> ::std::option::Option<Self>
-            {
-                if ::std::any::TypeId::of::<__stecs__E>() ==
-                       ::std::any::TypeId::of::<#ident #ty_generics>() {
-                    let columns: &#ident_columns #ty_generics =
-                        (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
-
-                    Some(
-                        <#ident_ref #ty_generics as ::stecs::entity::EntityBorrow<'_>>
-                            ::new_fetch(ids.len(), columns),
-                    )
-                } else {
-                    None
-                }
             }
         }
 
@@ -232,6 +226,25 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         for #ident_ref_mut_fetch #ty_generics #where_clause {
             type Item<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
 
+            fn new<__stecs__A: ::stecs::entity::Columns>(
+                ids: &::stecs::internal::Column<thunderdome::Index>,
+                columns: &__stecs__A,
+            ) -> ::std::option::Option<Self>
+            {
+                if ::std::any::TypeId::of::<__stecs__A>() ==
+                       ::std::any::TypeId::of::<#ident #ty_generics>() {
+                    let columns: &#ident_columns #ty_generics =
+                        (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
+
+                    Some(
+                        <#ident_ref_mut #ty_generics as ::stecs::entity::EntityBorrow<'_>>
+                            ::new_fetch(ids.len(), columns),
+                    )
+                } else {
+                    None
+                }
+            }
+
             fn len(&self) -> usize {
                 self.__stecs__len
             }
@@ -251,31 +264,6 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
                 #(
                     checker.borrow_mut::<#field_tys>();
                 )*
-            }
-        }
-
-        unsafe impl #impl_generics_with_set ::stecs::query::fetch::FetchFromSet<__stecs__S>
-        for #ident_ref_mut_fetch #ty_generics
-        where
-            __stecs__S: ::stecs::ArchetypeSet,
-        {
-            fn new<__stecs__E: ::stecs::archetype_set::InArchetypeSet<__stecs__S>>(
-                ids: &::stecs::internal::Column<thunderdome::Index>,
-                columns: &__stecs__E::Columns,
-            ) -> ::std::option::Option<Self>
-            {
-                if ::std::any::TypeId::of::<__stecs__E>() ==
-                       ::std::any::TypeId::of::<#ident #ty_generics>() {
-                    let columns: &#ident_columns #ty_generics =
-                        (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
-
-                    Some(
-                        <#ident_ref_mut #ty_generics as ::stecs::entity::EntityBorrow<'_>>
-                            ::new_fetch(ids.len(), columns),
-                    )
-                } else {
-                    None
-                }
             }
         }
 

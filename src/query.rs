@@ -13,12 +13,12 @@ use crate::{
 
 use self::{
     borrow_checker::BorrowChecker,
-    fetch::{Fetch, FetchEntityId, FetchFromSet, FetchWith, FetchWithout},
+    fetch::{Fetch, FetchWith, FetchWithout},
     iter::{ArchetypeSetFetchIter, Nest, NestArchetypeSetFetchIter},
 };
 
 pub trait Query<S: ArchetypeSet> {
-    type Fetch<'w>: FetchFromSet<S> + 'w;
+    type Fetch<'w>: Fetch + 'w;
 }
 
 impl<'q, C, S> Query<S> for &'q C
@@ -40,7 +40,7 @@ where
 impl<'q, E, S> Query<S> for EntityRef<'q, E>
 where
     E: Entity,
-    for<'w> <E::Borrow<'w> as EntityBorrow<'w>>::Fetch<'w>: FetchFromSet<S>,
+    for<'w> <E::Borrow<'w> as EntityBorrow<'w>>::Fetch<'w>: Fetch,
     S: ArchetypeSet,
 {
     // FIXME: I'm really not sure if this makes sense at all.
@@ -50,7 +50,7 @@ where
 impl<'q, E, S> Query<S> for EntityRefMut<'q, E>
 where
     E: Entity,
-    for<'w> <E::BorrowMut<'w> as EntityBorrow<'w>>::Fetch<'w>: FetchFromSet<S>,
+    for<'w> <E::BorrowMut<'w> as EntityBorrow<'w>>::Fetch<'w>: Fetch,
     S: ArchetypeSet,
 {
     // FIXME: I'm really not sure if this makes sense at all.
@@ -88,6 +88,7 @@ where
     type Fetch<'w> = FetchWithout<Q::Fetch<'w>, R::Fetch<'w>>;
 }
 
+/*
 impl<E, S> Query<S> for EntityId<E>
 where
     E: InArchetypeSet<S>,
@@ -95,6 +96,7 @@ where
 {
     type Fetch<'w> = FetchEntityId<E>;
 }
+*/
 
 pub struct QueryResult<'w, Q, S> {
     archetype_set: &'w mut S,

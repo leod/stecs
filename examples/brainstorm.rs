@@ -1,8 +1,8 @@
 use std::any::type_name;
 
 use stecs::{
-    archetype_set::{ArchetypeSetFetch, InArchetypeSet},
-    query::fetch::{FetchAnyEntityId, FetchFromSet},
+    archetype_set::{ArchetypeSetFetch, InArchetypeSet, SubArchetypeSet},
+    query::fetch::Fetch,
     AnyEntityId, Archetype, ArchetypeSet, Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
 use thunderdome::Arena;
@@ -84,7 +84,7 @@ struct WorldFetch<'a, F> {
 
 impl<'a, F> ArchetypeSetFetch<World> for WorldFetch<'a, F>
 where
-    F: FetchFromSet<World>,
+    F: Fetch,
 {
     type Fetch = F;
 
@@ -118,10 +118,10 @@ impl stecs::ArchetypeSet for World {
 
     type AnyEntity = WorldEntity;
 
-    type Fetch<'w, F: FetchFromSet<Self> + 'w> = WorldFetch<'w, F>;
+    type Fetch<'w, F: Fetch + 'w> = WorldFetch<'w, F>;
 
     fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::AnyEntityId {
-        match entity.into_any_entity() {
+        match entity.embed_entity() {
             WorldEntity::Player(entity) => WorldEntityId::Player(self.players.spawn(entity)),
             WorldEntity::Enemy(entity) => WorldEntityId::Enemy(self.enemies.spawn(entity)),
         }
@@ -136,11 +136,11 @@ impl stecs::ArchetypeSet for World {
 
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where
-        F: FetchFromSet<Self> + 'w,
+        F: Fetch + 'w,
     {
-        let players = F::new::<Player>(self.players.ids(), self.players.columns())
+        let players = F::new(self.players.ids(), self.players.columns())
             .map(|fetch| (self.players.indices(), fetch));
-        let enemies = F::new::<Enemy>(self.enemies.ids(), self.enemies.columns())
+        let enemies = F::new(self.enemies.ids(), self.enemies.columns())
             .map(|fetch| (self.enemies.indices(), fetch));
 
         WorldFetch { players, enemies }
@@ -148,36 +148,32 @@ impl stecs::ArchetypeSet for World {
 }
 
 impl InArchetypeSet<World> for Player {
-    fn entity_id(key: thunderdome::Index) -> EntityId<Self> {
-        EntityId::new_unchecked(key)
-    }
-
-    fn any_entity_id(key: EntityId<Self>) -> AnyEntityId<World> {
-        AnyEntityId::<World>::Player(key)
-    }
-
-    fn into_any_entity(self) -> <World as ArchetypeSet>::AnyEntity {
+    fn embed_entity(self) -> WorldEntity {
         WorldEntity::Player(self)
     }
 }
 
+impl SubArchetypeSet<World> for Archetype<Player> {
+    fn embed_entity_id(id: EntityId<Player>) -> WorldEntityId {
+        WorldEntityId::Player(id)
+    }
+}
+
 impl InArchetypeSet<World> for Enemy {
-    fn entity_id(key: thunderdome::Index) -> EntityId<Self> {
-        EntityId::new_unchecked(key)
-    }
-
-    fn any_entity_id(key: EntityId<Self>) -> AnyEntityId<World> {
-        AnyEntityId::<World>::Enemy(key)
-    }
-
-    fn into_any_entity(self) -> <World as ArchetypeSet>::AnyEntity {
+    fn embed_entity(self) -> WorldEntity {
         WorldEntity::Enemy(self)
     }
 }
 
-impl Query<World> for WorldEntityId {
-    type Fetch<'f> = FetchAnyEntityId<World>;
+impl SubArchetypeSet<World> for Archetype<Enemy> {
+    fn embed_entity_id(id: EntityId<Enemy>) -> WorldEntityId {
+        WorldEntityId::Enemy(id)
+    }
 }
+
+/*impl Query<World> for WorldEntityId {
+    type Fetch<'f> = FetchAnyEntityId<World>;
+}*/
 
 fn main() {
     //let id = EntityId::<World>::Player(0);
@@ -275,7 +271,7 @@ fn main() {
         dbg!(p.0, q.0);
     }
 
-    println!("EntityId, Position");
+    /*println!("EntityId, Position");
     for (id, _) in world.query::<(AnyEntityId<World>, &Position)>() {
         dbg!(id);
     }
@@ -333,6 +329,34 @@ fn main() {
         println!("{:?} targeting {:?} @ {:?}", id, target, target_pos.pos.0);
         //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
     }
+    */
+
+    println!("Target, nest with Position");
+    for (target, mut nest) in world.query::<(&Target)>().nest::<&mut Position>() {
+        let Some(target_pos) = nest.get(target.0) else {
+            continue;
+        };
+        /*let Some(target_pos_2) = nest.get(target.0) else {
+            continue;
+        };*/
+
+        println!("targeting {:?} @ {:?}", target, target_pos.0);
+        //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
+    }
+
+    println!("Target, nest with Position as EntityRefMut");
+
+    for (target, mut nest) in world.query::<(&Target)>().nest::<EntityRefMut<Player>>() {
+        let Some(target_pos) = nest.get(target.0) else {
+            continue;
+        };
+        /*let Some(target_pos_2) = nest.get(target.0) else {
+            continue;
+        };*/
+
+        println!("targeting {:?} @ {:?}", target, target_pos.pos.0);
+        //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
+    }
 
     /*
     let foo: Vec<_> = world
@@ -379,8 +403,8 @@ fn main() {
         dbg!(enemy0.pos.0 - enemy1.pos.0);
     }
 
-    for (key, enemy) in world.query::<(WorldEntityId, EntityRef<Enemy>)>() {
-        dbg!(key, enemy.target.0, enemy.pos.0);
+    for enemy in world.query::<EntityRef<Enemy>>() {
+        dbg!(enemy.target.0, enemy.pos.0);
     }
 
     println!("Make miri sad");

@@ -1,15 +1,12 @@
 use std::fmt::Debug;
 
 use crate::{
-    query::{
-        fetch::{Fetch, FetchFromSet},
-        QueryResult,
-    },
+    query::{fetch::Fetch, QueryResult},
     Entity, EntityId, Query,
 };
 
 pub trait ArchetypeSetFetch<S: ArchetypeSet> {
-    type Fetch: FetchFromSet<S>;
+    type Fetch: Fetch;
     type Iter: Iterator<Item = Self::Fetch>;
 
     unsafe fn get<'f>(&self, id: S::AnyEntityId) -> Option<<Self::Fetch as Fetch>::Item<'f>>
@@ -20,11 +17,11 @@ pub trait ArchetypeSetFetch<S: ArchetypeSet> {
 }
 
 pub trait ArchetypeSet: Default + Sized {
-    type AnyEntityId: Copy + Debug + PartialEq + Query<Self> + 'static;
+    type AnyEntityId: Copy + Debug + PartialEq + 'static;
 
     type AnyEntity;
 
-    type Fetch<'w, F: FetchFromSet<Self> + 'w>: ArchetypeSetFetch<Self, Fetch = F> + Clone + 'w
+    type Fetch<'w, F: Fetch + 'w>: ArchetypeSetFetch<Self, Fetch = F> + Clone + 'w
     where
         Self: 'w;
 
@@ -39,15 +36,15 @@ pub trait ArchetypeSet: Default + Sized {
     #[doc(hidden)]
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where
-        F: FetchFromSet<Self> + 'w;
+        F: Fetch + 'w;
 }
 
 pub type AnyEntityId<S> = <S as ArchetypeSet>::AnyEntityId;
 
-pub trait InArchetypeSet<S: ArchetypeSet>: Entity {
-    fn entity_id(id: thunderdome::Index) -> EntityId<Self>;
+pub trait InArchetypeSet<S: ArchetypeSet> {
+    fn embed_entity(self) -> S::AnyEntity;
+}
 
-    fn any_entity_id(id: EntityId<Self>) -> S::AnyEntityId;
-
-    fn into_any_entity(self) -> S::AnyEntity;
+pub trait SubArchetypeSet<S: ArchetypeSet>: ArchetypeSet {
+    fn embed_entity_id(id: Self::AnyEntityId) -> S::AnyEntityId;
 }

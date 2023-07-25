@@ -11,10 +11,7 @@ use crate::{
     archetype_set::{ArchetypeSetFetch, InArchetypeSet},
     column::Column,
     entity::{Columns, EntityBorrow},
-    query::{
-        fetch::{Fetch, FetchFromSet},
-        iter::FetchIter,
-    },
+    query::{fetch::Fetch, iter::FetchIter},
     ArchetypeSet, Entity, EntityId,
 };
 
@@ -150,7 +147,7 @@ pub struct SingletonFetch<'w, F>(&'w Arena<usize>, Option<F>);
 impl<'w, E, F> ArchetypeSetFetch<Archetype<E>> for SingletonFetch<'w, F>
 where
     E: Entity,
-    F: FetchFromSet<Archetype<E>>,
+    F: Fetch,
 {
     type Fetch = F;
 
@@ -174,12 +171,12 @@ impl<E: Entity> ArchetypeSet for Archetype<E> {
 
     type AnyEntity = E;
 
-    type Fetch<'w, F: FetchFromSet<Self> + 'w> = SingletonFetch<'w, F>
+    type Fetch<'w, F: Fetch + 'w> = SingletonFetch<'w, F>
     where
         Self: 'w;
 
     fn spawn<F: InArchetypeSet<Self>>(&mut self, entity: F) -> Self::AnyEntityId {
-        self.spawn(entity.into_any_entity())
+        self.spawn(F::embed_entity(entity))
     }
 
     fn despawn(&mut self, id: Self::AnyEntityId) -> Option<Self::AnyEntity> {
@@ -188,22 +185,8 @@ impl<E: Entity> ArchetypeSet for Archetype<E> {
 
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where
-        F: FetchFromSet<Self> + 'w,
+        F: Fetch + 'w,
     {
-        SingletonFetch(&self.indices, F::new::<E>(&self.ids, &self.columns))
-    }
-}
-
-impl<E: Entity> InArchetypeSet<Archetype<E>> for E {
-    fn entity_id(id: thunderdome::Index) -> EntityId<Self> {
-        EntityId::new_unchecked(id)
-    }
-
-    fn any_entity_id(id: EntityId<Self>) -> EntityId<Self> {
-        id
-    }
-
-    fn into_any_entity(self) -> E {
-        self
+        SingletonFetch(&self.indices, F::new(&self.ids, &self.columns))
     }
 }
