@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, marker::PhantomData};
 
 use crate::{
     query::{fetch::Fetch, QueryResult},
@@ -25,7 +25,7 @@ pub trait ArchetypeSet: Default + Sized {
     where
         Self: 'w;
 
-    fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::AnyEntityId;
+    fn spawn<E>(&mut self, entity: Self::AnyEntity) -> Self::AnyEntityId;
 
     fn despawn(&mut self, id: Self::AnyEntityId) -> Option<Self::AnyEntity>;
 
@@ -41,10 +41,22 @@ pub trait ArchetypeSet: Default + Sized {
 
 pub type AnyEntityId<S> = <S as ArchetypeSet>::AnyEntityId;
 
-pub trait InArchetypeSet<S: ArchetypeSet> {
-    fn embed_entity(self) -> S::AnyEntity;
+pub struct EmbeddedArchetypeSet<SInner, SOuter>
+where
+    SInner: ArchetypeSet,
+    SOuter: ArchetypeSet,
+{
+    pub inner: SInner,
+    pub embed_entity_id: fn(SInner::AnyEntityId) -> SOuter::AnyEntityId,
+    pub _phantom: PhantomData<SOuter>,
 }
 
-pub trait SubArchetypeSet<S: ArchetypeSet>: ArchetypeSet {
-    fn embed_entity_id(id: Self::AnyEntityId) -> S::AnyEntityId;
+impl<SInner, SOuter> EmbeddedArchetypeSet<SInner, SOuter>
+where
+    SInner: ArchetypeSet,
+    SOuter: ArchetypeSet,
+{
+    pub fn spawn(&mut self, entity: SInner::AnyEntity) -> SOuter::AnyEntityId {
+        (self.embed_entity_id)(self.inner.entity(entity))
+    }
 }
