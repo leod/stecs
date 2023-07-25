@@ -1,15 +1,18 @@
 use std::fmt::Debug;
 
 use crate::{
-    query::{fetch::Fetch, QueryResult},
+    query::{
+        fetch::{Fetch, FetchFromSet},
+        QueryResult,
+    },
     Entity, EntityKey, Query,
 };
 
 pub trait ArchetypeSetFetch<'a, S: ArchetypeSet> {
-    type Fetch: Fetch<'a, S>;
+    type Fetch: FetchFromSet<'a, S>;
     type Iter: Iterator<Item = Self::Fetch>;
 
-    unsafe fn get<'b>(&self, id: S::EntityId) -> Option<<Self::Fetch as Fetch<'a, S>>::Item<'b>>;
+    unsafe fn get<'b>(&self, id: S::EntityId) -> Option<<Self::Fetch as Fetch<'a>>::Item<'b>>;
 
     fn iter(&mut self) -> Self::Iter;
 }
@@ -19,7 +22,7 @@ pub trait ArchetypeSet: Default + Sized {
 
     type Entity;
 
-    type Fetch<'a, F: Fetch<'a, Self>>: ArchetypeSetFetch<'a, Self, Fetch = F> + Clone
+    type Fetch<'a, F: FetchFromSet<'a, Self>>: ArchetypeSetFetch<'a, Self, Fetch = F> + Clone
     where
         Self: 'a;
 
@@ -30,7 +33,7 @@ pub trait ArchetypeSet: Default + Sized {
     #[doc(hidden)]
     fn fetch<'a, F>(&'a self) -> Self::Fetch<'a, F>
     where
-        F: Fetch<'a, Self>;
+        F: FetchFromSet<'a, Self>;
 
     fn query<Q: Query<Self>>(&mut self) -> QueryResult<Q, Self> {
         QueryResult::new(self)

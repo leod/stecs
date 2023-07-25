@@ -5,7 +5,7 @@ use std::{
 
 use stecs::{
     internal::BorrowChecker,
-    query::fetch::{Fetch, FetchEntityId},
+    query::fetch::{FetchEntityId, FetchFromSet},
     Archetype, ArchetypeSet, ArchetypeSetFetch, Column, Component, Entity, EntityColumns, EntityId,
     EntityKey, InArchetypeSet, Query,
 };
@@ -152,7 +152,7 @@ struct WorldFetch<'a, F> {
 
 impl<'a, F> ArchetypeSetFetch<'a, World> for WorldFetch<'a, F>
 where
-    F: Fetch<'a, World>,
+    F: FetchFromSet<'a, World>,
 {
     type Fetch = F;
 
@@ -187,7 +187,7 @@ impl stecs::ArchetypeSet for World {
 
     type Entity = WorldEntity;
 
-    type Fetch<'a, F: Fetch<'a, Self>> = WorldFetch<'a, F>;
+    type Fetch<'a, F: FetchFromSet<'a, Self>> = WorldFetch<'a, F>;
 
     fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::EntityId {
         match entity.into_entity() {
@@ -205,7 +205,7 @@ impl stecs::ArchetypeSet for World {
 
     fn fetch<'a, F>(&'a self) -> Self::Fetch<'a, F>
     where
-        F: Fetch<'a, Self>,
+        F: FetchFromSet<'a, Self>,
     {
         let players = F::new::<Player>(self.players.untyped_keys(), self.players.columns())
             .map(|fetch| (self.players.indices(), fetch));
@@ -245,7 +245,7 @@ impl InArchetypeSet<World> for Enemy {
 }
 
 impl Query<World> for WorldEntityId {
-    type Fetch<'f> = FetchEntityId<WorldEntityId>;
+    type Fetch<'f> = FetchEntityId<World>;
 
     fn check_borrows(checker: &mut BorrowChecker) {}
 }

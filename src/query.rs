@@ -10,12 +10,12 @@ use crate::{
 };
 
 use self::{
-    fetch::{Fetch, FetchEntityId, FetchWith, FetchWithout},
+    fetch::{Fetch, FetchEntityId, FetchFromSet, FetchWith, FetchWithout},
     iter::{ArchetypeSetFetchIter, Join, JoinArchetypeSetFetchIter},
 };
 
 pub trait Query<S: ArchetypeSet> {
-    type Fetch<'w>: Fetch<'w, S>;
+    type Fetch<'w>: FetchFromSet<'w, S>;
 
     #[doc(hidden)]
     fn check_borrows(checker: &mut BorrowChecker);
@@ -99,7 +99,7 @@ where
     Q: Query<S>,
     S: ArchetypeSet,
 {
-    type Item = <Q::Fetch<'w> as Fetch<'w, S>>::Item<'w>;
+    type Item = <Q::Fetch<'w> as Fetch<'w>>::Item<'w>;
 
     type IntoIter = ArchetypeSetFetchIter<'w, 'w, Q::Fetch<'w>, S>;
 
@@ -188,7 +188,7 @@ where
     S: ArchetypeSet,
 {
     type Item = (
-        <Q::Fetch<'w> as Fetch<'w, S>>::Item<'w>,
+        <Q::Fetch<'w> as Fetch<'w>>::Item<'w>,
         Join<'w, J::Fetch<'w>, S>,
     );
 
@@ -216,7 +216,7 @@ where
     J: Query<S>,
     S: ArchetypeSet,
 {
-    query_iter: ArchetypeSetFetchIter<'w, 'w, (FetchEntityId<S::EntityId>, Q::Fetch<'w>), S>,
+    query_iter: ArchetypeSetFetchIter<'w, 'w, (FetchEntityId<S>, Q::Fetch<'w>), S>,
     join_fetch: S::Fetch<'w, J::Fetch<'w>>,
 }
 
@@ -229,7 +229,7 @@ where
     pub fn fetch_next(
         &'w mut self,
     ) -> Option<(
-        <Q::Fetch<'w> as Fetch<S>>::Item<'w>,
+        <Q::Fetch<'w> as Fetch<'w>>::Item<'w>,
         Join<'w, J::Fetch<'w>, S>,
     )> {
         let Some((id, item)) = self.query_iter.next() else {

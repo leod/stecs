@@ -6,7 +6,7 @@ use std::{
 
 use thunderdome::Arena;
 
-use crate::{column::Column, Component};
+use crate::{column::Column, query::fetch::FetchFromSet, ArchetypeSet, Component};
 
 // TODO: PartialEq, Eq, Hash, PartialOrd, Ord.
 // https://github.com/rust-lang/rust/issues/26925
@@ -49,7 +49,20 @@ pub trait EntityColumns: Default {
     fn remove(&mut self, index: usize) -> Self::Entity;
 }
 
+pub trait EntityRefMut<'f> {
+    type Entity: Entity;
+
+    type Fetch<'w, S>: FetchFromSet<'w, S, Item<'f> = Self>
+    where
+        S: ArchetypeSet,
+        'w: 'f;
+
+    fn to_entity(&'f self) -> Self::Entity;
+}
+
 pub trait Entity: Sized {
+    // type RefMut<'f>: EntityRefMut<'f, Entity = Self>;
+
     type Columns: EntityColumns<Entity = Self>;
 }
 
@@ -94,6 +107,10 @@ impl<E: Entity> Archetype<E> {
 
         Some(self.columns.remove(index))
     }
+
+    /*pub fn get_mut(&mut self, key: EntityKey<E>) -> E::RefMut<'_> {
+        let fetch = Fetch
+    }*/
 }
 
 impl<E: Entity> Default for Archetype<E> {
