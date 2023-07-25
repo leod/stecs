@@ -8,6 +8,7 @@ use crate::utils::{
 
 pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
     let ident = input.ident;
+    let vis = input.vis;
     let data = match input.data {
         syn::Data::Struct(s) => s,
         _ => {
@@ -46,7 +47,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         // TODO: Provide a way to derive traits for the column struct.
         // Otherwise, we lose the ability to derive things for our World.
         #[allow(unused)]
-        struct #ident_columns #impl_generics #where_clause {
+        #vis struct #ident_columns #impl_generics #where_clause {
             #(
                 #field_idents: ::std::cell::RefCell<::stecs::internal::Column<#field_tys>>
             ),*
@@ -100,7 +101,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         // RefFetch
 
         #[allow(unused, non_snake_case)]
-        struct #ident_ref_fetch #impl_generics #where_clause {
+        #vis struct #ident_ref_fetch #impl_generics #where_clause {
             __stecs__len: usize,
             #(
                 #field_idents: ::stecs::internal::ColumnRawParts<#field_tys>
@@ -149,12 +150,12 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         where
             __stecs__S: ::stecs::ArchetypeSet,
         {
-            fn new<E: ::stecs::archetype_set::InArchetypeSet<__stecs__S>>(
+            fn new<__stecs__E: ::stecs::archetype_set::InArchetypeSet<__stecs__S>>(
                 ids: &::stecs::internal::Column<thunderdome::Index>,
-                columns: &E::Columns,
+                columns: &__stecs__E::Columns,
             ) -> ::std::option::Option<Self>
             {
-                if ::std::any::TypeId::of::<E>() ==
+                if ::std::any::TypeId::of::<__stecs__E>() ==
                        ::std::any::TypeId::of::<#ident #ty_generics>() {
                     let columns: &#ident_columns #ty_generics =
                         (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
@@ -173,7 +174,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
 
         // FIXME: This should be a tuple struct for tuple structs.
         #[allow(unused, non_snake_case)]
-        struct #ident_ref #impl_generics_with_lifetime #where_clause_with_lifetime {
+        #vis struct #ident_ref #impl_generics_with_lifetime #where_clause_with_lifetime {
             #(
                 #field_idents: &#lifetime #field_tys,
             )*
@@ -209,7 +210,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         // RefMutFetch
 
         #[allow(unused, non_snake_case)]
-        struct #ident_ref_mut_fetch #impl_generics #where_clause {
+        #vis struct #ident_ref_mut_fetch #impl_generics #where_clause {
             __stecs__len: usize,
             #(
                 #field_idents: ::stecs::internal::ColumnRawPartsMut<#field_tys>
@@ -258,12 +259,12 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         where
             __stecs__S: ::stecs::ArchetypeSet,
         {
-            fn new<E: ::stecs::archetype_set::InArchetypeSet<__stecs__S>>(
+            fn new<__stecs__E: ::stecs::archetype_set::InArchetypeSet<__stecs__S>>(
                 ids: &::stecs::internal::Column<thunderdome::Index>,
-                columns: &E::Columns,
+                columns: &__stecs__E::Columns,
             ) -> ::std::option::Option<Self>
             {
-                if ::std::any::TypeId::of::<E>() ==
+                if ::std::any::TypeId::of::<__stecs__E>() ==
                        ::std::any::TypeId::of::<#ident #ty_generics>() {
                     let columns: &#ident_columns #ty_generics =
                         (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
@@ -282,7 +283,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
 
         // FIXME: This should be a tuple struct for tuple structs.
         #[allow(unused, non_snake_case)]
-        struct #ident_ref_mut #impl_generics_with_lifetime #where_clause_with_lifetime {
+        #vis struct #ident_ref_mut #impl_generics_with_lifetime #where_clause_with_lifetime {
             #(
                 #field_idents: &#lifetime mut #field_tys,
             )*

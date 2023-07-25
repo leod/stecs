@@ -21,7 +21,7 @@ pub mod query;
 
 pub use thunderdome;
 
-pub use stecs_derive::Entity;
+pub use stecs_derive::{ArchetypeSet, Entity};
 
 #[doc(inline)]
 pub use self::{

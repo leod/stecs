@@ -46,7 +46,7 @@ struct Blob;
 struct Blub(u32);
 
 // TODO: Clone in Derive?
-#[derive(Default)]
+#[derive(Default, ArchetypeSet)]
 struct World {
     players: Archetype<Player>,
     enemies: Archetype<Enemy>,
