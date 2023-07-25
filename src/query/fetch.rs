@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
 use crate::{
-    archetype::Columns,
     archetype_set::InArchetypeSet,
     column::{ColumnRawParts, ColumnRawPartsMut},
+    entity::Columns,
     internal::Column,
     ArchetypeSet, Component, Entity,
 };

@@ -1,8 +1,8 @@
 use std::any::type_name;
 
 use stecs::{
-    archetype::BorrowEntity,
     archetype_set::{ArchetypeSetFetch, InArchetypeSet},
+    entity::BorrowEntity,
     internal::{BorrowChecker, ColumnRawPartsMut},
     query::fetch::{Fetch, FetchEntityId, FetchFromSet},
     Archetype, ArchetypeSet, Entity, EntityId, EntityKey, Query,

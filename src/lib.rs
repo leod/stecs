@@ -17,6 +17,7 @@ mod column;
 
 pub mod archetype;
 pub mod archetype_set;
+pub mod entity;
 pub mod query;
 
 pub use thunderdome;
@@ -25,8 +26,9 @@ pub use stecs_derive::Entity;
 
 #[doc(inline)]
 pub use self::{
-    archetype::{Archetype, Entity, EntityKey},
+    archetype::Archetype,
     archetype_set::{ArchetypeSet, EntityId},
+    entity::{Entity, EntityKey},
     query::Query,
 };
 pub trait Component: 'static {}

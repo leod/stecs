@@ -31,6 +31,8 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         generics_with_lifetime.split_for_impl();
 
     Ok(quote! {
+        // TODO: Provide a way to derive traits for the column struct.
+        // Otherwise, we lose the ability to derive things for our World.
         #[derive(Default)]
         struct #ident_columns #impl_generics #where_clause {
             #(
@@ -38,13 +40,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
             ),*
         }
 
-        struct #ident_ref_mut #impl_generics_with_lifetime #where_clause_with_lifetime {
-            #(
-                #field_idents: &#lifetime mut #field_tys
-            ),*
-        }
-
-        impl #impl_generics ::stecs::archetype::Columns
+        impl #impl_generics ::stecs::entity::Columns
         for #ident_columns #ty_generics #where_clause {
             type Entity = #ident #ty_generics;
 
@@ -77,6 +73,12 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
                     ),*
                 }
             }
+        }
+
+        struct #ident_ref_mut #impl_generics_with_lifetime #where_clause_with_lifetime {
+            #(
+                #field_idents: &#lifetime mut #field_tys
+            ),*
         }
 
         impl #impl_generics ::stecs::Entity for #ident #ty_generics #where_clause {
