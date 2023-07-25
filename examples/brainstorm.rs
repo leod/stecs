@@ -337,6 +337,12 @@ fn main() {
 
     for (key, enemy) in iter {
         dbg!(key, enemy.target.0, enemy.pos.0);
+
+        *enemy.pos = Position(enemy.pos.0 + 100.0);
+    }
+
+    for (key, enemy) in world.enemies.iter() {
+        dbg!(key, enemy.target.0, enemy.pos.0);
     }
 
     // This panics:

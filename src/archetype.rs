@@ -59,6 +59,38 @@ impl<E: Entity> Archetype<E> {
         Some(self.columns.remove(index))
     }
 
+    pub fn get(&mut self, key: EntityKey<E>) -> Option<E::Borrow<'_>> {
+        let index = *self.indices.get(key.0)?;
+
+        debug_assert!(index < self.untyped_keys.len());
+
+        let fetch =
+            <E::Borrow<'_> as BorrowEntity<'_>>::new_fetch(self.untyped_keys.len(), &self.columns);
+
+        // Safety: TODO
+        Some(unsafe { fetch.get(index) })
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (EntityKey<E>, E::Borrow<'_>)> + '_ {
+        // Safety: TODO
+        let fetch =
+            <E::Borrow<'_> as BorrowEntity<'_>>::new_fetch(self.untyped_keys.len(), &self.columns);
+
+        self.untyped_keys
+            .as_slice()
+            .iter()
+            .map(|key| EntityKey::new_unchecked(*key))
+            .zip(FetchIter::new(fetch))
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = E::Borrow<'_>> + '_ {
+        // Safety: TODO
+        let fetch =
+            <E::Borrow<'_> as BorrowEntity<'_>>::new_fetch(self.untyped_keys.len(), &self.columns);
+
+        FetchIter::new(fetch)
+    }
+
     pub fn get_mut(&mut self, key: EntityKey<E>) -> Option<E::BorrowMut<'_>> {
         let index = *self.indices.get(key.0)?;
 

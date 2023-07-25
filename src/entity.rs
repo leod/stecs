@@ -62,5 +62,7 @@ pub trait Columns: Default {
 pub trait Entity: Sized {
     type Columns: Columns<Entity = Self>;
 
+    type Borrow<'f>: BorrowEntity<'f, Entity = Self>;
+
     type BorrowMut<'f>: BorrowEntity<'f, Entity = Self>;
 }
