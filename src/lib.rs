@@ -28,7 +28,7 @@ pub use stecs_derive::Entity;
 pub use self::{
     archetype::Archetype,
     archetype_set::{ArchetypeSet, EntityId},
-    entity::{Entity, EntityKey},
+    entity::{Entity, EntityKey, EntityRef, EntityRefMut},
     query::Query,
 };
 pub trait Component: 'static {}

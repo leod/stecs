@@ -6,7 +6,8 @@ use std::{any::type_name, marker::PhantomData};
 use crate::{
     borrow_checker::BorrowChecker,
     column::{ColumnRawParts, ColumnRawPartsMut},
-    ArchetypeSet, Component,
+    entity::EntityBorrow,
+    ArchetypeSet, Component, Entity, EntityRef, EntityRefMut,
 };
 
 use self::{
@@ -42,6 +43,33 @@ where
 
     fn check_borrows(checker: &mut BorrowChecker) {
         checker.borrow_mut::<C>();
+    }
+}
+
+impl<'q, E, S> Query<S> for EntityRef<'q, E>
+where
+    E: Entity,
+    for<'w> <E::Borrow<'w> as EntityBorrow<'w>>::Fetch<'w>: FetchFromSet<S>,
+    S: ArchetypeSet,
+{
+    type Fetch<'w> = <E::Borrow<'w> as EntityBorrow<'w>>::Fetch<'w>;
+
+    fn check_borrows(checker: &mut BorrowChecker) {
+        // TODO -> move to Fetch
+    }
+}
+
+impl<'q, E, S> Query<S> for EntityRefMut<'q, E>
+where
+    E: Entity,
+    for<'w> <E::BorrowMut<'w> as EntityBorrow<'w>>::Fetch<'w>: FetchFromSet<S>,
+    S: ArchetypeSet,
+{
+    // FIXME: I'm really not sure if this makes sense at all.
+    type Fetch<'w> = <E::BorrowMut<'w> as EntityBorrow<'w>>::Fetch<'w>;
+
+    fn check_borrows(checker: &mut BorrowChecker) {
+        // TODO -> move to Fetch
     }
 }
 

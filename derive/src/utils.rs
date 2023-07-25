@@ -56,3 +56,16 @@ pub fn generics_with_new_lifetime(
     new_generics.params = syn::punctuated::Punctuated::from_iter(new_params);
     new_generics
 }
+
+pub fn generics_with_new_type_param(
+    generics: &syn::Generics,
+    type_param: &syn::TypeParam,
+) -> syn::Generics {
+    let mut new_generics = generics.clone();
+
+    new_generics
+        .params
+        .push(syn::GenericParam::Type(type_param.clone()));
+
+    new_generics
+}

@@ -2,6 +2,7 @@ use std::{
     cell::RefCell,
     fmt::{self, Debug},
     marker::PhantomData,
+    ops::Deref,
 };
 
 use crate::{column::Column, query::fetch::Fetch, Component};
@@ -49,7 +50,7 @@ pub trait EntityBorrow<'f> {
         'w: 'f;
 }
 
-pub trait Columns: Default {
+pub trait Columns: Default + 'static {
     type Entity: Entity<Columns = Self>;
 
     fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>>;
@@ -59,10 +60,30 @@ pub trait Columns: Default {
     fn remove(&mut self, index: usize) -> Self::Entity;
 }
 
-pub trait Entity: Sized {
+pub trait Entity: Sized + 'static {
     type Columns: Columns<Entity = Self>;
 
     type Borrow<'f>: EntityBorrow<'f, Entity = Self>;
 
     type BorrowMut<'f>: EntityBorrow<'f, Entity = Self>;
+}
+
+pub struct EntityRef<'f, E: Entity>(E::Borrow<'f>);
+
+impl<'f, E: Entity> Deref for EntityRef<'f, E> {
+    type Target = E::Borrow<'f>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+pub struct EntityRefMut<'f, E: Entity>(E::BorrowMut<'f>);
+
+impl<'f, E: Entity> Deref for EntityRefMut<'f, E> {
+    type Target = E::BorrowMut<'f>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }

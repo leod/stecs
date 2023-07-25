@@ -4,7 +4,7 @@ use stecs::{
     archetype_set::{ArchetypeSetFetch, InArchetypeSet},
     internal::BorrowChecker,
     query::fetch::{FetchEntityId, FetchFromSet},
-    Archetype, ArchetypeSet, Entity, EntityId, EntityKey, Query,
+    Archetype, ArchetypeSet, Entity, EntityId, EntityKey, EntityRef, EntityRefMut, Query,
 };
 use thunderdome::Arena;
 
@@ -320,6 +320,23 @@ fn main() {
         //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
     }
 
+    println!("EntityId, Target, join with Position as EntityRefMut");
+
+    for ((id, target), mut join) in world
+        .query::<(EntityId<World>, &Target)>()
+        .join::<EntityRefMut<Player>>()
+    {
+        let Some(target_pos) = join.get(target.0) else {
+            continue;
+        };
+        /*let Some(target_pos_2) = join.get(target.0) else {
+            continue;
+        };*/
+
+        println!("{:?} targeting {:?} @ {:?}", id, target, target_pos.pos.0);
+        //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
+    }
+
     /*
     let foo: Vec<_> = world
         .query::<&Target>()
@@ -343,6 +360,19 @@ fn main() {
 
     for (key, enemy) in iter {
         dbg!(key, enemy.target.0, enemy.pos.0);
+
+        *enemy.pos = Position(enemy.pos.0 + 100.0);
+    }
+
+    for (key, enemy) in world.enemies.iter() {
+        dbg!(key, enemy.target.0, enemy.pos.0);
+    }
+
+    println!("Enemies query");
+    //let iter = world.enemies.iter_mut();
+
+    for enemy in world.query::<EntityRefMut<Enemy>>() {
+        dbg!(enemy.target.0, enemy.pos.0);
 
         *enemy.pos = Position(enemy.pos.0 + 100.0);
     }

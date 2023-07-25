@@ -2,7 +2,9 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{DeriveInput, Error, Result};
 
-use crate::utils::{generics_with_new_lifetime, member_as_idents, struct_fields};
+use crate::utils::{
+    generics_with_new_lifetime, generics_with_new_type_param, member_as_idents, struct_fields,
+};
 
 pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
     let ident = input.ident;
@@ -33,6 +35,11 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
     let generics_with_lifetime = generics_with_new_lifetime(&input.generics, &lifetime);
     let (impl_generics_with_lifetime, ty_generics_with_lifetime, where_clause_with_lifetime) =
         generics_with_lifetime.split_for_impl();
+
+    let set_param: syn::TypeParam = syn::parse_str("__stecs__S: ::stecs::ArchetypeSet").unwrap();
+    let generics_with_set = generics_with_new_type_param(&input.generics, &set_param);
+    let (impl_generics_with_set, ty_generics_with_set, where_clause_with_set) =
+        generics_with_set.split_for_impl();
 
     Ok(quote! {
         // Columns
@@ -68,7 +75,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
             {
                 #(
                     if ::std::any::TypeId::of::<__stecs__C>() ==
-                       ::std::any::TypeId::of::<#field_tys>() {
+                           ::std::any::TypeId::of::<#field_tys>() {
                         return (&self.#field_idents as &dyn ::std::any::Any).downcast_ref();
                     }
                 )*
@@ -209,6 +216,31 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
             }
         }
 
+        unsafe impl #impl_generics_with_set ::stecs::query::fetch::FetchFromSet<__stecs__S>
+        for #ident_ref_mut_fetch #ty_generics
+        where
+            __stecs__S: ::stecs::ArchetypeSet,
+        {
+            fn new<E: ::stecs::archetype_set::InArchetypeSet<__stecs__S>>(
+                untyped_keys: &::stecs::internal::Column<thunderdome::Index>,
+                columns: &E::Columns,
+            ) -> ::std::option::Option<Self>
+            {
+                if ::std::any::TypeId::of::<E>() ==
+                       ::std::any::TypeId::of::<#ident #ty_generics>() {
+                    let columns: &#ident_columns #ty_generics =
+                        (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
+
+                    Some(
+                        <#ident_ref_mut #ty_generics as ::stecs::entity::EntityBorrow<'_>>
+                            ::new_fetch(untyped_keys.len(), columns),
+                    )
+                } else {
+                    None
+                }
+            }
+        }
+
         // RefMut
 
         #[allow(unused)]
@@ -227,7 +259,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
 
             fn new_fetch<'__stecs_w>(
                 len: usize,
-                columns: &'__stecs_w <Self::Entity as ::stecs::Entity>::Columns,
+                columns: &'__stecs_w #ident_columns #ty_generics,
             ) -> Self::Fetch<'__stecs_w>
             where
                 '__stecs_w: #lifetime,
