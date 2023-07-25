@@ -1,25 +1,23 @@
+pub mod borrow_checker;
 pub mod fetch;
 pub mod iter;
 
 use std::{any::type_name, marker::PhantomData};
 
 use crate::{
-    borrow_checker::BorrowChecker,
     column::{ColumnRawParts, ColumnRawPartsMut},
     entity::EntityBorrow,
     ArchetypeSet, Component, Entity, EntityRef, EntityRefMut,
 };
 
 use self::{
+    borrow_checker::BorrowChecker,
     fetch::{Fetch, FetchFromSet, FetchWith, FetchWithout},
-    iter::{ArchetypeSetFetchIter, Join, JoinArchetypeSetFetchIter},
+    iter::{ArchetypeSetFetchIter, Nest, NestArchetypeSetFetchIter},
 };
 
 pub trait Query<S: ArchetypeSet> {
     type Fetch<'w>: FetchFromSet<S> + 'w;
-
-    #[doc(hidden)]
-    fn check_borrows(checker: &mut BorrowChecker);
 }
 
 impl<'q, C, S> Query<S> for &'q C
@@ -28,10 +26,6 @@ where
     S: ArchetypeSet,
 {
     type Fetch<'w> = ColumnRawParts<C>;
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        checker.borrow::<C>();
-    }
 }
 
 impl<'q, C, S> Query<S> for &'q mut C
@@ -40,10 +34,6 @@ where
     S: ArchetypeSet,
 {
     type Fetch<'w> = ColumnRawPartsMut<C>;
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        checker.borrow_mut::<C>();
-    }
 }
 
 impl<'q, E, S> Query<S> for EntityRef<'q, E>
@@ -54,10 +44,6 @@ where
 {
     // FIXME: I'm really not sure if this makes sense at all.
     type Fetch<'w> = <E::Borrow<'w> as EntityBorrow<'w>>::Fetch<'w>;
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        // TODO -> move to Fetch
-    }
 }
 
 impl<'q, E, S> Query<S> for EntityRefMut<'q, E>
@@ -68,10 +54,6 @@ where
 {
     // FIXME: I'm really not sure if this makes sense at all.
     type Fetch<'w> = <E::BorrowMut<'w> as EntityBorrow<'w>>::Fetch<'w>;
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        // TODO -> move to Fetch
-    }
 }
 
 impl<Q0, Q1, S> Query<S> for (Q0, Q1)
@@ -81,11 +63,6 @@ where
     S: ArchetypeSet,
 {
     type Fetch<'w> = (Q0::Fetch<'w>, Q1::Fetch<'w>);
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        Q0::check_borrows(checker);
-        Q1::check_borrows(checker);
-    }
 }
 
 pub struct With<Q, R>(PhantomData<(Q, R)>);
@@ -97,10 +74,6 @@ where
     S: ArchetypeSet,
 {
     type Fetch<'w> = FetchWith<Q::Fetch<'w>, R::Fetch<'w>>;
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        Q::check_borrows(checker);
-    }
 }
 
 pub struct Without<Q, R>(PhantomData<(Q, R)>);
@@ -112,10 +85,6 @@ where
     S: ArchetypeSet,
 {
     type Fetch<'w> = FetchWithout<Q::Fetch<'w>, R::Fetch<'w>>;
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        Q::check_borrows(checker);
-    }
 }
 
 pub struct QueryResult<'w, Q, S> {
@@ -135,7 +104,7 @@ where
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        Q::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
 
         // Safety: A `QueryResult` exclusively borrows the `archetype_set: &'w
         // mut S`. Also, `into_iter` consumes the `QueryResult` while
@@ -172,44 +141,44 @@ where
         QueryResult::new(self.archetype_set)
     }
 
-    pub fn join<J>(self) -> JoinQueryResult<'w, Q, J, S>
+    pub fn nest<R>(self) -> NestQueryResult<'w, Q, R, S>
     where
-        J: Query<S>,
+        R: Query<S>,
     {
-        JoinQueryResult {
+        NestQueryResult {
             archetype_set: self.archetype_set,
             _phantom: PhantomData,
         }
     }
 }
 
-pub struct JoinQueryResult<'w, Q, J, S> {
+pub struct NestQueryResult<'w, Q, J, S> {
     archetype_set: &'w mut S,
     _phantom: PhantomData<(Q, J)>,
 }
 
-impl<'w, Q, J, S> IntoIterator for JoinQueryResult<'w, Q, J, S>
+impl<'w, Q, J, S> IntoIterator for NestQueryResult<'w, Q, J, S>
 where
     Q: Query<S>,
     J: Query<S>,
     S: ArchetypeSet,
 {
-    type Item = (<Q::Fetch<'w> as Fetch>::Item<'w>, Join<'w, J::Fetch<'w>, S>);
+    type Item = (<Q::Fetch<'w> as Fetch>::Item<'w>, Nest<'w, J::Fetch<'w>, S>);
 
-    type IntoIter = JoinArchetypeSetFetchIter<'w, Q::Fetch<'w>, J::Fetch<'w>, S>;
+    type IntoIter = NestArchetypeSetFetchIter<'w, Q::Fetch<'w>, J::Fetch<'w>, S>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        Q::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
 
         // Safety: TODO
         let query_iter = unsafe { ArchetypeSetFetchIter::new(self.archetype_set) };
-        let join_fetch = self.archetype_set.fetch();
+        let nest_fetch = self.archetype_set.fetch();
 
-        JoinArchetypeSetFetchIter {
+        NestArchetypeSetFetchIter {
             query_iter,
-            join_fetch,
+            nest_fetch,
         }
     }
 }

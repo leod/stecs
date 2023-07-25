@@ -12,7 +12,6 @@ macro_rules! smaller_tuples_too {
     };
 }
 
-mod borrow_checker;
 mod column;
 
 pub mod archetype;
@@ -39,7 +38,7 @@ impl<T> Component for T where T: 'static {}
 #[doc(hidden)]
 pub mod internal {
     pub use super::{
-        borrow_checker::BorrowChecker,
         column::{Column, ColumnRawParts, ColumnRawPartsMut},
+        query::borrow_checker::BorrowChecker,
     };
 }

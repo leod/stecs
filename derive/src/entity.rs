@@ -137,6 +137,12 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
             }
+
+            fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
+                #(
+                    checker.borrow::<#field_tys>();
+                )*
+            }
         }
 
         unsafe impl #impl_generics_with_set ::stecs::query::fetch::FetchFromSet<__stecs__S>
@@ -238,6 +244,12 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
                     )*
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
+            }
+
+            fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
+                #(
+                    checker.borrow_mut::<#field_tys>();
+                )*
             }
         }
 

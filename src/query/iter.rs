@@ -93,7 +93,7 @@ where
     }
 }
 
-pub struct Join<'w, J, S>
+pub struct Nest<'w, J, S>
 where
     J: FetchFromSet<S> + 'w,
     S: ArchetypeSet + 'w,
@@ -102,36 +102,36 @@ where
     pub(crate) fetch: S::Fetch<'w, J>,
 }
 
-pub struct JoinArchetypeSetFetchIter<'w, F, J, S>
+pub struct NestArchetypeSetFetchIter<'w, F, J, S>
 where
     F: FetchFromSet<S>,
     J: FetchFromSet<S> + 'w,
     S: ArchetypeSet,
 {
     pub(crate) query_iter: ArchetypeSetFetchIter<'w, F, S>,
-    pub(crate) join_fetch: S::Fetch<'w, J>,
+    pub(crate) nest_fetch: S::Fetch<'w, J>,
 }
 
-impl<'w, F, J, S> Iterator for JoinArchetypeSetFetchIter<'w, F, J, S>
+impl<'w, F, J, S> Iterator for NestArchetypeSetFetchIter<'w, F, J, S>
 where
     F: FetchFromSet<S> + 'w,
     J: FetchFromSet<S> + 'w,
     S: ArchetypeSet,
 {
-    type Item = (<F as Fetch>::Item<'w>, Join<'w, J, S>);
+    type Item = (<F as Fetch>::Item<'w>, Nest<'w, J, S>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = self.query_iter.next()?;
-        let join = Join {
+        let nest = Nest {
             ignore_id: None,
-            fetch: self.join_fetch.clone(),
+            fetch: self.nest_fetch.clone(),
         };
 
-        Some((item, join))
+        Some((item, nest))
     }
 }
 
-impl<'a, J, S> Join<'a, J, S>
+impl<'a, J, S> Nest<'a, J, S>
 where
     J: FetchFromSet<S>,
     S: ArchetypeSet + 'a,

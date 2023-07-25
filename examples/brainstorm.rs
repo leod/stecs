@@ -178,8 +178,6 @@ impl InArchetypeSet<World> for Enemy {
 
 impl Query<World> for WorldEntityId {
     type Fetch<'f> = FetchEntityId<World>;
-
-    fn check_borrows(checker: &mut BorrowChecker) {}
 }
 
 fn main() {
@@ -236,11 +234,11 @@ fn main() {
     dbg!("--");
 
     /*
-    while let Some((p, v, join)) = world
+    while let Some((p, v, nest)) = world
         .stream::<(&mut Position, &Velocity)>()
-        .join::<&mut Position>()
+        .nest::<&mut Position>()
     {
-        for p in join.iter() {}
+        for p in nest.iter() {}
     }
     */
 
@@ -304,15 +302,15 @@ fn main() {
         println!("{:?} targeting {:?}", id, target);
     }
 
-    println!("EntityId, Target, join with Position");
-    for ((id, target), mut join) in world
+    println!("EntityId, Target, nest with Position");
+    for ((id, target), mut nest) in world
         .query::<(EntityId<World>, &Target)>()
-        .join::<&mut Position>()
+        .nest::<&mut Position>()
     {
-        let Some(target_pos) = join.get(target.0) else {
+        let Some(target_pos) = nest.get(target.0) else {
             continue;
         };
-        /*let Some(target_pos_2) = join.get(target.0) else {
+        /*let Some(target_pos_2) = nest.get(target.0) else {
             continue;
         };*/
 
@@ -320,16 +318,16 @@ fn main() {
         //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
     }
 
-    println!("EntityId, Target, join with Position as EntityRefMut");
+    println!("EntityId, Target, nest with Position as EntityRefMut");
 
-    for ((id, target), mut join) in world
+    for ((id, target), mut nest) in world
         .query::<(EntityId<World>, &Target)>()
-        .join::<EntityRefMut<Player>>()
+        .nest::<EntityRefMut<Player>>()
     {
-        let Some(target_pos) = join.get(target.0) else {
+        let Some(target_pos) = nest.get(target.0) else {
             continue;
         };
-        /*let Some(target_pos_2) = join.get(target.0) else {
+        /*let Some(target_pos_2) = nest.get(target.0) else {
             continue;
         };*/
 
@@ -340,9 +338,9 @@ fn main() {
     /*
     let foo: Vec<_> = world
         .query::<&Target>()
-        .join::<&mut Position>()
+        .nest::<&mut Position>()
         .into_iter()
-        .map(|(target, mut join)| join.get(target.0))
+        .map(|(target, mut nest)| nest.get(target.0))
         .collect();
     */
 
@@ -377,8 +375,21 @@ fn main() {
         *enemy.pos = Position(enemy.pos.0 + 100.0);
     }
 
+    println!("Enemies, Enemies query");
+    for (enemy0, enemy1) in world.query::<(EntityRef<Enemy>, EntityRef<Enemy>)>() {
+        dbg!(enemy0.pos.0 - enemy1.pos.0);
+    }
+
     for (key, enemy) in world.query::<(WorldEntityId, EntityRef<Enemy>)>() {
         dbg!(key, enemy.target.0, enemy.pos.0);
+    }
+
+    println!("Make miri sad");
+
+    for (enemy, pos) in world.query::<(EntityRefMut<Enemy>, &Position)>() {
+        dbg!(enemy.target.0, enemy.pos.0);
+
+        *enemy.pos = Position(enemy.pos.0 + 100.0);
     }
 
     // This panics:
