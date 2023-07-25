@@ -1,5 +1,3 @@
-use std::{iter, vec};
-
 use thunderdome::Arena;
 
 use crate::{

@@ -40,6 +40,12 @@ struct Enemy {
     target: Target,
 }
 
+#[derive(Entity, Clone)]
+struct Blob;
+
+#[derive(Entity, Clone)]
+struct Blub(u32);
+
 // TODO: Clone in Derive?
 #[derive(Default)]
 struct World {

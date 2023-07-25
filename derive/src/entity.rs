@@ -70,7 +70,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
                 #(
                     if ::std::any::TypeId::of::<__stecs__C>() ==
                        ::std::any::TypeId::of::<#field_tys>() {
-                        return (&self.#field_members as &dyn ::std::any::Any).downcast_ref();
+                        return (&self.#field_idents as &dyn ::std::any::Any).downcast_ref();
                     }
                 )*
 
@@ -87,81 +87,6 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
                 #ident {
                     #(
                         #field_members: self.#field_idents.borrow_mut().remove(index)
-                    ),*
-                }
-            }
-        }
-
-        // RefMutFetch
-
-        #[allow(unused)]
-        struct #ident_ref_mut_fetch #impl_generics #where_clause {
-            __stecs__len: usize,
-            #(
-                #field_idents: ::stecs::internal::ColumnRawPartsMut<#field_tys>
-            ),*
-        }
-
-        impl #impl_generics ::std::clone::Clone
-        for #ident_ref_mut_fetch #ty_generics #where_clause {
-            fn clone(&self) -> Self {
-                *self
-            }
-        }
-
-        impl #impl_generics ::std::marker::Copy
-        for #ident_ref_mut_fetch #ty_generics #where_clause {
-        }
-
-        unsafe impl #impl_generics ::stecs::query::fetch::Fetch
-        for #ident_ref_mut_fetch #ty_generics #where_clause {
-            type Item<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
-
-            fn len(&self) -> usize {
-                self.__stecs__len
-            }
-
-            unsafe fn get<#lifetime>(&self, index: usize) -> Self::Item<#lifetime> {
-                ::std::assert!(index < self.len());
-
-                #ident_ref_mut {
-                    #(
-                        #field_idents: &mut *self.#field_idents.ptr.add(index)
-                    ),*
-                }
-            }
-        }
-
-        // RefMut
-
-        #[allow(unused)]
-        struct #ident_ref_mut #impl_generics_with_lifetime #where_clause_with_lifetime {
-            #(
-                #field_idents: &#lifetime mut #field_tys
-            ),*
-        }
-
-        impl #impl_generics_with_lifetime ::stecs::entity::BorrowEntity<#lifetime>
-        for #ident_ref_mut #ty_generics_with_lifetime #where_clause_with_lifetime {
-            type Entity = #ident #ty_generics;
-
-            type Fetch<'__stecs_w> = #ident_ref_mut_fetch #ty_generics where '__stecs_w: #lifetime;
-
-            fn new_fetch<'__stecs_w>(
-                len: usize,
-                columns: &'__stecs_w <Self::Entity as ::stecs::Entity>::Columns,
-            ) -> Self::Fetch<'__stecs_w>
-            where
-                '__stecs_w: #lifetime,
-            {
-                #(
-                    ::std::debug_assert_eq!(len, columns.#field_idents.borrow().len());
-                )*
-
-                #ident_ref_mut_fetch {
-                    __stecs__len: len,
-                    #(
-                        #field_idents: columns.#field_idents.borrow_mut().as_raw_parts_mut()
                     ),*
                 }
             }
@@ -201,8 +126,9 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
 
                 #ident_ref {
                     #(
-                        #field_idents: &*self.#field_idents.ptr.add(index)
-                    ),*
+                        #field_idents: &*self.#field_idents.ptr.add(index),
+                    )*
+                    __stecs__phantom: ::std::marker::PhantomData,
                 }
             }
         }
@@ -212,8 +138,9 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         #[allow(unused)]
         struct #ident_ref #impl_generics_with_lifetime #where_clause_with_lifetime {
             #(
-                #field_idents: &#lifetime #field_tys
-            ),*
+                #field_idents: &#lifetime #field_tys,
+            )*
+            __stecs__phantom: ::std::marker::PhantomData<&#lifetime ()>,
         }
 
         impl #impl_generics_with_lifetime ::stecs::entity::BorrowEntity<#lifetime>
@@ -238,6 +165,83 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
                     #(
                         #field_idents: columns.#field_idents.borrow().as_raw_parts()
                     ),*
+                }
+            }
+        }
+
+        // RefMutFetch
+
+        #[allow(unused)]
+        struct #ident_ref_mut_fetch #impl_generics #where_clause {
+            __stecs__len: usize,
+            #(
+                #field_idents: ::stecs::internal::ColumnRawPartsMut<#field_tys>
+            ),*
+        }
+
+        impl #impl_generics ::std::clone::Clone
+        for #ident_ref_mut_fetch #ty_generics #where_clause {
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+
+        impl #impl_generics ::std::marker::Copy
+        for #ident_ref_mut_fetch #ty_generics #where_clause {
+        }
+
+        unsafe impl #impl_generics ::stecs::query::fetch::Fetch
+        for #ident_ref_mut_fetch #ty_generics #where_clause {
+            type Item<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
+
+            fn len(&self) -> usize {
+                self.__stecs__len
+            }
+
+            unsafe fn get<#lifetime>(&self, index: usize) -> Self::Item<#lifetime> {
+                ::std::assert!(index < self.len());
+
+                #ident_ref_mut {
+                    #(
+                        #field_idents: &mut *self.#field_idents.ptr.add(index),
+                    )*
+                    __stecs__phantom: ::std::marker::PhantomData,
+                }
+            }
+        }
+
+        // RefMut
+
+        #[allow(unused)]
+        struct #ident_ref_mut #impl_generics_with_lifetime #where_clause_with_lifetime {
+            #(
+                #field_idents: &#lifetime mut #field_tys,
+            )*
+            __stecs__phantom: ::std::marker::PhantomData<&#lifetime mut ()>,
+        }
+
+        impl #impl_generics_with_lifetime ::stecs::entity::BorrowEntity<#lifetime>
+        for #ident_ref_mut #ty_generics_with_lifetime #where_clause_with_lifetime {
+            type Entity = #ident #ty_generics;
+
+            type Fetch<'__stecs_w> = #ident_ref_mut_fetch #ty_generics where '__stecs_w: #lifetime;
+
+            fn new_fetch<'__stecs_w>(
+                len: usize,
+                columns: &'__stecs_w <Self::Entity as ::stecs::Entity>::Columns,
+            ) -> Self::Fetch<'__stecs_w>
+            where
+                '__stecs_w: #lifetime,
+            {
+                #(
+                    ::std::debug_assert_eq!(len, columns.#field_idents.borrow().len());
+                )*
+
+                #ident_ref_mut_fetch {
+                    __stecs__len: len,
+                    #(
+                        #field_idents: columns.#field_idents.borrow_mut().as_raw_parts_mut(),
+                    )*
                 }
             }
         }
