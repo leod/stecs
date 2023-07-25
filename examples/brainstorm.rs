@@ -243,8 +243,8 @@ impl InArchetypeSet<World> for Enemy {
     }
 }
 
-impl<'a> Query<'a, World> for WorldEntityId {
-    type Fetch = FetchEntityId<WorldEntityId>;
+impl Query<World> for WorldEntityId {
+    type Fetch<'f> = FetchEntityId<WorldEntityId>;
 
     fn check_borrows(checker: &mut BorrowChecker) {}
 }

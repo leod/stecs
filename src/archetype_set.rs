@@ -15,7 +15,7 @@ pub trait ArchetypeSetFetch<'a, S: ArchetypeSet> {
 }
 
 pub trait ArchetypeSet: Default + Sized {
-    type EntityId: Copy + Debug + PartialEq + for<'a> Query<'a, Self> + 'static;
+    type EntityId: Copy + Debug + PartialEq + Query<Self> + 'static;
 
     type Entity;
 
@@ -32,10 +32,7 @@ pub trait ArchetypeSet: Default + Sized {
     where
         F: Fetch<'a, Self>;
 
-    fn query<'a, Q>(&'a mut self) -> QueryResult<'a, Q, Self>
-    where
-        Q: Query<'a, Self>,
-    {
+    fn query<Q: Query<Self>>(&mut self) -> QueryResult<Q, Self> {
         QueryResult::new(self)
     }
 }

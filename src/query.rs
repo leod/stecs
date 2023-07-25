@@ -1,7 +1,7 @@
 mod iter;
 mod stream;
 
-use std::{any::type_name, iter::FilterMap, marker::PhantomData};
+use std::{any::type_name, marker::PhantomData};
 
 use crate::{
     archetype_set::ArchetypeSetFetch,
@@ -10,14 +10,15 @@ use crate::{
     ArchetypeSet, Column, Component, Entity, EntityColumns, InArchetypeSet,
 };
 
-pub trait Fetch<'a, S: ArchetypeSet>: Copy + 'a {
-    type Item<'b>
+// TODO: 'w maybe not needed.
+pub trait Fetch<'w, S: ArchetypeSet>: Copy + 'w {
+    type Item<'f>
     where
-        'a: 'b;
+        'w: 'f;
 
     fn new<E: InArchetypeSet<S>>(
-        untyped_keys: &'a Column<thunderdome::Index>,
-        columns: &'a E::Columns,
+        untyped_keys: &'w Column<thunderdome::Index>,
+        columns: &'w E::Columns,
     ) -> Option<Self>;
 
     fn len(&self) -> usize;
@@ -35,21 +36,21 @@ pub trait Fetch<'a, S: ArchetypeSet>: Copy + 'a {
     /// rules to the caller. In particular, the caller has to ensure that this
     /// method is not called on an `index` whose components are already borrowed
     /// elsewhere (be it through `self` or not through `self`).
-    unsafe fn get<'b>(&self, index: usize) -> Self::Item<'b>
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'a: 'b;
+        'w: 'f;
 }
 
-impl<'a, C, S> Fetch<'a, S> for ColumnRawParts<C>
+impl<'w, C, S> Fetch<'w, S> for ColumnRawParts<C>
 where
     C: Component,
     S: ArchetypeSet,
 {
-    type Item<'b> = &'b C where 'a: 'b;
+    type Item<'f> = &'f C where 'w: 'f;
 
     fn new<E: InArchetypeSet<S>>(
         _: &Column<thunderdome::Index>,
-        columns: &'a E::Columns,
+        columns: &'w E::Columns,
     ) -> Option<Self> {
         columns
             .column::<C>()
@@ -60,9 +61,9 @@ where
         self.len
     }
 
-    unsafe fn get<'b>(&self, index: usize) -> Self::Item<'b>
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'a: 'b,
+        'w: 'f,
     {
         assert!(index < <Self as Fetch<S>>::len(self));
 
@@ -70,14 +71,14 @@ where
     }
 }
 
-impl<'a, C, S> Fetch<'a, S> for ColumnRawPartsMut<C>
+impl<'w, C, S> Fetch<'w, S> for ColumnRawPartsMut<C>
 where
     C: Component,
     S: ArchetypeSet,
 {
-    type Item<'b> = &'b mut C where 'a: 'b;
+    type Item<'f> = &'f mut C where 'w: 'f;
 
-    fn new<E: Entity>(_: &Column<thunderdome::Index>, columns: &'a E::Columns) -> Option<Self> {
+    fn new<E: Entity>(_: &'w Column<thunderdome::Index>, columns: &'w E::Columns) -> Option<Self> {
         columns
             .column::<C>()
             .map(|column| column.borrow_mut().as_raw_parts_mut())
@@ -87,9 +88,9 @@ where
         self.len
     }
 
-    unsafe fn get<'b>(&self, index: usize) -> Self::Item<'b>
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'a: 'b,
+        'w: 'f,
     {
         assert!(index < <Self as Fetch<S>>::len(self));
 
@@ -99,17 +100,17 @@ where
     }
 }
 
-impl<'a, F0, F1, S> Fetch<'a, S> for (F0, F1)
+impl<'w, F0, F1, S> Fetch<'w, S> for (F0, F1)
 where
-    F0: Fetch<'a, S>,
-    F1: Fetch<'a, S>,
+    F0: Fetch<'w, S>,
+    F1: Fetch<'w, S>,
     S: ArchetypeSet,
 {
-    type Item<'b> = (F0::Item<'b>, F1::Item<'b>) where 'a: 'b;
+    type Item<'f> = (F0::Item<'f>, F1::Item<'f>) where 'w: 'f;
 
     fn new<E: InArchetypeSet<S>>(
-        untypes_keys: &'a Column<thunderdome::Index>,
-        columns: &'a E::Columns,
+        untypes_keys: &'w Column<thunderdome::Index>,
+        columns: &'w E::Columns,
     ) -> Option<Self> {
         let f0 = F0::new::<E>(untypes_keys, columns)?;
         let f1 = F1::new::<E>(untypes_keys, columns)?;
@@ -123,9 +124,9 @@ where
         self.0.len()
     }
 
-    unsafe fn get<'b>(&self, index: usize) -> Self::Item<'b>
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'a: 'b,
+        'w: 'f,
     {
         (self.0.get(index), self.1.get(index))
     }
@@ -137,15 +138,15 @@ pub struct FetchEntityId<EntityId> {
     untyped_key_to_id: fn(thunderdome::Index) -> EntityId,
 }
 
-impl<'a, S> Fetch<'a, S> for FetchEntityId<S::EntityId>
+impl<'w, S> Fetch<'w, S> for FetchEntityId<S::EntityId>
 where
     S: ArchetypeSet,
 {
-    type Item<'b> = S::EntityId where 'a: 'b;
+    type Item<'f> = S::EntityId where 'w: 'f;
 
     fn new<E: InArchetypeSet<S>>(
         untyped_keys: &Column<thunderdome::Index>,
-        _: &'a E::Columns,
+        _: &'w E::Columns,
     ) -> Option<Self> {
         Some(Self {
             raw_parts: untyped_keys.as_raw_parts(),
@@ -157,9 +158,9 @@ where
         self.raw_parts.len
     }
 
-    unsafe fn get<'b>(&self, index: usize) -> Self::Item<'b>
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'a: 'b,
+        'w: 'f,
     {
         assert!(index < <Self as Fetch<S>>::len(self));
 
@@ -175,17 +176,17 @@ pub struct FetchWith<F, R> {
     _phantom: PhantomData<R>,
 }
 
-impl<'a, F, R, S> Fetch<'a, S> for FetchWith<F, R>
+impl<'w, F, R, S> Fetch<'w, S> for FetchWith<F, R>
 where
-    F: Fetch<'a, S>,
-    R: Fetch<'a, S>,
+    F: Fetch<'w, S>,
+    R: Fetch<'w, S>,
     S: ArchetypeSet,
 {
-    type Item<'b> = F::Item<'b> where 'a: 'b;
+    type Item<'f> = F::Item<'f> where 'w: 'f;
 
     fn new<E: InArchetypeSet<S>>(
-        untyped_keys: &'a Column<thunderdome::Index>,
-        columns: &'a E::Columns,
+        untyped_keys: &'w Column<thunderdome::Index>,
+        columns: &'w E::Columns,
     ) -> Option<Self> {
         let fetch = F::new::<E>(untyped_keys, columns)?;
 
@@ -201,9 +202,9 @@ where
         self.fetch.len()
     }
 
-    unsafe fn get<'b>(&self, index: usize) -> Self::Item<'b>
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'a: 'b,
+        'w: 'f,
     {
         self.fetch.get(index)
     }
@@ -215,17 +216,17 @@ pub struct FetchWithout<F, R> {
     _phantom: PhantomData<R>,
 }
 
-impl<'a, F, R, S> Fetch<'a, S> for FetchWithout<F, R>
+impl<'w, F, R, S> Fetch<'w, S> for FetchWithout<F, R>
 where
-    F: Fetch<'a, S>,
-    R: Fetch<'a, S>,
+    F: Fetch<'w, S>,
+    R: Fetch<'w, S>,
     S: ArchetypeSet,
 {
-    type Item<'b> = F::Item<'b> where 'a: 'b;
+    type Item<'f> = F::Item<'f> where 'w: 'f;
 
     fn new<E: InArchetypeSet<S>>(
-        untyped_keys: &'a Column<thunderdome::Index>,
-        columns: &'a E::Columns,
+        untyped_keys: &'w Column<thunderdome::Index>,
+        columns: &'w E::Columns,
     ) -> Option<Self> {
         let fetch = F::new::<E>(untyped_keys, columns)?;
 
@@ -243,52 +244,52 @@ where
         self.fetch.len()
     }
 
-    unsafe fn get<'b>(&self, index: usize) -> Self::Item<'b>
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
     where
-        'a: 'b,
+        'w: 'f,
     {
         self.fetch.get(index)
     }
 }
 
-pub trait Query<'a, S: ArchetypeSet>: 'a {
-    type Fetch: Fetch<'a, S>;
+pub trait Query<S: ArchetypeSet> {
+    type Fetch<'w>: Fetch<'w, S>;
 
     #[doc(hidden)]
     fn check_borrows(checker: &mut BorrowChecker);
 }
 
-impl<'a, C, S> Query<'a, S> for &'a C
+impl<'q, C, S> Query<S> for &'q C
 where
     C: Component,
     S: ArchetypeSet,
 {
-    type Fetch = ColumnRawParts<C>;
+    type Fetch<'w> = ColumnRawParts<C>;
 
     fn check_borrows(checker: &mut BorrowChecker) {
         checker.borrow::<C>();
     }
 }
 
-impl<'a, C, S> Query<'a, S> for &'a mut C
+impl<'q, C, S> Query<S> for &'q mut C
 where
     C: Component,
     S: ArchetypeSet,
 {
-    type Fetch = ColumnRawPartsMut<C>;
+    type Fetch<'w> = ColumnRawPartsMut<C>;
 
     fn check_borrows(checker: &mut BorrowChecker) {
         checker.borrow_mut::<C>();
     }
 }
 
-impl<'a, Q0, Q1, S> Query<'a, S> for (Q0, Q1)
+impl<'q, Q0, Q1, S> Query<S> for (Q0, Q1)
 where
-    Q0: Query<'a, S>,
-    Q1: Query<'a, S>,
+    Q0: Query<S>,
+    Q1: Query<S>,
     S: ArchetypeSet,
 {
-    type Fetch = (Q0::Fetch, Q1::Fetch);
+    type Fetch<'w> = (Q0::Fetch<'w>, Q1::Fetch<'w>);
 
     fn check_borrows(checker: &mut BorrowChecker) {
         Q0::check_borrows(checker);
@@ -298,13 +299,13 @@ where
 
 pub struct With<Q, R>(PhantomData<(Q, R)>);
 
-impl<'a, Q, R, S> Query<'a, S> for With<Q, R>
+impl<Q, R, S> Query<S> for With<Q, R>
 where
-    Q: Query<'a, S>,
-    R: Query<'a, S>,
+    Q: Query<S>,
+    R: Query<S>,
     S: ArchetypeSet,
 {
-    type Fetch = FetchWith<Q::Fetch, R::Fetch>;
+    type Fetch<'w> = FetchWith<Q::Fetch<'w>, R::Fetch<'w>>;
 
     fn check_borrows(checker: &mut BorrowChecker) {
         Q::check_borrows(checker);
@@ -313,13 +314,13 @@ where
 
 pub struct Without<Q, R>(PhantomData<(Q, R)>);
 
-impl<'a, Q, R, S> Query<'a, S> for Without<Q, R>
+impl<Q, R, S> Query<S> for Without<Q, R>
 where
-    Q: Query<'a, S>,
-    R: Query<'a, S>,
+    Q: Query<S>,
+    R: Query<S>,
     S: ArchetypeSet,
 {
-    type Fetch = FetchWithout<Q::Fetch, R::Fetch>;
+    type Fetch<'w> = FetchWithout<Q::Fetch<'w>, R::Fetch<'w>>;
 
     fn check_borrows(checker: &mut BorrowChecker) {
         Q::check_borrows(checker);
@@ -329,14 +330,14 @@ where
 // Safety: Before constructing a `FetchIter`, use `BorrowChecker` to ensure that
 // the query does not specify borrows that violate Rust's borrowing rules. Also,
 // do not allow constructing references to the entity at which the `FetchIter`
-// currently points.
-pub struct FetchIter<'a, F, S> {
+// currently points that would violate Rust's borrowing rules.
+pub struct FetchIter<'w, 'f, F, S> {
     i: usize,
     fetch: F,
-    _phantom: PhantomData<&'a S>,
+    _phantom: PhantomData<&'w &'f S>,
 }
 
-impl<'a, F, S> FetchIter<'a, F, S> {
+impl<'w, 'f, F, S> FetchIter<'w, 'f, F, S> {
     pub fn new(fetch: F) -> Self {
         Self {
             i: 0,
@@ -346,12 +347,12 @@ impl<'a, F, S> FetchIter<'a, F, S> {
     }
 }
 
-impl<'a, F, S> Iterator for FetchIter<'a, F, S>
+impl<'w, 'f, F, S> Iterator for FetchIter<'w, 'f, F, S>
 where
-    F: Fetch<'a, S>,
+    F: Fetch<'w, S>,
     S: ArchetypeSet,
 {
-    type Item = F::Item<'a>;
+    type Item = F::Item<'w>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.i == self.fetch.len() {
@@ -367,21 +368,23 @@ where
     }
 }
 
-pub struct ArchetypeSetFetchIter<'a, F, S>
+pub struct ArchetypeSetFetchIter<'w, 'f, F, S>
 where
-    F: Fetch<'a, S>,
+    F: Fetch<'w, S>,
     S: ArchetypeSet,
+    'w: 'f,
 {
-    archetype_set_iter: <S::Fetch<'a, F> as ArchetypeSetFetch<'a, S>>::Iter,
-    current_fetch_iter: Option<FetchIter<'a, F, S>>,
+    archetype_set_iter: <S::Fetch<'w, F> as ArchetypeSetFetch<'w, S>>::Iter,
+    current_fetch_iter: Option<FetchIter<'w, 'f, F, S>>,
 }
 
-impl<'a, F, S> Iterator for ArchetypeSetFetchIter<'a, F, S>
+impl<'w, 'f, F, S> Iterator for ArchetypeSetFetchIter<'w, 'f, F, S>
 where
-    F: Fetch<'a, S>,
+    F: Fetch<'w, S>,
     S: ArchetypeSet,
+    'w: 'f,
 {
-    type Item = <F as Fetch<'a, S>>::Item<'a>;
+    type Item = <F as Fetch<'w, S>>::Item<'f>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -401,12 +404,12 @@ where
     }
 }
 
-impl<'a, F, S> ArchetypeSetFetchIter<'a, F, S>
+impl<'w, 'f, F, S> ArchetypeSetFetchIter<'w, 'f, F, S>
 where
-    F: Fetch<'a, S>,
+    F: Fetch<'w, S>,
     S: ArchetypeSet,
 {
-    unsafe fn new(archetype_set: &'a S) -> Self {
+    unsafe fn new(archetype_set: &'w S) -> Self {
         let mut archetype_set_iter = archetype_set.fetch::<F>().iter();
 
         let current_fetch_iter = archetype_set_iter.next().map(FetchIter::new);
@@ -423,14 +426,14 @@ pub struct QueryResult<'a, Q, S> {
     _phantom: PhantomData<Q>,
 }
 
-impl<'a, Q, S> IntoIterator for QueryResult<'a, Q, S>
+impl<'w, Q, S> IntoIterator for QueryResult<'w, Q, S>
 where
-    Q: Query<'a, S>,
+    Q: Query<S>,
     S: ArchetypeSet,
 {
-    type Item = <Q::Fetch as Fetch<'a, S>>::Item<'a>;
+    type Item = <Q::Fetch<'w> as Fetch<'w, S>>::Item<'w>;
 
-    type IntoIter = ArchetypeSetFetchIter<'a, Q::Fetch, S>;
+    type IntoIter = ArchetypeSetFetchIter<'w, 'w, Q::Fetch<'w>, S>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
@@ -446,35 +449,35 @@ where
     }
 }
 
-impl<'a, Q, S> QueryResult<'a, Q, S>
+impl<'w, Q, S> QueryResult<'w, Q, S>
 where
-    Q: Query<'a, S>,
+    Q: Query<S>,
     S: ArchetypeSet,
 {
-    pub(crate) fn new(archetype_set: &'a mut S) -> Self {
+    pub(crate) fn new(archetype_set: &'w mut S) -> Self {
         Self {
             archetype_set,
             _phantom: PhantomData,
         }
     }
 
-    pub fn with<R>(self) -> QueryResult<'a, With<Q, R>, S>
+    pub fn with<R>(self) -> QueryResult<'w, With<Q, R>, S>
     where
-        R: Query<'a, S>,
+        R: Query<S>,
     {
         QueryResult::new(self.archetype_set)
     }
 
-    pub fn without<R>(self) -> QueryResult<'a, Without<Q, R>, S>
+    pub fn without<R>(self) -> QueryResult<'w, Without<Q, R>, S>
     where
-        R: Query<'a, S>,
+        R: Query<S>,
     {
         QueryResult::new(self.archetype_set)
     }
 
-    pub fn join<J>(self) -> JoinQueryResult<'a, Q, J, S>
+    pub fn join<J>(self) -> JoinQueryResult<'w, Q, J, S>
     where
-        J: Query<'a, S>,
+        J: Query<S>,
     {
         JoinQueryResult {
             archetype_set: self.archetype_set,
@@ -482,9 +485,9 @@ where
         }
     }
 
-    pub fn join_stream<J>(self) -> JoinStreamQueryResult<'a, Q, J, S>
+    pub fn join_stream<J>(self) -> JoinStreamQueryResult<'w, Q, J, S>
     where
-        J: Query<'a, S>,
+        J: Query<S>,
     {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules. Note that `JoinStreamQueryResult` ensures
@@ -572,23 +575,23 @@ where
     }
 }
 
-pub struct JoinArchetypeSetFetchIter<'a, F, J, S>
+pub struct JoinArchetypeSetFetchIter<'w, F, J, S>
 where
-    F: Fetch<'a, S>,
-    J: Fetch<'a, S>,
+    F: Fetch<'w, S>,
+    J: Fetch<'w, S>,
     S: ArchetypeSet,
 {
-    query_iter: ArchetypeSetFetchIter<'a, F, S>,
-    join_fetch: S::Fetch<'a, J>,
+    query_iter: ArchetypeSetFetchIter<'w, 'w, F, S>,
+    join_fetch: S::Fetch<'w, J>,
 }
 
-impl<'a, F, J, S> Iterator for JoinArchetypeSetFetchIter<'a, F, J, S>
+impl<'w, F, J, S> Iterator for JoinArchetypeSetFetchIter<'w, F, J, S>
 where
-    F: Fetch<'a, S>,
-    J: Fetch<'a, S>,
+    F: Fetch<'w, S>,
+    J: Fetch<'w, S>,
     S: ArchetypeSet,
 {
-    type Item = (<F as Fetch<'a, S>>::Item<'a>, Join<'a, J, S>);
+    type Item = (<F as Fetch<'w, S>>::Item<'w>, Join<'w, J, S>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = self.query_iter.next()?;
@@ -606,15 +609,18 @@ pub struct JoinQueryResult<'a, Q, J, S> {
     _phantom: PhantomData<(Q, J)>,
 }
 
-impl<'a, Q, J, S> IntoIterator for JoinQueryResult<'a, Q, J, S>
+impl<'w, Q, J, S> IntoIterator for JoinQueryResult<'w, Q, J, S>
 where
-    Q: Query<'a, S>,
-    J: Query<'a, S>,
+    Q: Query<S>,
+    J: Query<S>,
     S: ArchetypeSet,
 {
-    type Item = (<Q::Fetch as Fetch<'a, S>>::Item<'a>, Join<'a, J::Fetch, S>);
+    type Item = (
+        <Q::Fetch<'w> as Fetch<'w, S>>::Item<'w>,
+        Join<'w, J::Fetch<'w>, S>,
+    );
 
-    type IntoIter = JoinArchetypeSetFetchIter<'a, Q::Fetch, J::Fetch, S>;
+    type IntoIter = JoinArchetypeSetFetchIter<'w, Q::Fetch<'w>, J::Fetch<'w>, S>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
@@ -632,25 +638,28 @@ where
     }
 }
 
-pub struct JoinStreamQueryResult<'a, Q, J, S>
+pub struct JoinStreamQueryResult<'w, Q, J, S>
 where
-    Q: Query<'a, S>,
-    J: Query<'a, S>,
+    Q: Query<S>,
+    J: Query<S>,
     S: ArchetypeSet,
 {
-    query_iter: ArchetypeSetFetchIter<'a, (FetchEntityId<S::EntityId>, Q::Fetch), S>,
-    join_fetch: S::Fetch<'a, J::Fetch>,
+    query_iter: ArchetypeSetFetchIter<'w, 'w, (FetchEntityId<S::EntityId>, Q::Fetch<'w>), S>,
+    join_fetch: S::Fetch<'w, J::Fetch<'w>>,
 }
 
-impl<'a, Q, J, S> JoinStreamQueryResult<'a, Q, J, S>
+impl<'w, Q, J, S> JoinStreamQueryResult<'w, Q, J, S>
 where
-    Q: Query<'a, S>,
-    J: Query<'a, S>,
+    Q: Query<S>,
+    J: Query<S>,
     S: ArchetypeSet,
 {
     pub fn fetch_next(
-        &'a mut self,
-    ) -> Option<(<Q::Fetch as Fetch<S>>::Item<'a>, Join<'a, J::Fetch, S>)> {
+        &'w mut self,
+    ) -> Option<(
+        <Q::Fetch<'w> as Fetch<S>>::Item<'w>,
+        Join<'w, J::Fetch<'w>, S>,
+    )> {
         let Some((id, item)) = self.query_iter.next() else {
             return None;
         };
