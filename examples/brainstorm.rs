@@ -2,9 +2,8 @@ use std::any::type_name;
 
 use stecs::{
     archetype_set::{ArchetypeSetFetch, InArchetypeSet},
-    entity::BorrowEntity,
-    internal::{BorrowChecker, ColumnRawPartsMut},
-    query::fetch::{Fetch, FetchEntityId, FetchFromSet},
+    internal::BorrowChecker,
+    query::fetch::{FetchEntityId, FetchFromSet},
     Archetype, ArchetypeSet, Entity, EntityId, EntityKey, Query,
 };
 use thunderdome::Arena;
@@ -25,58 +24,11 @@ struct Player {
     col: Color,
 }
 
-// generated
-struct PlayerRefMut<'f> {
-    pos: &'f mut Position,
-    vel: &'f mut Velocity,
-    col: &'f mut Color,
-}
-
-#[derive(Clone, Copy)]
-struct PlayerRefMutFetch {
-    pos: ColumnRawPartsMut<Position>,
-    vel: ColumnRawPartsMut<Velocity>,
-    col: ColumnRawPartsMut<Color>,
-}
-
-unsafe impl Fetch for PlayerRefMutFetch {
-    type Item<'f> = PlayerRefMut<'f>;
-
-    fn len(&self) -> usize {
-        self.pos.len
-    }
-
-    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f> {
-        assert!(index < self.len());
-
-        PlayerRefMut {
-            pos: &mut *unsafe { self.pos.ptr.add(index) },
-            vel: &mut *unsafe { self.vel.ptr.add(index) },
-            col: &mut *unsafe { self.col.ptr.add(index) },
-        }
-    }
-}
-
-impl<'f> BorrowEntity<'f> for PlayerRefMut<'f> {
-    type Entity = Player;
-
-    type Fetch<'w> = PlayerRefMutFetch where 'w: 'f;
-
-    fn to_entity(&'f self) -> Self::Entity {
-        // need clone?!
-        todo!()
-    }
-
-    fn new_fetch<'w>(columns: &'w <Self::Entity as Entity>::Columns) -> Self::Fetch<'w>
-    where
-        'w: 'f,
-    {
-        PlayerRefMutFetch {
-            pos: columns.pos.borrow_mut().as_raw_parts_mut(),
-            vel: columns.vel.borrow_mut().as_raw_parts_mut(),
-            col: columns.col.borrow_mut().as_raw_parts_mut(),
-        }
-    }
+#[derive(Entity, Clone)]
+struct Boier<T, S> {
+    pos: T,
+    vel: S,
+    col: Color,
 }
 
 #[derive(Clone, Debug)]

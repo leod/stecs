@@ -6,7 +6,7 @@ use std::{
 
 use crate::{column::Column, query::fetch::Fetch, Component};
 
-// TODO: PartialEq, Eq, Hash, PartialOrd, Ord.
+// TODO: Eq, Hash, PartialOrd, Ord.
 // https://github.com/rust-lang/rust/issues/26925
 pub struct EntityKey<E>(pub thunderdome::Index, PhantomData<E>);
 
@@ -44,9 +44,7 @@ pub trait BorrowEntity<'f> {
     where
         'w: 'f;
 
-    fn to_entity(&'f self) -> Self::Entity;
-
-    fn new_fetch<'w>(columns: &'w <Self::Entity as Entity>::Columns) -> Self::Fetch<'w>
+    fn new_fetch<'w>(len: usize, columns: &'w <Self::Entity as Entity>::Columns) -> Self::Fetch<'w>
     where
         'w: 'f;
 }
@@ -62,7 +60,7 @@ pub trait Columns: Default {
 }
 
 pub trait Entity: Sized {
-    //type BorrowMut<'f>: BorrowEntity<'f, Entity = Self>;
-
     type Columns: Columns<Entity = Self>;
+
+    type BorrowMut<'f>: BorrowEntity<'f, Entity = Self>;
 }

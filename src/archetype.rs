@@ -1,6 +1,11 @@
 use thunderdome::Arena;
 
-use crate::{column::Column, entity::Columns, Entity, EntityKey};
+use crate::{
+    column::Column,
+    entity::{BorrowEntity, Columns},
+    query::fetch::Fetch,
+    Entity, EntityKey,
+};
 
 #[derive(Clone)]
 pub struct Archetype<E: Entity> {
@@ -44,16 +49,19 @@ impl<E: Entity> Archetype<E> {
         Some(self.columns.remove(index))
     }
 
-    /*pub fn get_mut(&mut self, key: EntityKey<E>) -> Option<E::BorrowMut<'_>> {
+    pub fn get_mut(&mut self, key: EntityKey<E>) -> Option<E::BorrowMut<'_>> {
         let index = *self.indices.get(key.0)?;
 
         debug_assert!(index < self.untyped_keys.len());
 
-        let fetch = <E::BorrowMut<'_> as BorrowEntity<'_>>::new_fetch(&self.columns);
+        let fetch = <E::BorrowMut<'_> as BorrowEntity<'_>>::new_fetch(
+            self.untyped_keys.len(),
+            &self.columns,
+        );
 
         // Safety: TODO
         Some(unsafe { fetch.get(index) })
-    }*/
+    }
 }
 
 impl<E: Entity> Default for Archetype<E> {
