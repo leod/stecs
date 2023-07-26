@@ -31,13 +31,13 @@ pub trait WorldData: Sized + 'static {
     where
         E: EntityVariant<Self::Entity>;
 
-    fn entity<E>(&self, id: EntityId<E>) -> Option<E::Ref<'_>>
-    where
-        E: EntityVariant<Self::Entity>;
-
     fn query<Q: Query<Self>>(&mut self) -> QueryResult<Q, Self> {
         QueryResult::new(self)
     }
+
+    fn entity<E>(&self, id: EntityId<E>) -> Option<E::Ref<'_>>
+    where
+        E: EntityVariant<Self::Entity>;
 
     #[doc(hidden)]
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>

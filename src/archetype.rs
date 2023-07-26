@@ -10,10 +10,10 @@ use thunderdome::Arena;
 
 use crate::{
     column::Column,
-    entity::{Columns, EntityVariant},
+    entity::{Columns, EntityBorrow, EntityVariant},
     query::fetch::Fetch,
     world::WorldFetch,
-    Entity, EntityId, WorldData,
+    Entity, EntityId, EntityRef, WorldData,
 };
 
 pub struct EntityKey<E>(pub thunderdome::Index, PhantomData<E>);
@@ -95,17 +95,21 @@ impl<T: Columns> Archetype<T> {
         Some(self.columns.remove(index))
     }
 
+    pub fn get_impl(&mut self, id: EntityId<T::Entity>) -> Option<EntityRef<T::Entity>> {
+        let index = *self.indices.get(id.get().0)?;
+
+        debug_assert!(index < self.ids.len());
+
+        let fetch = <<T::Entity as Entity>::Ref<'_> as EntityBorrow<'_>>::new_fetch(
+            self.ids.len(),
+            &self.columns,
+        );
+
+        // Safety: TODO
+        Some(EntityRef(unsafe { fetch.get(index) }))
+    }
+
     /*
-        pub fn get(&mut self, id: EntityId<T>) -> Option<EntityRef<T::Entity>> {
-            let index = *self.indices.get(id.get().0)?;
-
-            debug_assert!(index < self.ids.len());
-
-            let fetch = <T::Ref<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
-
-            // Safety: TODO
-            Some(unsafe { fetch.get(index) })
-        }
 
         pub fn iter(&self) -> impl Iterator<Item = (EntityId<T>, Option<EntityRef<T::Entity>>)> + '_ {
             // Safety: TODO
@@ -283,17 +287,20 @@ impl<T: Columns> WorldData for Archetype<T> {
         self.despawn_impl(id.to_outer())
     }
 
-    fn entity<E>(&self, id: EntityId<E>) -> Option<E::Ref<'_>>
-    where
-        E: EntityVariant<Self::Entity>,
-    {
-        todo!()
-    }
-
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where
         F: Fetch + 'w,
     {
         ArchetypeDataFetch(&self.indices, F::new(&self.ids, &self.columns))
+    }
+
+    fn entity<E>(&self, id: EntityId<E>) -> Option<E::Ref<'_>>
+    where
+        E: EntityVariant<Self::Entity>,
+    {
+        let id = id.to_outer();
+        let index = self.indices.get(id.get().0);
+
+        todo!()
     }
 }

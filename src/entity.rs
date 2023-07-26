@@ -47,11 +47,10 @@ pub trait EntityBorrow<'f> {
     where
         'w: 'f;
 
-    /*
-    fn new_fetch<'w>(len: usize, columns: &'w <Self::Entity as Entity>::Columns) -> Self::Fetch<'w>
+    fn new_fetch<'w, T>(len: usize, columns: &'w T) -> Self::Fetch<'w>
     where
-        'w: 'f;
-    */
+        'w: 'f,
+        T: Columns<Entity = Self::Entity>;
 }
 
 pub trait Columns: Default + 'static {
@@ -80,7 +79,7 @@ pub trait EntityVariant<EOuter: Entity>: Entity {
     fn id_to_outer(id: Self::Id) -> EOuter::Id;
 }
 
-pub struct EntityRef<'f, E: Entity>(E::Ref<'f>);
+pub struct EntityRef<'f, E: Entity>(pub(crate) E::Ref<'f>);
 
 impl<'f, E: Entity> Deref for EntityRef<'f, E> {
     type Target = E::Ref<'f>;
@@ -90,7 +89,7 @@ impl<'f, E: Entity> Deref for EntityRef<'f, E> {
     }
 }
 
-pub struct EntityRefMut<'f, E: Entity>(E::RefMut<'f>);
+pub struct EntityRefMut<'f, E: Entity>(pub(crate) E::RefMut<'f>);
 
 impl<'f, E: Entity> Deref for EntityRefMut<'f, E> {
     type Target = E::RefMut<'f>;
@@ -133,8 +132,8 @@ impl<E: Entity> EntityId<E> {
 
     pub fn to_outer<EOuter>(self) -> EntityId<EOuter>
     where
-        E: EntityVariant<EOuter>,
         EOuter: Entity,
+        E: EntityVariant<EOuter>,
     {
         EntityId(E::id_to_outer(self.0))
     }
