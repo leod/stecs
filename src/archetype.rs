@@ -249,19 +249,19 @@ impl<T: Columns> Data for Archetype<T> {
 
     type Fetch<'w, F: Fetch + 'w> = ArchetypeDataFetch<'w, F>;
 
-    fn spawn<EInner>(&mut self, entity: EInner) -> EntityId<EInner>
+    fn spawn<E>(&mut self, entity: E) -> EntityId<E>
     where
-        EInner: InnerEntity<Self::Entity>,
+        E: InnerEntity<Self::Entity>,
     {
         // This holds because `Columns::Entity` types are leaf entities, i.e.
         // they do not contain inner entities (other than themselves,
         // trivially).
-        assert_eq!(TypeId::of::<T::Entity>(), TypeId::of::<EInner>());
+        assert_eq!(TypeId::of::<T::Entity>(), TypeId::of::<E>());
 
         // This is a consequence of the assertion above.
         assert_eq!(
             TypeId::of::<<T::Entity as Entity>::Id>(),
-            TypeId::of::<EInner::Id>()
+            TypeId::of::<E::Id>()
         );
 
         let id = self.spawn(entity.into_outer()).get();
@@ -271,21 +271,21 @@ impl<T: Columns> Data for Archetype<T> {
         // `Copy`, so it cannot be `Drop`, and it cannot contain exclusive
         // references. However, it is unclear if these assumptions are strong
         // enough for the call below to be safe.
-        let id = unsafe { transmute_copy::<<T::Entity as Entity>::Id, EInner::Id>(&id) };
+        let id = unsafe { transmute_copy::<<T::Entity as Entity>::Id, E::Id>(&id) };
 
         EntityId::new(id)
     }
 
-    fn despawn<EInner>(&mut self, id: EntityId<EInner>) -> Option<Self::Entity>
+    fn despawn<E>(&mut self, id: EntityId<E>) -> Option<Self::Entity>
     where
-        EInner: InnerEntity<Self::Entity>,
+        E: InnerEntity<Self::Entity>,
     {
         self.despawn_impl(id.to_outer())
     }
 
-    fn entity<EInner>(&self, id: EntityId<EInner>) -> Option<EInner::Ref<'_>>
+    fn entity<E>(&self, id: EntityId<E>) -> Option<E::Ref<'_>>
     where
-        EInner: InnerEntity<Self::Entity>,
+        E: InnerEntity<Self::Entity>,
     {
         todo!()
     }
