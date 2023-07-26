@@ -11,7 +11,7 @@ use thunderdome::Arena;
 use crate::{
     column::Column,
     data::DataFetch,
-    entity::{Columns, ContainsEntity},
+    entity::{Columns, InnerEntity},
     query::fetch::Fetch,
     Data, Entity, EntityId,
 };
@@ -83,10 +83,7 @@ impl<T: Columns> Archetype<T> {
         EntityId::new(id)
     }
 
-    fn despawn_impl<EOuter>(&mut self, id: EntityId<T::Entity, EOuter>) -> Option<T::Entity>
-    where
-        EOuter: ContainsEntity<T::Entity>,
-    {
+    fn despawn_impl(&mut self, id: EntityId<T::Entity>) -> Option<T::Entity> {
         let index = self.indices.remove(id.get().0)?;
 
         self.ids.remove(index);
@@ -252,10 +249,9 @@ impl<T: Columns> Data for Archetype<T> {
 
     type Fetch<'w, F: Fetch + 'w> = ArchetypeDataFetch<'w, F>;
 
-    fn spawn<EInner>(&mut self, entity: EInner) -> EntityId<EInner, Self::Entity>
+    fn spawn<EInner>(&mut self, entity: EInner) -> EntityId<EInner>
     where
-        EInner: Entity,
-        Self::Entity: ContainsEntity<EInner>,
+        EInner: InnerEntity<Self::Entity>,
     {
         // This holds because `Columns::Entity` types are leaf entities, i.e.
         // they do not contain inner entities (other than themselves,
@@ -268,11 +264,7 @@ impl<T: Columns> Data for Archetype<T> {
             TypeId::of::<EInner::Id>()
         );
 
-        let id = self
-            .spawn_impl(<Self::Entity as ContainsEntity<EInner>>::entity_to_outer(
-                entity,
-            ))
-            .get();
+        let id = self.spawn(entity.into_outer()).get();
 
         // Safety: FIXME and TODO. By the assertion above, we know that the
         // source and destination types are equivalent. Also, `Entity::Id` is
@@ -284,18 +276,16 @@ impl<T: Columns> Data for Archetype<T> {
         EntityId::new(id)
     }
 
-    fn despawn<EInner>(&mut self, id: EntityId<EInner, Self::Entity>) -> Option<Self::Entity>
+    fn despawn<EInner>(&mut self, id: EntityId<EInner>) -> Option<Self::Entity>
     where
-        EInner: Entity,
-        Self::Entity: ContainsEntity<EInner>,
+        EInner: InnerEntity<Self::Entity>,
     {
         self.despawn_impl(id.to_outer())
     }
 
-    fn entity<EInner>(&self, id: EntityId<EInner, Self::Entity>) -> Option<EInner::Ref<'_>>
+    fn entity<EInner>(&self, id: EntityId<EInner>) -> Option<EInner::Ref<'_>>
     where
-        EInner: Entity,
-        Self::Entity: ContainsEntity<EInner>,
+        EInner: InnerEntity<Self::Entity>,
     {
         todo!()
     }

@@ -55,7 +55,7 @@ pub trait EntityBorrow<'f> {
 }
 
 pub trait Columns: Default + 'static {
-    type Entity: Entity<Id = EntityKey<Self::Entity>> + ContainsEntity<Self::Entity>;
+    type Entity: Entity<Id = EntityKey<Self::Entity>> + InnerEntity<Self::Entity>;
 
     fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>>;
 
@@ -74,10 +74,10 @@ pub trait Entity: Sized + 'static {
     type Data: Data<Entity = Self>;
 }
 
-// TODO: Have `InnerEntity<EOuter>` instead?
-pub trait ContainsEntity<EInner: Entity>: Entity {
-    fn entity_to_outer(entity: EInner) -> Self;
-    fn id_to_outer(id: EInner::Id) -> Self::Id;
+pub trait InnerEntity<EOuter: Entity>: Entity {
+    fn into_outer(self) -> EOuter;
+
+    fn id_to_outer(id: Self::Id) -> EOuter::Id;
 }
 
 pub struct EntityRef<'f, E: Entity>(E::Ref<'f>);
@@ -106,48 +106,36 @@ impl<'f, E: Entity> DerefMut for EntityRefMut<'f, E> {
     }
 }
 
-pub struct EntityId<EInner: Entity, EOuter = EInner>(EInner::Id, PhantomData<EOuter>);
+pub struct EntityId<E: Entity>(E::Id);
 
-impl<EInner: Entity, EOuter> Clone for EntityId<EInner, EOuter> {
+impl<E: Entity> Clone for EntityId<E> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<EInner: Entity, EOuter> Copy for EntityId<EInner, EOuter> {}
+impl<E: Entity> Copy for EntityId<E> {}
 
-impl<EInner: Entity, EOuter> PartialEq for EntityId<EInner, EOuter> {
+impl<E: Entity> PartialEq for EntityId<E> {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
     }
 }
 
-impl<EInner, EOuter> EntityId<EInner, EOuter>
-where
-    EInner: Entity,
-    EOuter: ContainsEntity<EInner>,
-{
-    pub(crate) fn new(id: EInner::Id) -> Self {
-        Self(id, PhantomData)
+impl<E: Entity> EntityId<E> {
+    pub(crate) fn new(id: E::Id) -> Self {
+        Self(id)
     }
 
-    pub fn to_outer(self) -> EntityId<EOuter> {
-        EntityId(EOuter::id_to_outer(self.0), PhantomData)
-    }
-
-    pub fn get(self) -> EInner::Id {
+    pub fn get(self) -> E::Id {
         self.0
     }
-}
 
-impl<EInner: Entity> EntityId<EInner, EInner>
-where
-    EInner: Entity,
-{
-    pub fn embed<EOuter>(self) -> EntityId<EInner, EOuter>
+    pub fn to_outer<EOuter>(self) -> EntityId<EOuter>
     where
-        EOuter: ContainsEntity<EInner>,
+        E: InnerEntity<EOuter>,
+        EOuter: Entity,
     {
-        EntityId(self.0, PhantomData)
+        EntityId(E::id_to_outer(self.0))
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    entity::ContainsEntity,
+    entity::InnerEntity,
     query::{fetch::Fetch, QueryResult},
     Entity, EntityId, Query,
 };
@@ -19,24 +19,21 @@ pub trait DataFetch<D: Data>: Clone {
 }
 
 pub trait Data: Sized + 'static {
-    type Entity: Entity;
+    type Entity: InnerEntity<Self::Entity>;
 
     type Fetch<'w, F: Fetch + 'w>: DataFetch<Self, Fetch = F>;
 
-    fn spawn<EInner>(&mut self, entity: EInner) -> EntityId<EInner, Self::Entity>
+    fn spawn<EInner>(&mut self, entity: EInner) -> EntityId<EInner>
     where
-        EInner: Entity,
-        Self::Entity: ContainsEntity<EInner>;
+        EInner: InnerEntity<Self::Entity>;
 
-    fn despawn<EInner>(&mut self, id: EntityId<EInner, Self::Entity>) -> Option<Self::Entity>
+    fn despawn<EInner>(&mut self, id: EntityId<EInner>) -> Option<Self::Entity>
     where
-        EInner: Entity,
-        Self::Entity: ContainsEntity<EInner>;
+        EInner: InnerEntity<Self::Entity>;
 
-    fn entity<EInner>(&self, id: EntityId<EInner, Self::Entity>) -> Option<EInner::Ref<'_>>
+    fn entity<EInner>(&self, id: EntityId<EInner>) -> Option<EInner::Ref<'_>>
     where
-        EInner: Entity,
-        Self::Entity: ContainsEntity<EInner>;
+        EInner: InnerEntity<Self::Entity>;
 
     fn query<Q: Query<Self>>(&mut self) -> QueryResult<Q, Self> {
         QueryResult::new(self)
