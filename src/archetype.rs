@@ -1,28 +1,53 @@
 use std::{
-    any::TypeId,
-    iter,
-    mem::{self, transmute},
-    option,
+    fmt::{self, Debug},
+    marker::PhantomData,
 };
 
 use thunderdome::Arena;
 
 use crate::{
-    archetype_set::ArchetypeSetFetch,
     column::Column,
-    entity::{Columns, EntityBorrow},
-    query::{fetch::Fetch, iter::FetchIter},
-    ArchetypeSet, Entity, EntityId,
+    entity::{Columns, ContainsEntity},
+    EntityId,
 };
 
-#[derive(Clone)]
-pub struct Archetype<E: Entity> {
-    indices: Arena<usize>,
-    ids: Column<thunderdome::Index>,
-    columns: E::Columns,
+pub struct EntityKey<E>(pub thunderdome::Index, PhantomData<E>);
+
+impl<E> EntityKey<E> {
+    #[doc(hidden)]
+    pub fn new_unchecked(id: thunderdome::Index) -> Self {
+        Self(id, PhantomData)
+    }
 }
 
-impl<E: Entity> Archetype<E> {
+impl<E> Clone for EntityKey<E> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<E> Copy for EntityKey<E> {}
+
+impl<E> Debug for EntityKey<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("EntityKey").field(&self.0).finish()
+    }
+}
+
+impl<E> PartialEq for EntityKey<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[derive(Clone)]
+pub struct Archetype<T: Columns> {
+    indices: Arena<usize>,
+    ids: Column<thunderdome::Index>,
+    columns: T,
+}
+
+impl<T: Columns> Archetype<T> {
     pub fn len(&self) -> usize {
         self.ids.len()
     }
@@ -39,22 +64,25 @@ impl<E: Entity> Archetype<E> {
         &self.ids
     }
 
-    pub fn columns(&self) -> &E::Columns {
+    pub fn columns(&self) -> &T {
         &self.columns
     }
 
-    pub fn spawn(&mut self, entity: E) -> EntityId<E> {
+    pub fn spawn(&mut self, entity: T::Entity) -> EntityId<T::Entity> {
         let index = self.ids.len();
-        let id = EntityId::new_unchecked(self.indices.insert(index));
+        let id = EntityKey::new_unchecked(self.indices.insert(index));
 
         self.ids.push(id.0);
         self.columns.push(entity);
 
-        id
+        EntityId::new(id)
     }
 
-    pub fn despawn(&mut self, id: EntityId<E>) -> Option<E> {
-        let index = self.indices.remove(id.0)?;
+    pub fn despawn<EOuter>(&mut self, id: EntityId<T::Entity, EOuter>) -> Option<T::Entity>
+    where
+        EOuter: ContainsEntity<T::Entity>,
+    {
+        let index = self.indices.remove(id.get().0)?;
 
         self.ids.remove(index);
 
@@ -65,69 +93,68 @@ impl<E: Entity> Archetype<E> {
         Some(self.columns.remove(index))
     }
 
-    pub fn get(&mut self, id: EntityId<E>) -> Option<E::Borrow<'_>> {
-        let index = *self.indices.get(id.0)?;
+    /*
+        pub fn get(&mut self, id: EntityId<T>) -> Option<EntityRef<T::Entity>> {
+            let index = *self.indices.get(id.get().0)?;
 
-        debug_assert!(index < self.ids.len());
+            debug_assert!(index < self.ids.len());
 
-        let fetch = <E::Borrow<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
+            let fetch = <T::Ref<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
 
-        // Safety: TODO
-        Some(unsafe { fetch.get(index) })
-    }
+            // Safety: TODO
+            Some(unsafe { fetch.get(index) })
+        }
 
-    pub fn iter(&self) -> impl Iterator<Item = (EntityId<E>, E::Borrow<'_>)> + '_ {
-        // Safety: TODO
-        let fetch = <E::Borrow<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
+        pub fn iter(&self) -> impl Iterator<Item = (EntityId<T>, Option<EntityRef<T::Entity>>)> + '_ {
+            // Safety: TODO
+            let fetch = <T::Ref<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
 
-        self.ids
-            .as_slice()
-            .iter()
-            .map(|id| EntityId::new_unchecked(*id))
-            .zip(FetchIter::new(fetch))
-    }
+            self.ids
+                .as_slice()
+                .iter()
+                .map(|id| EntityId::new_unchecked(*id))
+                .zip(FetchIter::new(fetch))
+        }
 
-    pub fn values(&self) -> impl Iterator<Item = E::Borrow<'_>> + '_ {
-        // Safety: TODO
-        let fetch = <E::Borrow<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
+        pub fn values(&self) -> impl Iterator<Item = T::Ref<'_>> + '_ {
+            // Safety: TODO
+            let fetch = <T::Ref<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
 
-        FetchIter::new(fetch)
-    }
+            FetchIter::new(fetch)
+        }
 
-    pub fn get_mut(&mut self, id: EntityId<E>) -> Option<E::BorrowMut<'_>> {
-        let index = *self.indices.get(id.0)?;
+        pub fn get_mut(&mut self, id: EntityId<T>) -> Option<T::RefMut<'_>> {
+            let index = *self.indices.get(id.0)?;
 
-        debug_assert!(index < self.ids.len());
+            debug_assert!(index < self.ids.len());
 
-        let fetch =
-            <E::BorrowMut<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
+            let fetch = <T::RefMut<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
 
-        // Safety: TODO
-        Some(unsafe { fetch.get(index) })
-    }
+            // Safety: TODO
+            Some(unsafe { fetch.get(index) })
+        }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (EntityId<E>, E::BorrowMut<'_>)> + '_ {
-        // Safety: TODO
-        let fetch =
-            <E::BorrowMut<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
+        pub fn iter_mut(&mut self) -> impl Iterator<Item = (EntityId<T>, T::RefMut<'_>)> + '_ {
+            // Safety: TODO
+            let fetch = <T::RefMut<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
 
-        self.ids
-            .as_slice()
-            .iter()
-            .map(|id| EntityId::new_unchecked(*id))
-            .zip(FetchIter::new(fetch))
-    }
+            self.ids
+                .as_slice()
+                .iter()
+                .map(|id| EntityId::new_unchecked(*id))
+                .zip(FetchIter::new(fetch))
+        }
 
-    pub fn values_mut(&mut self) -> impl Iterator<Item = E::BorrowMut<'_>> + '_ {
-        // Safety: TODO
-        let fetch =
-            <E::BorrowMut<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
+        pub fn values_mut(&mut self) -> impl Iterator<Item = T::RefMut<'_>> + '_ {
+            // Safety: TODO
+            let fetch = <T::RefMut<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
 
-        FetchIter::new(fetch)
-    }
+            FetchIter::new(fetch)
+        }
+    */
 }
 
-impl<E: Entity> Default for Archetype<E> {
+impl<T: Columns> Default for Archetype<T> {
     fn default() -> Self {
         Self {
             indices: Default::default(),
@@ -144,6 +171,7 @@ impl<E: Entity> Default for Archetype<E> {
 #[derive(Clone, Copy)]
 pub struct SingletonFetch<'w, F>(&'w Arena<usize>, Option<F>);
 
+/*
 impl<'w, E, F> ArchetypeSetFetch<Archetype<E>> for SingletonFetch<'w, F>
 where
     E: Entity,
@@ -190,3 +218,4 @@ impl<E: Entity> ArchetypeSet for Archetype<E> {
         SingletonFetch(&self.indices, F::new(&self.ids, &self.columns))
     }
 }
+*/

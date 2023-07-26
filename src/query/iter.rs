@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{archetype_set::ArchetypeSetFetch, ArchetypeSet};
+use crate::{data::DataFetch, Data, Entity};
 
 use super::fetch::Fetch;
 
@@ -44,19 +44,19 @@ where
     }
 }
 
-pub struct ArchetypeSetFetchIter<'w, F, S>
+pub struct DataFetchIter<'w, F, D>
 where
     F: Fetch + 'w,
-    S: ArchetypeSet + 'w,
+    D: Data + 'w,
 {
-    archetype_set_iter: <S::Fetch<'w, F> as ArchetypeSetFetch<S>>::Iter,
+    data_iter: <D::Fetch<'w, F> as DataFetch<D>>::Iter,
     current_fetch_iter: Option<FetchIter<'w, F>>,
 }
 
-impl<'w, F, S> Iterator for ArchetypeSetFetchIter<'w, F, S>
+impl<'w, F, D> Iterator for DataFetchIter<'w, F, D>
 where
     F: Fetch + 'w,
-    S: ArchetypeSet,
+    D: Data,
 {
     type Item = <F as Fetch>::Item<'w>;
 
@@ -70,55 +70,54 @@ where
                 return Some(item);
             }
 
-            self.current_fetch_iter = self.archetype_set_iter.next().map(FetchIter::new);
+            self.current_fetch_iter = self.data_iter.next().map(FetchIter::new);
             self.current_fetch_iter.as_ref()?;
         }
     }
 }
 
-impl<'w, F, S> ArchetypeSetFetchIter<'w, F, S>
+impl<'w, F, D> DataFetchIter<'w, F, D>
 where
     F: Fetch,
-    S: ArchetypeSet,
+    D: Data,
 {
-    pub(crate) unsafe fn new(archetype_set: &'w S) -> Self {
-        let mut archetype_set_iter = archetype_set.fetch::<F>().iter();
-
-        let current_fetch_iter = archetype_set_iter.next().map(FetchIter::new);
+    pub(crate) unsafe fn new(data: &'w D) -> Self {
+        let mut data_iter = data.fetch::<F>().iter();
+        let current_fetch_iter = data_iter.next().map(FetchIter::new);
 
         Self {
-            archetype_set_iter,
+            data_iter,
             current_fetch_iter,
         }
     }
 }
 
-pub struct Nest<'w, J, S>
+pub struct Nest<'w, J, D>
 where
     J: Fetch + 'w,
-    S: ArchetypeSet + 'w,
+    D: Data + 'w,
 {
-    pub(crate) ignore_id: Option<S::AnyEntityId>,
-    pub(crate) fetch: S::Fetch<'w, J>,
+    pub(crate) ignore_id: Option<<D::Entity as Entity>::Id>,
+    pub(crate) fetch: D::Fetch<'w, J>,
 }
 
-pub struct NestArchetypeSetFetchIter<'w, F, J, S>
+pub struct NestDataFetchIter<'w, F, J, D>
 where
     F: Fetch,
     J: Fetch + 'w,
-    S: ArchetypeSet,
+    D: Data,
 {
-    pub(crate) query_iter: ArchetypeSetFetchIter<'w, F, S>,
-    pub(crate) nest_fetch: S::Fetch<'w, J>,
+    pub(crate) query_iter: DataFetchIter<'w, F, D>,
+    pub(crate) nest_fetch: D::Fetch<'w, J>,
 }
 
-impl<'w, F, J, S> Iterator for NestArchetypeSetFetchIter<'w, F, J, S>
+impl<'w, F, J, D> Iterator for NestDataFetchIter<'w, F, J, D>
 where
     F: Fetch + 'w,
     J: Fetch + 'w,
-    S: ArchetypeSet,
+    D: Data,
 {
-    type Item = (<F as Fetch>::Item<'w>, Nest<'w, J, S>);
+    type Item = (<F as Fetch>::Item<'w>, Nest<'w, J, D>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = self.query_iter.next()?;
@@ -131,15 +130,15 @@ where
     }
 }
 
-impl<'a, J, S> Nest<'a, J, S>
+impl<'a, J, D> Nest<'a, J, D>
 where
     J: Fetch,
-    S: ArchetypeSet + 'a,
+    D: Data + 'a,
 {
     // This has to take an exclusive `self` reference to prevent violating
     // Rust's borrowing rules if `J` contains an exclusive borrow, since `get()`
     // could be called multiple times with the same `id`.
-    pub fn get(&mut self, id: S::AnyEntityId) -> Option<J::Item<'_>> {
+    pub fn get(&mut self, id: <D::Entity as Entity>::Id) -> Option<J::Item<'_>> {
         if let Some(ignore_id) = self.ignore_id {
             if ignore_id == id {
                 // TODO: Consider panicking.

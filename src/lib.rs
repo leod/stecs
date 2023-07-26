@@ -15,7 +15,7 @@ macro_rules! smaller_tuples_too {
 mod column;
 
 pub mod archetype;
-pub mod archetype_set;
+pub mod data;
 pub mod entity;
 pub mod query;
 
@@ -26,13 +26,15 @@ pub use stecs_derive::{ArchetypeSet, Entity};
 #[doc(inline)]
 pub use self::{
     archetype::Archetype,
-    archetype_set::{AnyEntityId, ArchetypeSet},
+    data::Data,
     entity::{Entity, EntityId, EntityRef, EntityRefMut},
     query::Query,
 };
 pub trait Component: 'static {}
 
 impl<T> Component for T where T: 'static {}
+
+pub type World<E: Entity> = <E as Entity>::Data;
 
 // Hidden unstable symbols, needed for `stecs-derive`.
 #[doc(hidden)]

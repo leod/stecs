@@ -4,7 +4,7 @@ use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
     entity::Columns,
     internal::Column,
-    ArchetypeSet, Component, Entity, EntityId,
+    Component,
 };
 
 use super::borrow_checker::BorrowChecker;

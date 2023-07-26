@@ -13,6 +13,13 @@ struct Velocity(f32);
 #[derive(Clone)]
 struct Color(f32);
 
+#[derive(Entity)]
+enum MyEntity {
+    Player(Player),
+    Enemy(Enemy),
+    Foo { x: Position },
+}
+
 #[derive(Entity, Clone)]
 struct Player {
     pos: Position,

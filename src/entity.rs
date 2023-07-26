@@ -5,8 +5,9 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::{column::Column, query::fetch::Fetch, Component};
+use crate::{archetype::EntityKey, column::Column, query::fetch::Fetch, Component, Data};
 
+/*
 // TODO: Eq, Hash, PartialOrd, Ord.
 // https://github.com/rust-lang/rust/issues/26925
 pub struct EntityId<E>(pub thunderdome::Index, PhantomData<E>);
@@ -37,6 +38,7 @@ impl<E> PartialEq for EntityId<E> {
         self.0 == other.0
     }
 }
+*/
 
 pub trait EntityBorrow<'f> {
     type Entity: Entity;
@@ -45,13 +47,15 @@ pub trait EntityBorrow<'f> {
     where
         'w: 'f;
 
+    /*
     fn new_fetch<'w>(len: usize, columns: &'w <Self::Entity as Entity>::Columns) -> Self::Fetch<'w>
     where
         'w: 'f;
+    */
 }
 
 pub trait Columns: Default + 'static {
-    type Entity: Entity<Columns = Self>;
+    type Entity: Entity<Id = EntityKey<Self::Entity>> + ContainsEntity<Self::Entity>;
 
     fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>>;
 
@@ -61,27 +65,34 @@ pub trait Columns: Default + 'static {
 }
 
 pub trait Entity: Sized + 'static {
-    type Columns: Columns<Entity = Self>;
+    type Id: Copy + PartialEq + Into<EntityId<Self>>;
 
-    type Borrow<'f>: EntityBorrow<'f, Entity = Self>;
+    type Ref<'f>: EntityBorrow<'f, Entity = Self>;
 
-    type BorrowMut<'f>: EntityBorrow<'f, Entity = Self>;
+    type RefMut<'f>: EntityBorrow<'f, Entity = Self>;
+
+    type Data: Data<Entity = Self>;
 }
 
-pub struct EntityRef<'f, E: Entity>(E::Borrow<'f>);
+pub trait ContainsEntity<EInner: Entity>: Entity {
+    fn entity_to_outer(entity: EInner) -> Self;
+    fn id_to_outer(id: EInner::Id) -> Self::Id;
+}
+
+pub struct EntityRef<'f, E: Entity>(E::Ref<'f>);
 
 impl<'f, E: Entity> Deref for EntityRef<'f, E> {
-    type Target = E::Borrow<'f>;
+    type Target = E::Ref<'f>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-pub struct EntityRefMut<'f, E: Entity>(E::BorrowMut<'f>);
+pub struct EntityRefMut<'f, E: Entity>(E::RefMut<'f>);
 
 impl<'f, E: Entity> Deref for EntityRefMut<'f, E> {
-    type Target = E::BorrowMut<'f>;
+    type Target = E::RefMut<'f>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -91,5 +102,51 @@ impl<'f, E: Entity> Deref for EntityRefMut<'f, E> {
 impl<'f, E: Entity> DerefMut for EntityRefMut<'f, E> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+pub struct EntityId<EInner: Entity, EOuter = EInner>(EInner::Id, PhantomData<EOuter>);
+
+impl<EInner: Entity, EOuter> Clone for EntityId<EInner, EOuter> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<EInner: Entity, EOuter> Copy for EntityId<EInner, EOuter> {}
+
+impl<EInner: Entity, EOuter> PartialEq for EntityId<EInner, EOuter> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
+    }
+}
+
+impl<EInner, EOuter> EntityId<EInner, EOuter>
+where
+    EInner: Entity,
+    EOuter: ContainsEntity<EInner>,
+{
+    pub fn new(id: EInner::Id) -> Self {
+        Self(id, PhantomData)
+    }
+
+    pub fn to_outer(self) -> EntityId<EOuter> {
+        EntityId(EOuter::id_to_outer(self.0), PhantomData)
+    }
+
+    pub fn get(self) -> EInner::Id {
+        self.0
+    }
+}
+
+impl<EInner: Entity> EntityId<EInner, EInner>
+where
+    EInner: Entity,
+{
+    pub fn embed<EOuter>(self) -> EntityId<EInner, EOuter>
+    where
+        EOuter: ContainsEntity<EInner>,
+    {
+        EntityId(self.0, PhantomData)
     }
 }
