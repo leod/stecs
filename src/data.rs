@@ -23,20 +23,20 @@ pub trait Data: Sized + 'static {
 
     type Fetch<'w, F: Fetch + 'w>: DataFetch<Self, Fetch = F>;
 
-    fn spawn<E>(&mut self, entity: E) -> EntityId<E, Self::Entity>
+    fn spawn<EInner>(&mut self, entity: EInner) -> EntityId<EInner, Self::Entity>
     where
-        E: Entity,
-        Self::Entity: ContainsEntity<E>;
+        EInner: Entity,
+        Self::Entity: ContainsEntity<EInner>;
 
-    fn despawn<E>(&mut self, id: EntityId<E, Self::Entity>) -> Option<Self::Entity>
+    fn despawn<EInner>(&mut self, id: EntityId<EInner, Self::Entity>) -> Option<Self::Entity>
     where
-        E: Entity,
-        Self::Entity: ContainsEntity<E>;
+        EInner: Entity,
+        Self::Entity: ContainsEntity<EInner>;
 
-    fn get<E>(&self, id: EntityId<E, Self::Entity>) -> Option<E::Ref<'_>>
+    fn entity<EInner>(&self, id: EntityId<EInner, Self::Entity>) -> Option<EInner::Ref<'_>>
     where
-        E: Entity,
-        Self::Entity: ContainsEntity<E>;
+        EInner: Entity,
+        Self::Entity: ContainsEntity<EInner>;
 
     fn query<Q: Query<Self>>(&mut self) -> QueryResult<Q, Self> {
         QueryResult::new(self)

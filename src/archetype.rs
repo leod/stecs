@@ -1,14 +1,19 @@
 use std::{
+    any::TypeId,
     fmt::{self, Debug},
     marker::PhantomData,
+    mem::transmute_copy,
+    option,
 };
 
 use thunderdome::Arena;
 
 use crate::{
     column::Column,
+    data::DataFetch,
     entity::{Columns, ContainsEntity},
-    EntityId,
+    query::fetch::Fetch,
+    Data, Entity, EntityId,
 };
 
 pub struct EntityKey<E>(pub thunderdome::Index, PhantomData<E>);
@@ -48,27 +53,27 @@ pub struct Archetype<T: Columns> {
 }
 
 impl<T: Columns> Archetype<T> {
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.ids.len()
     }
 
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    pub fn indices(&self) -> &Arena<usize> {
+    fn indices(&self) -> &Arena<usize> {
         &self.indices
     }
 
-    pub fn ids(&self) -> &Column<thunderdome::Index> {
+    fn ids(&self) -> &Column<thunderdome::Index> {
         &self.ids
     }
 
-    pub fn columns(&self) -> &T {
+    fn columns(&self) -> &T {
         &self.columns
     }
 
-    pub fn spawn(&mut self, entity: T::Entity) -> EntityId<T::Entity> {
+    fn spawn_impl(&mut self, entity: T::Entity) -> EntityId<T::Entity> {
         let index = self.ids.len();
         let id = EntityKey::new_unchecked(self.indices.insert(index));
 
@@ -78,7 +83,7 @@ impl<T: Columns> Archetype<T> {
         EntityId::new(id)
     }
 
-    pub fn despawn<EOuter>(&mut self, id: EntityId<T::Entity, EOuter>) -> Option<T::Entity>
+    fn despawn_impl<EOuter>(&mut self, id: EntityId<T::Entity, EOuter>) -> Option<T::Entity>
     where
         EOuter: ContainsEntity<T::Entity>,
     {
@@ -169,7 +174,29 @@ impl<T: Columns> Default for Archetype<T> {
 // TODO: impl<'a, E: Entity> IntoIterator for &'a Archetype<E>
 
 #[derive(Clone, Copy)]
-pub struct SingletonFetch<'w, F>(&'w Arena<usize>, Option<F>);
+pub struct ArchetypeDataFetch<'w, F>(&'w Arena<usize>, Option<F>);
+
+impl<'w, T, F> DataFetch<Archetype<T>> for ArchetypeDataFetch<'w, F>
+where
+    T: Columns,
+    F: Fetch,
+{
+    type Fetch = F;
+
+    type Iter = option::IntoIter<F>;
+
+    unsafe fn get<'f>(&self, id: EntityKey<T::Entity>) -> Option<F::Item<'f>>
+    where
+        Self: 'f,
+    {
+        self.1
+            .and_then(|fetch| self.0.get(id.0).map(|&index| fetch.get(index)))
+    }
+
+    fn iter(&mut self) -> Self::Iter {
+        self.1.into_iter()
+    }
+}
 
 /*
 impl<'w, E, F> ArchetypeSetFetch<Archetype<E>> for SingletonFetch<'w, F>
@@ -219,3 +246,64 @@ impl<E: Entity> ArchetypeSet for Archetype<E> {
     }
 }
 */
+
+impl<T: Columns> Data for Archetype<T> {
+    type Entity = T::Entity;
+
+    type Fetch<'w, F: Fetch + 'w> = ArchetypeDataFetch<'w, F>;
+
+    fn spawn<EInner>(&mut self, entity: EInner) -> EntityId<EInner, Self::Entity>
+    where
+        EInner: Entity,
+        Self::Entity: ContainsEntity<EInner>,
+    {
+        // This holds because `Columns::Entity` types are leaf entities, i.e.
+        // they do not contain inner entities (other than themselves,
+        // trivially).
+        assert_eq!(TypeId::of::<T::Entity>(), TypeId::of::<EInner>());
+
+        // This is a consequence of the assertion above.
+        assert_eq!(
+            TypeId::of::<<T::Entity as Entity>::Id>(),
+            TypeId::of::<EInner::Id>()
+        );
+
+        let id = self
+            .spawn_impl(<Self::Entity as ContainsEntity<EInner>>::entity_to_outer(
+                entity,
+            ))
+            .get();
+
+        // Safety: FIXME and TODO. By the assertion above, we know that the
+        // source and destination types are equivalent. Also, `Entity::Id` is
+        // `Copy`, so it cannot be `Drop`, and it cannot contain exclusive
+        // references. However, it is unclear if these assumptions are strong
+        // enough for the call below to be safe.
+        let id = unsafe { transmute_copy::<<T::Entity as Entity>::Id, EInner::Id>(&id) };
+
+        EntityId::new(id)
+    }
+
+    fn despawn<EInner>(&mut self, id: EntityId<EInner, Self::Entity>) -> Option<Self::Entity>
+    where
+        EInner: Entity,
+        Self::Entity: ContainsEntity<EInner>,
+    {
+        self.despawn_impl(id.to_outer())
+    }
+
+    fn entity<EInner>(&self, id: EntityId<EInner, Self::Entity>) -> Option<EInner::Ref<'_>>
+    where
+        EInner: Entity,
+        Self::Entity: ContainsEntity<EInner>,
+    {
+        todo!()
+    }
+
+    fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
+    where
+        F: Fetch + 'w,
+    {
+        ArchetypeDataFetch(&self.indices, F::new(&self.ids, &self.columns))
+    }
+}

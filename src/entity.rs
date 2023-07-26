@@ -65,7 +65,7 @@ pub trait Columns: Default + 'static {
 }
 
 pub trait Entity: Sized + 'static {
-    type Id: Copy + PartialEq + Into<EntityId<Self>>;
+    type Id: Copy + PartialEq + Into<EntityId<Self>> + 'static;
 
     type Ref<'f>: EntityBorrow<'f, Entity = Self>;
 
@@ -74,6 +74,7 @@ pub trait Entity: Sized + 'static {
     type Data: Data<Entity = Self>;
 }
 
+// TODO: Have `InnerEntity<EOuter>` instead?
 pub trait ContainsEntity<EInner: Entity>: Entity {
     fn entity_to_outer(entity: EInner) -> Self;
     fn id_to_outer(id: EInner::Id) -> Self::Id;
@@ -126,7 +127,7 @@ where
     EInner: Entity,
     EOuter: ContainsEntity<EInner>,
 {
-    pub fn new(id: EInner::Id) -> Self {
+    pub(crate) fn new(id: EInner::Id) -> Self {
         Self(id, PhantomData)
     }
 
