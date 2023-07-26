@@ -1,23 +1,24 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{DeriveInput, Error, Result};
+use syn::{DataStruct, DeriveInput, Error, Result};
 
-use crate::utils::{
-    generics_with_new_lifetime, generics_with_new_type_param, member_as_idents, struct_fields,
-};
+use crate::utils::{generics_with_new_lifetime, member_as_idents, struct_fields};
 
-pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
-    let ident = input.ident;
-    let vis = input.vis;
-    let data = match input.data {
-        syn::Data::Struct(s) => s,
+pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
+    match input.data {
+        syn::Data::Struct(ref data) => derive_struct(&input, data),
         _ => {
             return Err(Error::new_spanned(
-                ident,
+                input.ident,
                 "derive(Entity) does not support enums or unions",
             ))
         }
-    };
+    }
+}
+
+fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
+    let ident = &input.ident;
+    let vis = &input.vis;
 
     let ident_columns = syn::Ident::new(&format!("{}StecsInternalColumns", ident), ident.span());
     let ident_ref = syn::Ident::new(&format!("{}StecsInternalRef", ident), ident.span());
@@ -29,17 +30,12 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
     let (field_tys, field_members) = struct_fields(&data.fields);
     let field_idents = member_as_idents(&field_members);
 
-    add_additional_bounds_to_generic_params(&mut input.generics);
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let lifetime: syn::Lifetime = syn::parse_str("'__stecs__f").unwrap();
     let generics_with_lifetime = generics_with_new_lifetime(&input.generics, &lifetime);
     let (impl_generics_with_lifetime, ty_generics_with_lifetime, where_clause_with_lifetime) =
         generics_with_lifetime.split_for_impl();
-
-    let set_param: syn::TypeParam = syn::parse_str("__stecs__S: ::stecs::ArchetypeSet").unwrap();
-    let generics_with_set = generics_with_new_type_param(&input.generics, &set_param);
-    let (impl_generics_with_set, _, _) = generics_with_set.split_for_impl();
 
     Ok(quote! {
         // Columns
