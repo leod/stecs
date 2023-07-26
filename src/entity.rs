@@ -5,7 +5,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::{archetype::EntityKey, column::Column, query::fetch::Fetch, Component, Data};
+use crate::{archetype::EntityKey, column::Column, query::fetch::Fetch, Component, WorldData};
 
 /*
 // TODO: Eq, Hash, PartialOrd, Ord.
@@ -71,7 +71,7 @@ pub trait Entity: Sized + 'static {
 
     type RefMut<'f>: EntityBorrow<'f, Entity = Self>;
 
-    type Data: Data<Entity = Self>;
+    type Data: WorldData<Entity = Self>;
 }
 
 pub trait InnerEntity<EOuter: Entity>: Entity {

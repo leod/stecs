@@ -12,12 +12,11 @@ macro_rules! smaller_tuples_too {
     };
 }
 
-mod column;
-
 pub mod archetype;
-pub mod data;
+pub mod column;
 pub mod entity;
 pub mod query;
+pub mod world;
 
 pub use thunderdome;
 
@@ -25,22 +24,10 @@ pub use stecs_derive::{ArchetypeSet, Entity};
 
 #[doc(inline)]
 pub use self::{
-    archetype::Archetype,
-    data::Data,
     entity::{Entity, EntityId, EntityRef, EntityRefMut},
     query::Query,
+    world::{World, WorldData},
 };
 pub trait Component: 'static {}
 
 impl<T> Component for T where T: 'static {}
-
-pub type World<E: Entity> = <E as Entity>::Data;
-
-// Hidden unstable symbols, needed for `stecs-derive`.
-#[doc(hidden)]
-pub mod internal {
-    pub use super::{
-        column::{Column, ColumnRawParts, ColumnRawPartsMut},
-        query::borrow_checker::BorrowChecker,
-    };
-}

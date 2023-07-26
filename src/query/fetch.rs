@@ -1,9 +1,8 @@
 use std::marker::PhantomData;
 
 use crate::{
-    column::{ColumnRawParts, ColumnRawPartsMut},
+    column::{Column, ColumnRawParts, ColumnRawPartsMut},
     entity::Columns,
-    internal::Column,
     Component,
 };
 

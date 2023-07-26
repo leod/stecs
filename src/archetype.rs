@@ -10,10 +10,10 @@ use thunderdome::Arena;
 
 use crate::{
     column::Column,
-    data::DataFetch,
     entity::{Columns, InnerEntity},
     query::fetch::Fetch,
-    Data, Entity, EntityId,
+    world::WorldFetch,
+    Entity, EntityId, WorldData,
 };
 
 pub struct EntityKey<E>(pub thunderdome::Index, PhantomData<E>);
@@ -173,7 +173,7 @@ impl<T: Columns> Default for Archetype<T> {
 #[derive(Clone, Copy)]
 pub struct ArchetypeDataFetch<'w, F>(&'w Arena<usize>, Option<F>);
 
-impl<'w, T, F> DataFetch<Archetype<T>> for ArchetypeDataFetch<'w, F>
+impl<'w, T, F> WorldFetch<Archetype<T>> for ArchetypeDataFetch<'w, F>
 where
     T: Columns,
     F: Fetch,
@@ -244,7 +244,7 @@ impl<E: Entity> ArchetypeSet for Archetype<E> {
 }
 */
 
-impl<T: Columns> Data for Archetype<T> {
+impl<T: Columns> WorldData for Archetype<T> {
     type Entity = T::Entity;
 
     type Fetch<'w, F: Fetch + 'w> = ArchetypeDataFetch<'w, F>;

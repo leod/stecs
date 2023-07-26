@@ -4,7 +4,7 @@ use crate::{
     Entity, EntityId, Query,
 };
 
-pub trait DataFetch<D: Data>: Clone {
+pub trait WorldFetch<D: WorldData>: Clone {
     type Fetch: Fetch;
     type Iter: Iterator<Item = Self::Fetch>;
 
@@ -18,10 +18,10 @@ pub trait DataFetch<D: Data>: Clone {
     fn iter(&mut self) -> Self::Iter;
 }
 
-pub trait Data: Sized + 'static {
+pub trait WorldData: Sized + 'static {
     type Entity: InnerEntity<Self::Entity>;
 
-    type Fetch<'w, F: Fetch + 'w>: DataFetch<Self, Fetch = F>;
+    type Fetch<'w, F: Fetch + 'w>: WorldFetch<Self, Fetch = F>;
 
     fn spawn<E>(&mut self, entity: E) -> EntityId<E>
     where
@@ -44,3 +44,5 @@ pub trait Data: Sized + 'static {
     where
         F: Fetch + 'w;
 }
+
+pub type World<E> = <E as Entity>::Data;

@@ -7,7 +7,7 @@ use std::{any::type_name, marker::PhantomData};
 use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
     entity::EntityBorrow,
-    Component, Data, Entity, EntityRef, EntityRefMut,
+    Component, Entity, EntityRef, EntityRefMut, WorldData,
 };
 
 use self::{
@@ -16,14 +16,14 @@ use self::{
     iter::{DataFetchIter, Nest, NestDataFetchIter},
 };
 
-pub trait Query<D: Data> {
+pub trait Query<D: WorldData> {
     type Fetch<'w>: Fetch + 'w;
 }
 
 impl<'q, C, D> Query<D> for &'q C
 where
     C: Component,
-    D: Data,
+    D: WorldData,
 {
     type Fetch<'w> = ColumnRawParts<C>;
 }
@@ -31,7 +31,7 @@ where
 impl<'q, C, D> Query<D> for &'q mut C
 where
     C: Component,
-    D: Data,
+    D: WorldData,
 {
     type Fetch<'w> = ColumnRawPartsMut<C>;
 }
@@ -40,7 +40,7 @@ impl<'q, E, D> Query<D> for EntityRef<'q, E>
 where
     E: Entity,
     for<'w> <E::Ref<'w> as EntityBorrow<'w>>::Fetch<'w>: Fetch,
-    D: Data,
+    D: WorldData,
 {
     // FIXME: I'm really not sure if this makes sense at all.
     type Fetch<'w> = <E::Ref<'w> as EntityBorrow<'w>>::Fetch<'w>;
@@ -50,7 +50,7 @@ impl<'q, E, D> Query<D> for EntityRefMut<'q, E>
 where
     E: Entity,
     for<'w> <E::RefMut<'w> as EntityBorrow<'w>>::Fetch<'w>: Fetch,
-    D: Data,
+    D: WorldData,
 {
     // FIXME: I'm really not sure if this makes sense at all.
     type Fetch<'w> = <E::RefMut<'w> as EntityBorrow<'w>>::Fetch<'w>;
@@ -60,7 +60,7 @@ impl<Q0, Q1, D> Query<D> for (Q0, Q1)
 where
     Q0: Query<D>,
     Q1: Query<D>,
-    D: Data,
+    D: WorldData,
 {
     type Fetch<'w> = (Q0::Fetch<'w>, Q1::Fetch<'w>);
 }
@@ -71,7 +71,7 @@ impl<Q, R, D> Query<D> for With<Q, R>
 where
     Q: Query<D>,
     R: Query<D>,
-    D: Data,
+    D: WorldData,
 {
     type Fetch<'w> = FetchWith<Q::Fetch<'w>, R::Fetch<'w>>;
 }
@@ -82,7 +82,7 @@ impl<Q, R, D> Query<D> for Without<Q, R>
 where
     Q: Query<D>,
     R: Query<D>,
-    D: Data,
+    D: WorldData,
 {
     type Fetch<'w> = FetchWithout<Q::Fetch<'w>, R::Fetch<'w>>;
 }
@@ -95,7 +95,7 @@ pub struct QueryResult<'w, Q, D> {
 impl<'w, Q, D> IntoIterator for QueryResult<'w, Q, D>
 where
     Q: Query<D>,
-    D: Data,
+    D: WorldData,
 {
     type Item = <Q::Fetch<'w> as Fetch>::Item<'w>;
 
@@ -118,7 +118,7 @@ where
 impl<'w, Q, D> QueryResult<'w, Q, D>
 where
     Q: Query<D>,
-    D: Data,
+    D: WorldData,
 {
     pub(crate) fn new(data: &'w mut D) -> Self {
         Self {
@@ -161,7 +161,7 @@ impl<'w, Q, J, D> IntoIterator for NestQueryResult<'w, Q, J, D>
 where
     Q: Query<D>,
     J: Query<D>,
-    D: Data,
+    D: WorldData,
 {
     type Item = (<Q::Fetch<'w> as Fetch>::Item<'w>, Nest<'w, J::Fetch<'w>, D>);
 

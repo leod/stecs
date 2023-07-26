@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{data::DataFetch, Data, Entity};
+use crate::{world::WorldFetch, Entity, WorldData};
 
 use super::fetch::Fetch;
 
@@ -47,16 +47,16 @@ where
 pub struct DataFetchIter<'w, F, D>
 where
     F: Fetch + 'w,
-    D: Data + 'w,
+    D: WorldData + 'w,
 {
-    data_iter: <D::Fetch<'w, F> as DataFetch<D>>::Iter,
+    data_iter: <D::Fetch<'w, F> as WorldFetch<D>>::Iter,
     current_fetch_iter: Option<FetchIter<'w, F>>,
 }
 
 impl<'w, F, D> Iterator for DataFetchIter<'w, F, D>
 where
     F: Fetch + 'w,
-    D: Data,
+    D: WorldData,
 {
     type Item = <F as Fetch>::Item<'w>;
 
@@ -79,7 +79,7 @@ where
 impl<'w, F, D> DataFetchIter<'w, F, D>
 where
     F: Fetch,
-    D: Data,
+    D: WorldData,
 {
     pub(crate) unsafe fn new(data: &'w D) -> Self {
         let mut data_iter = data.fetch::<F>().iter();
@@ -95,7 +95,7 @@ where
 pub struct Nest<'w, J, D>
 where
     J: Fetch + 'w,
-    D: Data + 'w,
+    D: WorldData + 'w,
 {
     pub(crate) ignore_id: Option<<D::Entity as Entity>::Id>,
     pub(crate) fetch: D::Fetch<'w, J>,
@@ -105,7 +105,7 @@ pub struct NestDataFetchIter<'w, F, J, D>
 where
     F: Fetch,
     J: Fetch + 'w,
-    D: Data,
+    D: WorldData,
 {
     pub(crate) query_iter: DataFetchIter<'w, F, D>,
     pub(crate) nest_fetch: D::Fetch<'w, J>,
@@ -115,7 +115,7 @@ impl<'w, F, J, D> Iterator for NestDataFetchIter<'w, F, J, D>
 where
     F: Fetch + 'w,
     J: Fetch + 'w,
-    D: Data,
+    D: WorldData,
 {
     type Item = (<F as Fetch>::Item<'w>, Nest<'w, J, D>);
 
@@ -133,7 +133,7 @@ where
 impl<'a, J, D> Nest<'a, J, D>
 where
     J: Fetch,
-    D: Data + 'a,
+    D: WorldData + 'a,
 {
     // This has to take an exclusive `self` reference to prevent violating
     // Rust's borrowing rules if `J` contains an exclusive borrow, since `get()`
