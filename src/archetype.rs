@@ -10,7 +10,7 @@ use thunderdome::Arena;
 
 use crate::{
     column::Column,
-    entity::{Columns, InnerEntity},
+    entity::{Columns, EntityVariant},
     query::fetch::Fetch,
     world::WorldFetch,
     Entity, EntityId, WorldData,
@@ -251,7 +251,7 @@ impl<T: Columns> WorldData for Archetype<T> {
 
     fn spawn<E>(&mut self, entity: E) -> EntityId<E>
     where
-        E: InnerEntity<Self::Entity>,
+        E: EntityVariant<Self::Entity>,
     {
         // This holds because `Columns::Entity` types are leaf entities, i.e.
         // they do not contain inner entities (other than themselves,
@@ -278,14 +278,14 @@ impl<T: Columns> WorldData for Archetype<T> {
 
     fn despawn<E>(&mut self, id: EntityId<E>) -> Option<Self::Entity>
     where
-        E: InnerEntity<Self::Entity>,
+        E: EntityVariant<Self::Entity>,
     {
         self.despawn_impl(id.to_outer())
     }
 
     fn entity<E>(&self, id: EntityId<E>) -> Option<E::Ref<'_>>
     where
-        E: InnerEntity<Self::Entity>,
+        E: EntityVariant<Self::Entity>,
     {
         todo!()
     }

@@ -55,7 +55,7 @@ pub trait EntityBorrow<'f> {
 }
 
 pub trait Columns: Default + 'static {
-    type Entity: Entity<Id = EntityKey<Self::Entity>> + InnerEntity<Self::Entity>;
+    type Entity: Entity<Id = EntityKey<Self::Entity>> + EntityVariant<Self::Entity>;
 
     fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>>;
 
@@ -74,7 +74,7 @@ pub trait Entity: Sized + 'static {
     type Data: WorldData<Entity = Self>;
 }
 
-pub trait InnerEntity<EOuter: Entity>: Entity {
+pub trait EntityVariant<EOuter: Entity>: Entity {
     fn into_outer(self) -> EOuter;
 
     fn id_to_outer(id: Self::Id) -> EOuter::Id;
@@ -133,7 +133,7 @@ impl<E: Entity> EntityId<E> {
 
     pub fn to_outer<EOuter>(self) -> EntityId<EOuter>
     where
-        E: InnerEntity<EOuter>,
+        E: EntityVariant<EOuter>,
         EOuter: Entity,
     {
         EntityId(E::id_to_outer(self.0))

@@ -1,5 +1,5 @@
 use crate::{
-    entity::InnerEntity,
+    entity::EntityVariant,
     query::{fetch::Fetch, QueryResult},
     Entity, EntityId, Query,
 };
@@ -19,21 +19,21 @@ pub trait WorldFetch<D: WorldData>: Clone {
 }
 
 pub trait WorldData: Sized + 'static {
-    type Entity: InnerEntity<Self::Entity>;
+    type Entity: EntityVariant<Self::Entity>;
 
     type Fetch<'w, F: Fetch + 'w>: WorldFetch<Self, Fetch = F>;
 
     fn spawn<E>(&mut self, entity: E) -> EntityId<E>
     where
-        E: InnerEntity<Self::Entity>;
+        E: EntityVariant<Self::Entity>;
 
     fn despawn<E>(&mut self, id: EntityId<E>) -> Option<Self::Entity>
     where
-        E: InnerEntity<Self::Entity>;
+        E: EntityVariant<Self::Entity>;
 
     fn entity<E>(&self, id: EntityId<E>) -> Option<E::Ref<'_>>
     where
-        E: InnerEntity<Self::Entity>;
+        E: EntityVariant<Self::Entity>;
 
     fn query<Q: Query<Self>>(&mut self) -> QueryResult<Q, Self> {
         QueryResult::new(self)
