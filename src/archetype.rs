@@ -100,10 +100,7 @@ impl<T: Columns> Archetype<T> {
 
         debug_assert!(index < self.ids.len());
 
-        let fetch = <<T::Entity as Entity>::Ref<'_> as EntityBorrow<'_>>::new_fetch(
-            self.ids.len(),
-            &self.columns,
-        );
+        let fetch = self.columns.new_fetch(self.ids.len());
 
         // Safety: TODO
         Some(EntityRef(unsafe { fetch.get(index) }))

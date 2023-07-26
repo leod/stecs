@@ -49,7 +49,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         #[allow(unused)]
         #vis struct #ident_columns #impl_generics #where_clause {
             #(
-                #field_idents: ::std::cell::RefCell<::stecs::internal::Column<#field_tys>>
+                #field_idents: ::std::cell::RefCell<::stecs::column::Column<#field_tys>>
             ),*
         }
 
@@ -68,10 +68,14 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         for #ident_columns #ty_generics #where_clause {
             type Entity = #ident #ty_generics;
 
+            type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
+
+            type FetchMut<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
+
             fn column<__stecs__C: ::stecs::Component>(
                 &self,
             )
-            -> ::std::option::Option<&::std::cell::RefCell<::stecs::internal::Column<__stecs__C>>>
+            -> ::std::option::Option<&::std::cell::RefCell<::stecs::column::Column<__stecs__C>>>
             {
                 #(
                     if ::std::any::TypeId::of::<__stecs__C>() ==
@@ -96,6 +100,44 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
                     ),*
                 }
             }
+
+            fn new_fetch<'__stecs__w, #lifetime>(
+                &'__stecs__w self,
+                len: usize,
+            ) -> Self::Fetch<'__stecs__w>
+            where
+                '__stecs__w: #lifetime,
+            {
+                #(
+                    ::std::debug_assert_eq!(len, self.#field_idents.borrow().len());
+                )*
+
+                #ident_ref_fetch {
+                    __stecs__len: len,
+                    #(
+                        #field_idents: self.#field_idents.borrow().as_raw_parts(),
+                    )*
+                }
+            }
+
+            fn new_fetch_mut<'__stecs__w, #lifetime>(
+                &'__stecs__w self,
+                len: usize,
+            ) -> Self::FetchMut<'__stecs__w>
+            where
+                '__stecs__w: #lifetime,
+            {
+                #(
+                    ::std::debug_assert_eq!(len, self.#field_idents.borrow().len());
+                )*
+
+                #ident_ref_mut_fetch {
+                    __stecs__len: len,
+                    #(
+                        #field_idents: self.#field_idents.borrow_mut().as_raw_parts_mut(),
+                    )*
+                }
+            }
         }
 
         // RefFetch
@@ -104,7 +146,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         #vis struct #ident_ref_fetch #impl_generics #where_clause {
             __stecs__len: usize,
             #(
-                #field_idents: ::stecs::internal::ColumnRawParts<#field_tys>
+                #field_idents: ::stecs::column::ColumnRawParts<#field_tys>
             ),*
         }
 
@@ -124,7 +166,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
             type Item<#lifetime> = #ident_ref #ty_generics_with_lifetime;
 
             fn new<__stecs__A: ::stecs::entity::Columns>(
-                ids: &::stecs::internal::Column<thunderdome::Index>,
+                ids: &::stecs::column::Column<thunderdome::Index>,
                 columns: &__stecs__A,
             ) -> ::std::option::Option<Self>
             {
@@ -134,8 +176,8 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
                         (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
 
                     Some(
-                        <#ident_ref #ty_generics as ::stecs::entity::EntityBorrow<'_>>
-                            ::new_fetch(ids.len(), columns),
+                        <#ident_columns #ty_generics as ::stecs::entity::Columns>
+                            ::new_fetch(columns, ids.len()),
                     )
                 } else {
                     None
@@ -178,27 +220,6 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         impl #impl_generics_with_lifetime ::stecs::entity::EntityBorrow<#lifetime>
         for #ident_ref #ty_generics_with_lifetime #where_clause_with_lifetime {
             type Entity = #ident #ty_generics;
-
-            type Fetch<'__stecs_w> = #ident_ref_fetch #ty_generics where '__stecs_w: #lifetime;
-
-            fn new_fetch<'__stecs_w>(
-                len: usize,
-                columns: &'__stecs_w <Self::Entity as ::stecs::Entity>::Columns,
-            ) -> Self::Fetch<'__stecs_w>
-            where
-                '__stecs_w: #lifetime,
-            {
-                #(
-                    ::std::debug_assert_eq!(len, columns.#field_idents.borrow().len());
-                )*
-
-                #ident_ref_fetch {
-                    __stecs__len: len,
-                    #(
-                        #field_idents: columns.#field_idents.borrow().as_raw_parts()
-                    ),*
-                }
-            }
         }
 
         // RefMutFetch
@@ -207,7 +228,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         #vis struct #ident_ref_mut_fetch #impl_generics #where_clause {
             __stecs__len: usize,
             #(
-                #field_idents: ::stecs::internal::ColumnRawPartsMut<#field_tys>
+                #field_idents: ::stecs::column::ColumnRawPartsMut<#field_tys>
             ),*
         }
 
@@ -227,7 +248,7 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
             type Item<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
 
             fn new<__stecs__A: ::stecs::entity::Columns>(
-                ids: &::stecs::internal::Column<thunderdome::Index>,
+                ids: &::stecs::column::Column<thunderdome::Index>,
                 columns: &__stecs__A,
             ) -> ::std::option::Option<Self>
             {
@@ -237,8 +258,8 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
                         (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
 
                     Some(
-                        <#ident_ref_mut #ty_generics as ::stecs::entity::EntityBorrow<'_>>
-                            ::new_fetch(ids.len(), columns),
+                        <#ident_columns #ty_generics as ::stecs::entity::Columns>
+                            ::new_fetch_mut(columns, ids.len()),
                     )
                 } else {
                     None
@@ -281,37 +302,31 @@ pub fn derive(mut input: DeriveInput) -> Result<TokenStream2> {
         impl #impl_generics_with_lifetime ::stecs::entity::EntityBorrow<#lifetime>
         for #ident_ref_mut #ty_generics_with_lifetime #where_clause_with_lifetime {
             type Entity = #ident #ty_generics;
+        }
 
-            type Fetch<'__stecs_w> = #ident_ref_mut_fetch #ty_generics where '__stecs_w: #lifetime;
+        // EntityVariant
 
-            fn new_fetch<'__stecs_w>(
-                len: usize,
-                columns: &'__stecs_w #ident_columns #ty_generics,
-            ) -> Self::Fetch<'__stecs_w>
-            where
-                '__stecs_w: #lifetime,
-            {
-                #(
-                    ::std::debug_assert_eq!(len, columns.#field_idents.borrow().len());
-                )*
+        impl #impl_generics ::stecs::entity::EntityVariant<#ident #ty_generics>
+        for #ident #ty_generics #where_clause {
+            fn into_outer(self) -> Self {
+                self
+            }
 
-                #ident_ref_mut_fetch {
-                    __stecs__len: len,
-                    #(
-                        #field_idents: columns.#field_idents.borrow_mut().as_raw_parts_mut(),
-                    )*
-                }
+            fn id_to_outer(id: Self::Id) -> Self::Id {
+                id
             }
         }
 
         // Entity
 
         impl #impl_generics ::stecs::Entity for #ident #ty_generics #where_clause {
-            type Columns = #ident_columns #ty_generics;
+            type Id = ::stecs::archetype::EntityKey<Self>;
 
-            type Borrow<#lifetime> = #ident_ref #ty_generics_with_lifetime;
+            type Ref<#lifetime> = #ident_ref #ty_generics_with_lifetime;
 
-            type BorrowMut<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
+            type RefMut<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
+
+            type Data = ::stecs::archetype::Archetype<#ident_columns #ty_generics>;
         }
     })
 }

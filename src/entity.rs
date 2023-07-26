@@ -42,35 +42,44 @@ impl<E> PartialEq for EntityId<E> {
 
 pub trait EntityBorrow<'f> {
     type Entity: Entity;
-
-    type Fetch<'w>: Fetch<Item<'f> = Self> + 'w
-    where
-        'w: 'f;
-
-    fn new_fetch<'w, T>(len: usize, columns: &'w T) -> Self::Fetch<'w>
-    where
-        'w: 'f,
-        T: Columns<Entity = Self::Entity>;
 }
 
 pub trait Columns: Default + 'static {
     type Entity: Entity<Id = EntityKey<Self::Entity>> + EntityVariant<Self::Entity>;
+
+    type Fetch<'w>: Fetch<Item<'w> = <Self::Entity as Entity>::Ref<'w>>;
+
+    type FetchMut<'w>: Fetch<Item<'w> = <Self::Entity as Entity>::RefMut<'w>>;
 
     fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>>;
 
     fn push(&mut self, entity: Self::Entity);
 
     fn remove(&mut self, index: usize) -> Self::Entity;
+
+    // FIXME: I really don't know about these lifetimes.
+    fn new_fetch<'w, 'f>(&'w self, len: usize) -> Self::Fetch<'f>
+    where
+        'w: 'f;
+
+    // FIXME: I really don't know about these lifetimes.
+    fn new_fetch_mut<'w, 'f>(&'w self, len: usize) -> Self::FetchMut<'f>
+    where
+        'w: 'f;
 }
 
 pub trait Entity: Sized + 'static {
-    type Id: Copy + PartialEq + Into<EntityId<Self>> + 'static;
+    type Id: Copy + PartialEq + 'static;
 
     type Ref<'f>: EntityBorrow<'f, Entity = Self>;
 
     type RefMut<'f>: EntityBorrow<'f, Entity = Self>;
 
     type Data: WorldData<Entity = Self>;
+}
+
+pub trait ConcreteEntity: Entity {
+    type Columns: Columns<Entity = Self>;
 }
 
 pub trait EntityVariant<EOuter: Entity>: Entity {

@@ -6,7 +6,7 @@ use std::{any::type_name, marker::PhantomData};
 
 use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
-    entity::EntityBorrow,
+    entity::{Columns, ConcreteEntity, EntityBorrow},
     Component, Entity, EntityRef, EntityRefMut, WorldData,
 };
 
@@ -38,22 +38,20 @@ where
 
 impl<'q, E, D> Query<D> for EntityRef<'q, E>
 where
-    E: Entity,
-    for<'w> <E::Ref<'w> as EntityBorrow<'w>>::Fetch<'w>: Fetch,
+    E: ConcreteEntity,
     D: WorldData,
 {
     // FIXME: I'm really not sure if this makes sense at all.
-    type Fetch<'w> = <E::Ref<'w> as EntityBorrow<'w>>::Fetch<'w>;
+    type Fetch<'f> = <E::Columns as Columns>::Fetch<'f>;
 }
 
 impl<'q, E, D> Query<D> for EntityRefMut<'q, E>
 where
-    E: Entity,
-    for<'w> <E::RefMut<'w> as EntityBorrow<'w>>::Fetch<'w>: Fetch,
+    E: ConcreteEntity,
     D: WorldData,
 {
     // FIXME: I'm really not sure if this makes sense at all.
-    type Fetch<'w> = <E::RefMut<'w> as EntityBorrow<'w>>::Fetch<'w>;
+    type Fetch<'f> = <E::Columns as Columns>::FetchMut<'f>;
 }
 
 impl<Q0, Q1, D> Query<D> for (Q0, Q1)

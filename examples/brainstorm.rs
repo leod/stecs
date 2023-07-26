@@ -1,7 +1,4 @@
-use stecs::{
-    archetype_set::ArchetypeSetFetch, query::fetch::Fetch, AnyEntityId, Archetype, ArchetypeSet,
-    Entity, EntityId, EntityRef, EntityRefMut,
-};
+use stecs::{query::fetch::Fetch, ArchetypeSet, Entity, EntityId, EntityRef, EntityRefMut};
 use thunderdome::Arena;
 
 #[derive(Clone)]
@@ -13,12 +10,16 @@ struct Velocity(f32);
 #[derive(Clone)]
 struct Color(f32);
 
+/*
 #[derive(Entity)]
 enum MyEntity {
     Player(Player),
     Enemy(Enemy),
-    Foo { x: Position },
+    Foo {
+        x: Position,
+    },
 }
+*/
 
 #[derive(Entity, Clone)]
 struct Player {
@@ -34,8 +35,9 @@ struct Boier<T, S> {
     col: Color,
 }
 
+/*
 #[derive(Clone, Debug)]
-struct Target(AnyEntityId<World>);
+struct Target(EntityId<World>);
 
 #[derive(Entity, Clone)]
 struct Enemy {
@@ -425,3 +427,7 @@ fn main() {
         p.0 += q.0;
     }
 }
+
+*/
+
+fn main() {}
