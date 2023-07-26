@@ -45,4 +45,4 @@ pub trait WorldData: Sized + 'static {
         F: Fetch + 'w;
 }
 
-pub type World<E> = <E as Entity>::Data;
+pub type World<E> = <E as Entity>::WorldData;

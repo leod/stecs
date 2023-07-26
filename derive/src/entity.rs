@@ -1,12 +1,13 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{DataStruct, DeriveInput, Error, Result};
+use syn::{DataEnum, DataStruct, DeriveInput, Error, Result};
 
 use crate::utils::{generics_with_new_lifetime, member_as_idents, struct_fields};
 
 pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
     match input.data {
         syn::Data::Struct(ref data) => derive_struct(&input, data),
+        syn::Data::Enum(ref data) => derive_enum(&input, data),
         _ => {
             return Err(Error::new_spanned(
                 input.ident,
@@ -322,9 +323,29 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
 
             type RefMut<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
 
-            type Data = ::stecs::archetype::Archetype<#ident_columns #ty_generics>;
+            type WorldData = ::stecs::archetype::Archetype<#ident_columns #ty_generics>;
         }
     })
+}
+
+fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
+    let ident = &input.ident;
+    let vis = &input.vis;
+
+    let ident_ref = syn::Ident::new(&format!("{}StecsInternalRef", ident), ident.span());
+    let ident_ref_mut = syn::Ident::new(&format!("{}StecsInternalRefMut", ident), ident.span());
+
+    //let (field_tys, field_members) = struct_fields(&data.fields);
+    //let field_idents = member_as_idents(&field_members);
+
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+    let lifetime: syn::Lifetime = syn::parse_str("'__stecs__f").unwrap();
+    let generics_with_lifetime = generics_with_new_lifetime(&input.generics, &lifetime);
+    let (impl_generics_with_lifetime, ty_generics_with_lifetime, where_clause_with_lifetime) =
+        generics_with_lifetime.split_for_impl();
+
+    Ok(quote! {})
 }
 
 fn add_additional_bounds_to_generic_params(generics: &mut syn::Generics) {

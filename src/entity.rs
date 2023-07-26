@@ -75,7 +75,7 @@ pub trait Entity: Sized + 'static {
 
     type RefMut<'f>: EntityBorrow<'f, Entity = Self>;
 
-    type Data: WorldData<Entity = Self>;
+    type WorldData: WorldData<Entity = Self>;
 }
 
 pub trait ConcreteEntity: Entity {
