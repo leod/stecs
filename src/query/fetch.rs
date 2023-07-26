@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 
 use crate::{
-    archetype_set::InArchetypeSet,
     column::{ColumnRawParts, ColumnRawPartsMut},
     entity::Columns,
     internal::Column,

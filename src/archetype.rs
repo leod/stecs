@@ -8,7 +8,7 @@ use std::{
 use thunderdome::Arena;
 
 use crate::{
-    archetype_set::{ArchetypeSetFetch, InArchetypeSet},
+    archetype_set::ArchetypeSetFetch,
     column::Column,
     entity::{Columns, EntityBorrow},
     query::{fetch::Fetch, iter::FetchIter},
@@ -175,8 +175,8 @@ impl<E: Entity> ArchetypeSet for Archetype<E> {
     where
         Self: 'w;
 
-    fn spawn<F: InArchetypeSet<Self>>(&mut self, entity: F) -> Self::AnyEntityId {
-        self.spawn(F::embed_entity(entity))
+    fn spawn(&mut self, entity: E) -> Self::AnyEntityId {
+        self.spawn(entity)
     }
 
     fn despawn(&mut self, id: Self::AnyEntityId) -> Option<Self::AnyEntity> {

@@ -1,9 +1,6 @@
-use std::any::type_name;
-
 use stecs::{
-    archetype_set::{ArchetypeSetFetch, InArchetypeSet, SubArchetypeSet},
-    query::fetch::Fetch,
-    AnyEntityId, Archetype, ArchetypeSet, Entity, EntityId, EntityRef, EntityRefMut, Query,
+    archetype_set::ArchetypeSetFetch, query::fetch::Fetch, AnyEntityId, Archetype, ArchetypeSet,
+    Entity, EntityId, EntityRef, EntityRefMut,
 };
 use thunderdome::Arena;
 
@@ -120,8 +117,8 @@ impl stecs::ArchetypeSet for World {
 
     type Fetch<'w, F: Fetch + 'w> = WorldFetch<'w, F>;
 
-    fn spawn<E: InArchetypeSet<Self>>(&mut self, entity: E) -> Self::AnyEntityId {
-        match entity.embed_entity() {
+    fn spawn<E>(&mut self, entity: E) -> Self::AnyEntityId {
+        match entity {
             WorldEntity::Player(entity) => WorldEntityId::Player(self.players.spawn(entity)),
             WorldEntity::Enemy(entity) => WorldEntityId::Enemy(self.enemies.spawn(entity)),
         }

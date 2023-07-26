@@ -25,7 +25,7 @@ pub trait ArchetypeSet: Default + Sized {
     where
         Self: 'w;
 
-    fn spawn<E>(&mut self, entity: Self::AnyEntity) -> Self::AnyEntityId;
+    fn spawn(&mut self, entity: Self::AnyEntity) -> Self::AnyEntityId;
 
     fn despawn(&mut self, id: Self::AnyEntityId) -> Option<Self::AnyEntity>;
 
@@ -41,6 +41,7 @@ pub trait ArchetypeSet: Default + Sized {
 
 pub type AnyEntityId<S> = <S as ArchetypeSet>::AnyEntityId;
 
+/*
 pub struct EmbeddedArchetypeSet<SInner, SOuter>
 where
     SInner: ArchetypeSet,
@@ -60,3 +61,4 @@ where
         (self.embed_entity_id)(self.inner.entity(entity))
     }
 }
+*/

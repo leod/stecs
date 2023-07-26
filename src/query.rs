@@ -5,10 +5,9 @@ pub mod iter;
 use std::{any::type_name, marker::PhantomData};
 
 use crate::{
-    archetype_set::InArchetypeSet,
     column::{ColumnRawParts, ColumnRawPartsMut},
     entity::EntityBorrow,
-    ArchetypeSet, Component, Entity, EntityId, EntityRef, EntityRefMut,
+    ArchetypeSet, Component, Entity, EntityRef, EntityRefMut,
 };
 
 use self::{
