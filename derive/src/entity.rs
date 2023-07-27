@@ -219,6 +219,11 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             }
         }
 
+        impl #impl_generics_with_lifetime ::stecs::Query
+        for #ident_ref #ty_generics_with_lifetime #where_clause {
+            type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
+        }
+
         // Ref
 
         // FIXME: This should be a tuple struct for tuple structs.
@@ -294,6 +299,11 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
                     checker.borrow_mut::<#field_tys>();
                 )*
             }
+        }
+
+        impl #impl_generics_with_lifetime ::stecs::Query
+        for #ident_ref_mut #ty_generics_with_lifetime #where_clause {
+            type Fetch<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
         }
 
         // RefMut

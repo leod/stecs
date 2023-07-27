@@ -87,31 +87,9 @@ pub trait EntityVariant<EOuter: Entity>: Entity {
     fn id_to_outer(id: Self::Id) -> EOuter::Id;
 }
 
-pub struct EntityRef<'f, E: Entity>(pub(crate) E::Ref<'f>);
+pub type EntityRef<'f, E> = <E as Entity>::Ref<'f>;
 
-impl<'f, E: Entity> Deref for EntityRef<'f, E> {
-    type Target = E::Ref<'f>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-pub struct EntityRefMut<'f, E: Entity>(pub(crate) E::RefMut<'f>);
-
-impl<'f, E: Entity> Deref for EntityRefMut<'f, E> {
-    type Target = E::RefMut<'f>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'f, E: Entity> DerefMut for EntityRefMut<'f, E> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+pub type EntityRefMut<'f, E> = <E as Entity>::RefMut<'f>;
 
 pub struct EntityId<E: Entity>(E::Id);
 

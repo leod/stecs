@@ -103,7 +103,7 @@ impl<T: Columns> Archetype<T> {
         let fetch = self.columns.new_fetch(self.ids.len());
 
         // Safety: TODO
-        Some(EntityRef(unsafe { fetch.get(index) }))
+        Some(unsafe { fetch.get(index) })
     }
 
     /*

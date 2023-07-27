@@ -1,5 +1,5 @@
 use stecs::{
-    entity::EntityFetch, query::fetch::Fetch, Component, EntityId, EntityRef, EntityRefMut,
+    entity::EntityFetch, query::fetch::Fetch, Component, EntityId, EntityRef, EntityRefMut, Query,
     WorldData,
 };
 
@@ -188,6 +188,10 @@ impl EntityFetch for InnerEntity {
     type Fetch<'w> = InnerEntityFetchRef<'w>;
 
     type FetchMut<'w> = InnerEntityFetchRefMut<'w>;
+}
+
+impl<'q> Query for InnerEntityStecsInternalRef<'q> {
+    type Fetch<'w> = InnerEntityFetchRef<'w>;
 }
 
 fn main() {
@@ -403,10 +407,12 @@ fn main() {
     for entity in world.query::<EntityRef<InnerEntity>>() {
         println!("got some entity!!!");
 
+        type Ref<'a> = EntityRef<'a, InnerEntity>;
+
         match entity {
-            InnerEntityStecsInternalRef::Player(_) => println!("player"),
-            InnerEntityStecsInternalRef::Enemy(_) => println!("enemy"),
-            InnerEntityStecsInternalRef::Boier(_) => println!("boier"),
+            Ref::Player(_) => println!("player"),
+            Ref::Enemy(_) => println!("enemy"),
+            Ref::Boier(_) => println!("boier"),
         }
     }
 

@@ -34,6 +34,7 @@ where
     type Fetch<'w> = ColumnRawPartsMut<C>;
 }
 
+/*
 impl<'q, E> Query for EntityRef<'q, E>
 where
     E: EntityFetch,
@@ -49,6 +50,7 @@ where
     // FIXME: The lifetimes seem wrong.
     type Fetch<'f> = E::FetchMut<'f>;
 }
+*/
 
 impl<Q0, Q1> Query for (Q0, Q1)
 where
