@@ -435,7 +435,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
         #vis enum #ident_ref<#lifetime> {
             #(
-                #variant_idents(&#lifetime #variant_tys),
+                #variant_idents(<#variant_tys as ::stecs::Entity>::Ref<#lifetime>),
             )*
         }
 
@@ -443,7 +443,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
         #vis enum #ident_ref_mut<#lifetime> {
             #(
-                #variant_idents(&#lifetime mut #variant_tys),
+                #variant_idents(<#variant_tys as ::stecs::Entity>::RefMut<#lifetime>),
             )*
         }
 

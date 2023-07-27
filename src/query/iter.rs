@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{world::WorldFetch, Entity, EntityId, WorldData};
+use crate::{entity::EntityVariant, world::WorldFetch, Entity, EntityId, WorldData};
 
 use super::fetch::Fetch;
 
@@ -138,10 +138,13 @@ where
     // This has to take an exclusive `self` reference to prevent violating
     // Rust's borrowing rules if `J` contains an exclusive borrow, since `get()`
     // could be called multiple times with the same `id`.
-    pub fn get<'f>(&'f mut self, id: EntityId<D::Entity>) -> Option<J::Item<'f>>
+    pub fn get<'f, E>(&'f mut self, id: EntityId<E>) -> Option<J::Item<'f>>
     where
         'w: 'f,
+        E: EntityVariant<D::Entity>,
     {
+        let id = id.to_outer();
+
         // Safety: Do not allow borrowing the entity that the iterator that
         // produced `self` currently points to.
         if let Some(ignore_id) = self.ignore_id {

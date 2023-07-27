@@ -1,4 +1,7 @@
-use stecs::{Component, EntityId, EntityRef, EntityRefMut, WorldData};
+use stecs::{
+    entity::EntityFetch, query::fetch::Fetch, Component, EntityId, EntityRef, EntityRefMut,
+    WorldData,
+};
 
 #[derive(Clone)]
 struct Position(f32);
@@ -66,6 +69,118 @@ enum Entity {
 }
 
 type World = stecs::World<Entity>;
+
+#[derive(Copy, Clone)]
+enum InnerEntityFetchRef<'w> {
+    Player(<Player as EntityFetch>::Fetch<'w>),
+    Enemy(<Enemy as EntityFetch>::Fetch<'w>),
+}
+
+unsafe impl<'w> Fetch for InnerEntityFetchRef<'w> {
+    type Item<'f> = InnerEntityStecsInternalRef<'f>
+    where
+        Self: 'f;
+
+    fn new<A: stecs::entity::Columns>(
+        ids: &stecs::column::Column<thunderdome::Index>,
+        columns: &A,
+    ) -> Option<Self> {
+        use std::any::TypeId;
+
+        if TypeId::of::<A::Entity>() == TypeId::of::<Player>() {
+            Fetch::new(ids, columns).map(|fetch| InnerEntityFetchRef::Player(fetch))
+        } else if TypeId::of::<A::Entity>() == TypeId::of::<Enemy>() {
+            Fetch::new(ids, columns).map(|fetch| InnerEntityFetchRef::Enemy(fetch))
+        } else {
+            None
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            InnerEntityFetchRef::Player(fetch) => fetch.len(),
+            InnerEntityFetchRef::Enemy(fetch) => fetch.len(),
+        }
+    }
+
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+    where
+        Self: 'f,
+    {
+        match self {
+            InnerEntityFetchRef::Player(fetch) => {
+                InnerEntityStecsInternalRef::Player(fetch.get(index))
+            }
+            InnerEntityFetchRef::Enemy(fetch) => {
+                InnerEntityStecsInternalRef::Enemy(fetch.get(index))
+            }
+        }
+    }
+
+    fn check_borrows(checker: &mut stecs::query::borrow_checker::BorrowChecker) {
+        <Player as EntityFetch>::Fetch::<'w>::check_borrows(checker);
+        <Enemy as EntityFetch>::Fetch::<'w>::check_borrows(checker);
+    }
+}
+
+#[derive(Copy, Clone)]
+enum InnerEntityFetchRefMut<'w> {
+    Player(<Player as EntityFetch>::FetchMut<'w>),
+    Enemy(<Enemy as EntityFetch>::FetchMut<'w>),
+}
+
+unsafe impl<'w> Fetch for InnerEntityFetchRefMut<'w> {
+    type Item<'f> = InnerEntityStecsInternalRefMut<'f>
+    where
+        Self: 'f;
+
+    fn new<A: stecs::entity::Columns>(
+        ids: &stecs::column::Column<thunderdome::Index>,
+        columns: &A,
+    ) -> Option<Self> {
+        use std::any::TypeId;
+
+        if TypeId::of::<A::Entity>() == TypeId::of::<Player>() {
+            Fetch::new(ids, columns).map(|fetch| InnerEntityFetchRefMut::Player(fetch))
+        } else if TypeId::of::<A::Entity>() == TypeId::of::<Player>() {
+            Fetch::new(ids, columns).map(|fetch| InnerEntityFetchRefMut::Enemy(fetch))
+        } else {
+            None
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            InnerEntityFetchRefMut::Player(fetch) => fetch.len(),
+            InnerEntityFetchRefMut::Enemy(fetch) => fetch.len(),
+        }
+    }
+
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+    where
+        Self: 'f,
+    {
+        match self {
+            InnerEntityFetchRefMut::Player(fetch) => {
+                InnerEntityStecsInternalRefMut::Player(fetch.get(index))
+            }
+            InnerEntityFetchRefMut::Enemy(fetch) => {
+                InnerEntityStecsInternalRefMut::Enemy(fetch.get(index))
+            }
+        }
+    }
+
+    fn check_borrows(checker: &mut stecs::query::borrow_checker::BorrowChecker) {
+        <Player as EntityFetch>::FetchMut::<'w>::check_borrows(checker);
+        <Enemy as EntityFetch>::FetchMut::<'w>::check_borrows(checker);
+    }
+}
+
+impl EntityFetch for InnerEntity {
+    type Fetch<'w> = InnerEntityFetchRef<'w>;
+
+    type FetchMut<'w> = InnerEntityFetchRefMut<'w>;
+}
 
 fn main() {
     let mut world = World::default();
@@ -274,6 +389,17 @@ fn main() {
 
     for enemy in world.query::<EntityRef<Enemy>>() {
         dbg!(enemy.target.0, enemy.pos.0);
+    }
+
+    println!("Any Entity");
+    for entity in world.query::<EntityRef<InnerEntity>>() {
+        println!("got some entity!!!");
+
+        match entity {
+            InnerEntityStecsInternalRef::Player(_) => println!("player"),
+            InnerEntityStecsInternalRef::Enemy(_) => println!("enemy"),
+            InnerEntityStecsInternalRef::Boier(_) => println!("boier"),
+        }
     }
 
     // Panics
