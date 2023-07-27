@@ -138,7 +138,7 @@ where
     // This has to take an exclusive `self` reference to prevent violating
     // Rust's borrowing rules if `J` contains an exclusive borrow, since `get()`
     // could be called multiple times with the same `id`.
-    pub fn get<'f>(&mut self, id: EntityId<D::Entity>) -> Option<J::Item<'f>>
+    pub fn get<'f>(&'f mut self, id: EntityId<D::Entity>) -> Option<J::Item<'f>>
     where
         'w: 'f,
     {

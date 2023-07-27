@@ -241,7 +241,7 @@ fn main() {
         };*/
 
         println!("targeting {:?} @ {:?}", target, target_pos.pos.0);
-        //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
+        //println!("targeting {:?} @ {:?}", target, target_pos_2.pos.0);
     }
 
     println!("Target, nest with Position as EntityRef");
