@@ -4,7 +4,9 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::{archetype::EntityKey, column::Column, query::fetch::Fetch, Component, WorldData};
+use crate::{
+    archetype::EntityKey, column::Column, query::fetch::Fetch, Component, Query, WorldData,
+};
 
 /*
 // TODO: Eq, Hash, PartialOrd, Ord.
@@ -59,6 +61,7 @@ pub trait Columns: Default + 'static {
         'w: 'f;
 }
 
+// TODO: Merge with `Entity`.
 pub trait EntityFetch: Entity {
     type Fetch<'w>: Fetch<Item<'w> = <Self as Entity>::Ref<'w>>;
 
@@ -68,9 +71,9 @@ pub trait EntityFetch: Entity {
 pub trait Entity: Sized + 'static {
     type Id: Copy + Debug + PartialEq + 'static;
 
-    type Ref<'f>;
+    type Ref<'f>: Query;
 
-    type RefMut<'f>;
+    type RefMut<'f>: Query;
 
     type WorldData: WorldData<Entity = Self>;
 }

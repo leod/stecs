@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{parse_quote, DataEnum, DataStruct, DeriveInput, Error, Result};
+use syn::{DataEnum, DataStruct, DeriveInput, Error, Result};
 
 use crate::utils::{
     generics_with_new_lifetime, generics_with_new_type_param, member_as_idents, struct_fields,
@@ -18,6 +18,8 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
         }
     }
 }
+
+// FIXME: Use `__stecs__` prefix for generic parameters consistently.
 
 fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
     let ident = &input.ident;
@@ -39,15 +41,6 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
     let generics_with_lifetime = generics_with_new_lifetime(&input.generics, &lifetime);
     let (impl_generics_with_lifetime, ty_generics_with_lifetime, where_clause_with_lifetime) =
         generics_with_lifetime.split_for_impl();
-
-    let type_param: syn::TypeParam = syn::parse_str("__stecs__D: ::stecs::WorldData").unwrap();
-    let generics_with_lifetime_and_type_param =
-        generics_with_new_type_param(&generics_with_lifetime, &type_param);
-    let (
-        impl_generics_with_lifetime_and_type_param,
-        ty_generics_with_lifetime_and_type_param,
-        where_clause_with_lifetime_and_type_param,
-    ) = generics_with_lifetime_and_type_param.split_for_impl();
 
     Ok(quote! {
         // Columns
@@ -179,7 +172,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             type Item<#lifetime> = #ident_ref #ty_generics_with_lifetime;
 
             fn new<__stecs__A: ::stecs::entity::Columns>(
-                ids: &::stecs::column::Column<thunderdome::Index>,
+                ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &__stecs__A,
             ) -> ::std::option::Option<Self>
             {
@@ -261,7 +254,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             type Item<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
 
             fn new<__stecs__A: ::stecs::entity::Columns>(
-                ids: &::stecs::column::Column<thunderdome::Index>,
+                ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &__stecs__A,
             ) -> ::std::option::Option<Self>
             {
@@ -356,7 +349,10 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
     let ident_id = syn::Ident::new(&format!("{}StecsInternalId", ident), ident.span());
     let ident_ref = syn::Ident::new(&format!("{}StecsInternalRef", ident), ident.span());
+    let ident_ref_fetch = syn::Ident::new(&format!("{}StecsInternalRefFetch", ident), ident.span());
     let ident_ref_mut = syn::Ident::new(&format!("{}StecsInternalRefMut", ident), ident.span());
+    let ident_ref_mut_fetch =
+        syn::Ident::new(&format!("{}StecsInternalRefMutFetch", ident), ident.span());
     let ident_world_fetch =
         syn::Ident::new(&format!("{}StecsInternalWorldFetch", ident), ident.span());
     let ident_world_data =
@@ -441,12 +437,151 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             )*
         }
 
+        // RefFetch
+
+        #[derive(
+            ::std::clone::Clone,
+            ::std::marker::Copy,
+        )]
+        #vis enum #ident_ref_fetch<'w> {
+            #(
+                #variant_idents(<#variant_tys as ::stecs::entity::EntityFetch>::Fetch<'w>),
+            )*
+        }
+
+        unsafe impl<'w> ::stecs::query::fetch::Fetch for #ident_ref_fetch<'w> {
+            type Item<'f> = #ident_ref<'f> where Self: 'f;
+
+            fn new<A: ::stecs::entity::Columns>(
+                ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
+                columns: &A,
+            ) -> ::std::option::Option<Self> {
+                #(
+                    if ::std::any::TypeId::of::<A::Entity>() ==
+                        ::std::any::TypeId::of::<#variant_tys>() {
+                            return ::stecs::query::fetch::Fetch::new(ids, columns)
+                                .map(#ident_ref_fetch::#variant_idents)
+                    }
+                )*
+
+                None
+            }
+
+            fn len(&self) -> usize {
+                match self {
+                    #(
+                        #ident_ref_fetch::#variant_idents(fetch) => fetch.len(),
+                    )*
+                }
+            }
+
+            unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+            where
+                Self: 'f,
+            {
+                match self {
+                    #(
+                        #ident_ref_fetch::#variant_idents(fetch) => {
+                            #ident_ref::#variant_idents(fetch.get(index))
+                        }
+                    )*
+                }
+            }
+
+            fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
+                #(
+                    <#variant_tys as ::stecs::entity::EntityFetch>::Fetch::<'w>::check_borrows(checker);
+                )*
+            }
+
+            fn filter_by_outer<__stecs__DOuter: WorldData>(fetch: &mut Option<Self>) {
+                if ::std::any::TypeId::of::<__stecs__DOuter>() !=
+                    ::std::any::TypeId::of::<#ident_world_data>() {
+                    *fetch = None;
+                }
+            }
+        }
+
+        impl<'q> ::stecs::Query for #ident_ref<'q> {
+            type Fetch<'w> = #ident_ref_fetch<'w>;
+        }
+
         // Ref
 
         #vis enum #ident_ref<#lifetime> {
             #(
                 #variant_idents(<#variant_tys as ::stecs::Entity>::Ref<#lifetime>),
             )*
+        }
+
+        // RefFetch
+
+        #[derive(
+            ::std::clone::Clone,
+            ::std::marker::Copy,
+        )]
+        #vis enum #ident_ref_mut_fetch<'w> {
+            #(
+                #variant_idents(<#variant_tys as ::stecs::entity::EntityFetch>::FetchMut<'w>),
+            )*
+        }
+
+        unsafe impl<'w> ::stecs::query::fetch::Fetch for #ident_ref_mut_fetch<'w> {
+            type Item<'f> = #ident_ref_mut<'f> where Self: 'f;
+
+            fn new<A: ::stecs::entity::Columns>(
+                ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
+                columns: &A,
+            ) -> ::std::option::Option<Self> {
+                #(
+                    if ::std::any::TypeId::of::<A::Entity>() ==
+                        ::std::any::TypeId::of::<#variant_tys>() {
+                            return ::stecs::query::fetch::Fetch::new(ids, columns)
+                                .map(#ident_ref_mut_fetch::#variant_idents)
+                    }
+                )*
+
+                None
+            }
+
+            fn len(&self) -> usize {
+                match self {
+                    #(
+                        #ident_ref_mut_fetch::#variant_idents(fetch) => fetch.len(),
+                    )*
+                }
+            }
+
+            unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+            where
+                Self: 'f,
+            {
+                match self {
+                    #(
+                        #ident_ref_mut_fetch::#variant_idents(fetch) => {
+                            #ident_ref_mut::#variant_idents(fetch.get(index))
+                        }
+                    )*
+                }
+            }
+
+            fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
+                #(
+                    <#variant_tys as ::stecs::entity::EntityFetch>::FetchMut::<'w>::check_borrows(checker);
+                )*
+            }
+
+            fn filter_by_outer<__stecs__DOuter: WorldData>(fetch: &mut Option<Self>) {
+                use std::any::TypeId;
+
+                if TypeId::of::<__stecs__DOuter>() != TypeId::of::<#ident_world_data>() {
+                    *fetch = None;
+                }
+            }
+        }
+
+        impl<'q> ::stecs::Query for #ident_ref_mut<'q> {
+            type Fetch<'w> = #ident_ref_mut_fetch<'w>;
         }
 
         // RefMut
@@ -502,7 +637,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
             type Iter = #world_fetch_iter;
 
-            unsafe fn get<'f>(&self, id: #ident_id) -> Option<F::Item<'f>>
+            unsafe fn get<'f>(&self, id: #ident_id) -> ::std::option::Option<F::Item<'f>>
             where
                 Self: 'f,
             {
@@ -683,6 +818,14 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             fn id_to_outer(id: Self::Id) -> Self::Id {
                 id
             }
+        }
+
+        // EntityFetch
+
+        impl ::stecs::entity::EntityFetch for #ident {
+            type Fetch<'__stecs__w> = #ident_ref_fetch<'__stecs__w>;
+
+            type FetchMut<'__stecs__w> = #ident_ref_mut_fetch<'__stecs__w>;
         }
 
         // Entity
