@@ -170,7 +170,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             ) -> ::std::option::Option<Self>
             {
                 if ::std::any::TypeId::of::<__stecs__A>() ==
-                       ::std::any::TypeId::of::<#ident #ty_generics>() {
+                       ::std::any::TypeId::of::<#ident_columns #ty_generics>() {
                     let columns: &#ident_columns #ty_generics =
                         (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
 
@@ -247,7 +247,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             ) -> ::std::option::Option<Self>
             {
                 if ::std::any::TypeId::of::<__stecs__A>() ==
-                       ::std::any::TypeId::of::<#ident #ty_generics>() {
+                       ::std::any::TypeId::of::<#ident_columns #ty_generics>() {
                     let columns: &#ident_columns #ty_generics =
                         (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
 
@@ -304,6 +304,12 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             fn id_to_outer(id: Self::Id) -> Self::Id {
                 id
             }
+        }
+
+        // ConcreteEntity
+
+        impl #impl_generics ::stecs::entity::ConcreteEntity for #ident #ty_generics #where_clause {
+            type Columns = #ident_columns #ty_generics;
         }
 
         // Entity

@@ -1,4 +1,4 @@
-use stecs::{Component, EntityId, EntityRefMut, WorldData};
+use stecs::{Component, EntityId, EntityRef, EntityRefMut, WorldData};
 
 #[derive(Clone)]
 struct Position(f32);
@@ -232,8 +232,7 @@ fn main() {
 
     println!("Target, nest with Position as EntityRefMut");
 
-    /*
-    for (target, mut nest) in world.query::<(&Target)>().nest::<EntityRefMut<Player>>() {
+    for (target, mut nest) in world.query::<&Target>().nest::<EntityRefMut<Player>>() {
         let Some(target_pos) = nest.get(target.0) else {
             continue;
         };
@@ -243,6 +242,47 @@ fn main() {
 
         println!("targeting {:?} @ {:?}", target, target_pos.pos.0);
         //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
+    }
+
+    println!("Target, nest with Position as EntityRef");
+
+    for (target, mut nest) in world.query::<&Target>().nest::<EntityRef<Player>>() {
+        let Some(target_pos) = nest.get(target.0) else {
+            continue;
+        };
+        /*let Some(target_pos_2) = nest.get(target.0) else {
+            continue;
+        };*/
+
+        println!("targeting {:?} @ {:?}", target, target_pos.pos.0);
+        //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
+    }
+
+    println!("Enemies query");
+    //let iter = world.enemies.iter_mut();
+
+    for enemy in world.query::<EntityRefMut<Enemy>>() {
+        dbg!(enemy.target.0, enemy.pos.0);
+
+        *enemy.pos = Position(enemy.pos.0 + 100.0);
+    }
+
+    println!("Enemies, Enemies query");
+    for (enemy0, enemy1) in world.query::<(EntityRef<Enemy>, EntityRef<Enemy>)>() {
+        dbg!(enemy0.pos.0 - enemy1.pos.0);
+    }
+
+    for enemy in world.query::<EntityRef<Enemy>>() {
+        dbg!(enemy.target.0, enemy.pos.0);
+    }
+
+    // Panics
+    /*
+    println!("Make miri sad");
+    for (enemy, pos) in world.query::<(EntityRefMut<Enemy>, &Position)>() {
+        dbg!(enemy.target.0, enemy.pos.0);
+
+        *enemy.pos = Position(enemy.pos.0 + 100.0);
     }
     */
 
@@ -278,31 +318,6 @@ fn main() {
         dbg!(key, enemy.target.0, enemy.pos.0);
     }
 
-    println!("Enemies query");
-    //let iter = world.enemies.iter_mut();
-
-    for enemy in world.query::<EntityRefMut<Enemy>>() {
-        dbg!(enemy.target.0, enemy.pos.0);
-
-        *enemy.pos = Position(enemy.pos.0 + 100.0);
-    }
-
-    println!("Enemies, Enemies query");
-    for (enemy0, enemy1) in world.query::<(EntityRef<Enemy>, EntityRef<Enemy>)>() {
-        dbg!(enemy0.pos.0 - enemy1.pos.0);
-    }
-
-    for enemy in world.query::<EntityRef<Enemy>>() {
-        dbg!(enemy.target.0, enemy.pos.0);
-    }
-
-    println!("Make miri sad");
-
-    for (enemy, pos) in world.query::<(EntityRefMut<Enemy>, &Position)>() {
-        dbg!(enemy.target.0, enemy.pos.0);
-
-        *enemy.pos = Position(enemy.pos.0 + 100.0);
-    }
     */
 
     // This panics:
