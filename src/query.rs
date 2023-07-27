@@ -6,7 +6,7 @@ use std::{any::type_name, marker::PhantomData};
 
 use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
-    entity::{Columns, ConcreteEntity},
+    entity::{Columns, EntityStruct},
     Component, EntityRef, EntityRefMut, WorldData,
 };
 
@@ -38,7 +38,7 @@ where
 
 impl<'q, E, D> Query<D> for EntityRef<'q, E>
 where
-    E: ConcreteEntity,
+    E: EntityStruct,
     D: WorldData,
 {
     // FIXME: I'm really not sure if this makes sense at all.
@@ -47,7 +47,7 @@ where
 
 impl<'q, E, D> Query<D> for EntityRefMut<'q, E>
 where
-    E: ConcreteEntity,
+    E: EntityStruct,
     D: WorldData,
 {
     // FIXME: I'm really not sure if this makes sense at all.

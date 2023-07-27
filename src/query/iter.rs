@@ -142,9 +142,11 @@ where
     where
         'w: 'f,
     {
+        // Safety: Do not allow borrowing the entity that the iterator that
+        // produced `self` currently points to.
         if let Some(ignore_id) = self.ignore_id {
             if ignore_id == id.get() {
-                // TODO: Consider panicking.
+                // TODO: Consider panicking. Design question.
                 return None;
             }
         }

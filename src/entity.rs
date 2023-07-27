@@ -74,9 +74,11 @@ pub trait Entity: Sized + 'static {
     type WorldData: WorldData<Entity = Self>;
 }
 
-pub trait ConcreteEntity: Entity {
+pub trait EntityStruct: Entity {
     type Columns: Columns<Entity = Self>;
 }
+
+pub trait EntityEnum: Entity {}
 
 pub trait EntityVariant<EOuter: Entity>: Entity {
     fn into_outer(self) -> EOuter;

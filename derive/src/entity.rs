@@ -40,6 +40,15 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
     let (impl_generics_with_lifetime, ty_generics_with_lifetime, where_clause_with_lifetime) =
         generics_with_lifetime.split_for_impl();
 
+    let type_param: syn::TypeParam = syn::parse_str("__stecs__D: ::stecs::WorldData").unwrap();
+    let generics_with_lifetime_and_type_param =
+        generics_with_new_type_param(&generics_with_lifetime, &type_param);
+    let (
+        impl_generics_with_lifetime_and_type_param,
+        ty_generics_with_lifetime_and_type_param,
+        where_clause_with_lifetime_and_type_param,
+    ) = generics_with_lifetime_and_type_param.split_for_impl();
+
     Ok(quote! {
         // Columns
 
@@ -306,9 +315,9 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             }
         }
 
-        // ConcreteEntity
+        // EntityStruct
 
-        impl #impl_generics ::stecs::entity::ConcreteEntity for #ident #ty_generics #where_clause {
+        impl #impl_generics ::stecs::entity::EntityStruct for #ident #ty_generics #where_clause {
             type Columns = #ident_columns #ty_generics;
         }
 
