@@ -352,9 +352,6 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         })
         .collect::<Result<_>>()?;
 
-    //let (field_tys, field_members) = struct_fields(&data.fields);
-    //let field_idents = member_as_idents(&field_members);
-
     // TODO: Allow generic enum derive(Entity). Should be possible?
     let lifetime: syn::Lifetime = syn::parse_str("'__stecs__f").unwrap();
     let type_param: syn::TypeParam = syn::parse_str("__stecs__F").unwrap();
@@ -466,8 +463,6 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 match id {
                     #(
                         #ident_id::#variant_idents(id) => {
-                            //let id = ::stecs::EntityId::<#variant_tys>::new_unchecked(id);
-
                             type WorldData = <#variant_tys as ::stecs::Entity>::WorldData;
 
                             // Safety: TODO
@@ -572,7 +567,13 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             where
                 F: ::stecs::query::fetch::Fetch + 'w,
             {
-                todo!()
+                #ident_world_fetch {
+                    #(
+                        #variant_idents:
+                            <<#variant_tys as ::stecs::Entity>::WorldData as ::stecs::world::WorldData>
+                            ::fetch::<F>(&self.#variant_idents),
+                    )*
+                }
             }
         }
 
