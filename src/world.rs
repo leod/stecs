@@ -1,7 +1,7 @@
 use crate::{
     entity::EntityVariant,
     query::{fetch::Fetch, QueryResult},
-    Entity, EntityId, EntityRef, Query,
+    Entity, EntityId, Query,
 };
 
 // TODO: This should probably be generic in `Fetch` rather than `WorldData`, but
@@ -39,7 +39,7 @@ pub trait WorldData: Default + Sized + 'static {
     where
         E: EntityVariant<Self::Entity>;
 
-    fn query<Q: Query<Self>>(&mut self) -> QueryResult<Q, Self> {
+    fn query<Q: Query>(&mut self) -> QueryResult<Q, Self> {
         QueryResult::new(self)
     }
 

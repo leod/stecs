@@ -1,7 +1,6 @@
 use std::{
     cell::RefCell,
     fmt::{self, Debug},
-    marker::PhantomData,
     ops::{Deref, DerefMut},
 };
 

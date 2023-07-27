@@ -6,7 +6,7 @@ use std::{any::type_name, marker::PhantomData};
 
 use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
-    entity::{Columns, EntityFetch, EntityStruct},
+    entity::EntityFetch,
     Component, EntityRef, EntityRefMut, WorldData,
 };
 
@@ -16,71 +16,64 @@ use self::{
     iter::{DataFetchIter, Nest, NestDataFetchIter},
 };
 
-pub trait Query<D: WorldData> {
+pub trait Query {
     type Fetch<'w>: Fetch + 'w;
 }
 
-impl<'q, C, D> Query<D> for &'q C
+impl<'q, C> Query for &'q C
 where
     C: Component,
-    D: WorldData,
 {
     type Fetch<'w> = ColumnRawParts<C>;
 }
 
-impl<'q, C, D> Query<D> for &'q mut C
+impl<'q, C> Query for &'q mut C
 where
     C: Component,
-    D: WorldData,
 {
     type Fetch<'w> = ColumnRawPartsMut<C>;
 }
 
-impl<'q, E, D> Query<D> for EntityRef<'q, E>
+impl<'q, E> Query for EntityRef<'q, E>
 where
     E: EntityFetch,
-    D: WorldData,
 {
     // FIXME: The lifetimes seem wrong.
     type Fetch<'f> = E::Fetch<'f>;
 }
 
-impl<'q, E, D> Query<D> for EntityRefMut<'q, E>
+impl<'q, E> Query for EntityRefMut<'q, E>
 where
     E: EntityFetch,
-    D: WorldData,
 {
     // FIXME: The lifetimes seem wrong.
     type Fetch<'f> = E::FetchMut<'f>;
 }
 
-impl<Q0, Q1, D> Query<D> for (Q0, Q1)
+impl<Q0, Q1> Query for (Q0, Q1)
 where
-    Q0: Query<D>,
-    Q1: Query<D>,
-    D: WorldData,
+    Q0: Query,
+    Q1: Query,
 {
     type Fetch<'w> = (Q0::Fetch<'w>, Q1::Fetch<'w>);
 }
 
 pub struct With<Q, R>(PhantomData<(Q, R)>);
 
-impl<Q, R, D> Query<D> for With<Q, R>
+impl<Q, R> Query for With<Q, R>
 where
-    Q: Query<D>,
-    R: Query<D>,
-    D: WorldData,
+    Q: Query,
+    R: Query,
 {
     type Fetch<'w> = FetchWith<Q::Fetch<'w>, R::Fetch<'w>>;
 }
 
 pub struct Without<Q, R>(PhantomData<(Q, R)>);
 
-impl<Q, R, D> Query<D> for Without<Q, R>
+impl<Q, R> Query for Without<Q, R>
 where
-    Q: Query<D>,
-    R: Query<D>,
-    D: WorldData,
+    Q: Query,
+    R: Query,
 {
     type Fetch<'w> = FetchWithout<Q::Fetch<'w>, R::Fetch<'w>>;
 }
@@ -92,7 +85,7 @@ pub struct QueryResult<'w, Q, D> {
 
 impl<'w, Q, D> IntoIterator for QueryResult<'w, Q, D>
 where
-    Q: Query<D>,
+    Q: Query,
     D: WorldData,
 {
     type Item = <Q::Fetch<'w> as Fetch>::Item<'w>;
@@ -115,7 +108,7 @@ where
 
 impl<'w, Q, D> QueryResult<'w, Q, D>
 where
-    Q: Query<D>,
+    Q: Query,
     D: WorldData,
 {
     pub(crate) fn new(data: &'w mut D) -> Self {
@@ -127,21 +120,21 @@ where
 
     pub fn with<R>(self) -> QueryResult<'w, With<Q, R>, D>
     where
-        R: Query<D>,
+        R: Query,
     {
         QueryResult::new(self.data)
     }
 
     pub fn without<R>(self) -> QueryResult<'w, Without<Q, R>, D>
     where
-        R: Query<D>,
+        R: Query,
     {
         QueryResult::new(self.data)
     }
 
     pub fn nest<R>(self) -> NestQueryResult<'w, Q, R, D>
     where
-        R: Query<D>,
+        R: Query,
     {
         NestQueryResult {
             archetype_set: self.data,
@@ -157,8 +150,8 @@ pub struct NestQueryResult<'w, Q, J, S> {
 
 impl<'w, Q, J, D> IntoIterator for NestQueryResult<'w, Q, J, D>
 where
-    Q: Query<D>,
-    J: Query<D>,
+    Q: Query,
+    J: Query,
     D: WorldData,
 {
     type Item = (<Q::Fetch<'w> as Fetch>::Item<'w>, Nest<'w, J::Fetch<'w>, D>);
