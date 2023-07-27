@@ -505,15 +505,34 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             where
                 E: ::stecs::entity::EntityVariant<#ident>,
             {
-                /*match <E as ::stecs::entity::EntityVariant<#ident>>::into_outer(entity) {
-                    #(
-                        #ident::#variant_idents(entity) => {
-                            #ident_id::#variant_idents(self.#variant_idents.spawn(entity).get())
-                        }
-                    )*
-                }*/
+                // FIXME: Ok, this is too crazy. All of this just so we can
+                // return `EntityId<E>` rather than the outer `Id`.
 
-                todo!()
+                #(
+                    if ::std::any::TypeId::of::<E>() == ::std::any::TypeId::of::<#variant_tys>() {
+                        let #ident::#variant_idents(entity) =
+                            <E as ::stecs::entity::EntityVariant<#ident>>::into_outer(entity)
+                            else { panic!("bug in stecs") };
+
+                        let id = ::stecs::WorldData::spawn(&mut self.#variant_idents, entity);
+                        return ::stecs::archetype::adopt_entity_id_unchecked(id);
+                    }
+                )*
+
+                assert_eq!(::std::any::TypeId::of::<E>(), ::std::any::TypeId::of::<#ident_id>());
+
+                let id: #ident_id =
+                    match <E as ::stecs::entity::EntityVariant<#ident>>::into_outer(entity) {
+                        #(
+                            #ident::#variant_idents(entity) => {
+                                #ident_id::#variant_idents(self.#variant_idents.spawn(entity).get())
+                            }
+                        )*
+                    };
+
+                let id = ::stecs::EntityId::<#ident>::new_unchecked(id);
+
+                ::stecs::archetype::adopt_entity_id_unchecked(id)
             }
 
             fn despawn<E>(
