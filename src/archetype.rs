@@ -174,10 +174,10 @@ impl<T: Columns> Default for Archetype<T> {
 #[derive(Clone, Copy)]
 pub struct ArchetypeWorldFetch<'w, F>(&'w Arena<usize>, Option<F>);
 
-impl<'w, T, F> WorldFetch<Archetype<T>> for ArchetypeWorldFetch<'w, F>
+impl<'w, T, F> WorldFetch<'w, Archetype<T>> for ArchetypeWorldFetch<'w, F>
 where
     T: Columns,
-    F: Fetch,
+    F: Fetch + 'w,
 {
     type Fetch = F;
 
@@ -196,55 +196,7 @@ where
     }
 }
 
-/*
-impl<'w, E, F> ArchetypeSetFetch<Archetype<E>> for SingletonFetch<'w, F>
-where
-    E: Entity,
-    F: Fetch,
-{
-    type Fetch = F;
-
-    type Iter = option::IntoIter<F>;
-
-    unsafe fn get<'f>(&self, id: EntityId<E>) -> Option<F::Item<'f>>
-    where
-        Self: 'f,
-    {
-        self.1
-            .and_then(|fetch| self.0.get(id.0).map(|&index| fetch.get(index)))
-    }
-
-    fn iter(&mut self) -> Self::Iter {
-        self.1.into_iter()
-    }
-}
-
-impl<E: Entity> ArchetypeSet for Archetype<E> {
-    type AnyEntityId = EntityId<E>;
-
-    type AnyEntity = E;
-
-    type Fetch<'w, F: Fetch + 'w> = SingletonFetch<'w, F>
-    where
-        Self: 'w;
-
-    fn spawn(&mut self, entity: E) -> Self::AnyEntityId {
-        self.spawn(entity)
-    }
-
-    fn despawn(&mut self, id: Self::AnyEntityId) -> Option<Self::AnyEntity> {
-        self.despawn(id)
-    }
-
-    fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
-    where
-        F: Fetch + 'w,
-    {
-        SingletonFetch(&self.indices, F::new(&self.ids, &self.columns))
-    }
-}
-*/
-
+// FIXME: This is a bad hack. There might be a cleaner way with traits.
 pub fn adopt_entity_id_unchecked<ESrc, EDst>(id: EntityId<ESrc>) -> EntityId<EDst>
 where
     ESrc: Entity,

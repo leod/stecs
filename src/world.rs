@@ -6,7 +6,7 @@ use crate::{
 
 // TODO: This should probably be generic in `Fetch` rather than `WorldData`, but
 // this works for now.
-pub trait WorldFetch<D: WorldData>: Clone {
+pub trait WorldFetch<'w, D: WorldData>: Clone {
     type Fetch: Fetch;
     type Iter: Iterator<Item = Self::Fetch>;
 
@@ -23,7 +23,7 @@ pub trait WorldFetch<D: WorldData>: Clone {
 pub trait WorldData: Default + Sized + 'static {
     type Entity: EntityVariant<Self::Entity>;
 
-    type Fetch<'w, F: Fetch + 'w>: WorldFetch<Self, Fetch = F>;
+    type Fetch<'w, F: Fetch + 'w>: WorldFetch<'w, Self, Fetch = F>;
 
     fn new(self) -> Self {
         Self::default()

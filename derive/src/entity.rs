@@ -365,6 +365,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                         as ::stecs::world::WorldData
                     >::Fetch<'w, F>
                     as ::stecs::world::WorldFetch<
+                        'w,
                         <
                             #ty
                             as ::stecs::Entity
@@ -463,7 +464,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         }
 
         // TODO: Clean up generic names if we want to allow generic enums.
-        impl<'w, F> ::stecs::world::WorldFetch<#ident_world_data> for #ident_world_fetch<'w, F>
+        impl<'w, F> ::stecs::world::WorldFetch<'w, #ident_world_data> for #ident_world_fetch<'w, F>
         where
             F: ::stecs::query::fetch::Fetch,
         {
@@ -483,7 +484,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                             // Safety: TODO
                             unsafe {
                                 <
-                                    <WorldData as ::stecs::world::WorldData>::Fetch<'f, F>
+                                    <WorldData as ::stecs::world::WorldData>::Fetch<'w, F>
                                     as ::stecs::world::WorldFetch<WorldData>
                                 >
                                 ::get(&self.#variant_idents, id)

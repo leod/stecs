@@ -49,7 +49,7 @@ where
     F: Fetch + 'w,
     D: WorldData + 'w,
 {
-    data_iter: <D::Fetch<'w, F> as WorldFetch<D>>::Iter,
+    data_iter: <D::Fetch<'w, F> as WorldFetch<'w, D>>::Iter,
     current_fetch_iter: Option<FetchIter<'w, F>>,
 }
 
@@ -130,15 +130,18 @@ where
     }
 }
 
-impl<'a, J, D> Nest<'a, J, D>
+impl<'w, J, D> Nest<'w, J, D>
 where
     J: Fetch,
-    D: WorldData + 'a,
+    D: WorldData + 'w,
 {
     // This has to take an exclusive `self` reference to prevent violating
     // Rust's borrowing rules if `J` contains an exclusive borrow, since `get()`
     // could be called multiple times with the same `id`.
-    pub fn get(&mut self, id: <D::Entity as Entity>::Id) -> Option<J::Item<'_>> {
+    pub fn get<'f>(&'w mut self, id: <D::Entity as Entity>::Id) -> Option<J::Item<'f>>
+    where
+        'w: 'f,
+    {
         if let Some(ignore_id) = self.ignore_id {
             if ignore_id == id {
                 // TODO: Consider panicking.
