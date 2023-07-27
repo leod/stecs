@@ -619,13 +619,35 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             where
                 F: ::stecs::query::fetch::Fetch + 'w,
             {
-                #ident_world_fetch {
+                let mut fetch = #ident_world_fetch {
                     #(
                         #variant_idents:
                             <<#variant_tys as ::stecs::Entity>::WorldData as ::stecs::world::WorldData>
                             ::fetch::<F>(&self.#variant_idents),
                     )*
-                }
+                };
+
+                #(
+                    <
+                        <
+                            <
+                                #variant_tys
+                                as ::stecs::Entity
+                            >::WorldData
+                            as ::stecs::world::WorldData
+                        >::Fetch<'w, F>
+                        as ::stecs::world::WorldFetch<
+                            'w,
+                            <
+                                #variant_tys
+                                as ::stecs::Entity
+                            >::WorldData
+                        >
+                    >
+                    ::filter_by_outer::<Self>(&mut fetch.#variant_idents);
+                )*
+
+                fetch
             }
         }
 

@@ -18,6 +18,8 @@ pub trait WorldFetch<'w, D: WorldData>: Clone {
         Self: 'f;
 
     fn iter(&mut self) -> Self::Iter;
+
+    fn filter_by_outer<DOuter: WorldData>(&mut self) {}
 }
 
 pub trait WorldData: Default + Sized + 'static {

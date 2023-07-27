@@ -194,6 +194,10 @@ where
     fn iter(&mut self) -> Self::Iter {
         self.1.into_iter()
     }
+
+    fn filter_by_outer<DOuter: WorldData>(&mut self) {
+        F::filter_by_outer::<DOuter>(&mut self.1)
+    }
 }
 
 // FIXME: This is a bad hack. There might be a cleaner way with traits.

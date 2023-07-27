@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use crate::{
     column::{Column, ColumnRawParts, ColumnRawPartsMut},
     entity::Columns,
-    Component,
+    Component, WorldData,
 };
 
 use super::borrow_checker::BorrowChecker;
@@ -37,6 +37,9 @@ pub unsafe trait Fetch: Copy {
 
     #[doc(hidden)]
     fn check_borrows(checker: &mut BorrowChecker);
+
+    #[doc(hidden)]
+    fn filter_by_outer<DOuter: WorldData>(_: &mut Option<Self>) {}
 }
 
 unsafe impl<C> Fetch for ColumnRawParts<C>

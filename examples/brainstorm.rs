@@ -121,6 +121,14 @@ unsafe impl<'w> Fetch for InnerEntityFetchRef<'w> {
         <Player as EntityFetch>::Fetch::<'w>::check_borrows(checker);
         <Enemy as EntityFetch>::Fetch::<'w>::check_borrows(checker);
     }
+
+    fn filter_by_outer<DOuter: WorldData>(fetch: &mut Option<Self>) {
+        use std::any::TypeId;
+
+        if TypeId::of::<DOuter>() != TypeId::of::<InnerEntity>() {
+            *fetch = None;
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
