@@ -20,7 +20,7 @@ pub mod world;
 
 pub use thunderdome;
 
-pub use stecs_derive::{ArchetypeSet, Entity};
+pub use stecs_derive::Entity;
 
 #[doc(inline)]
 pub use self::{

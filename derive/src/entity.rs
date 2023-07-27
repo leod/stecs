@@ -23,11 +23,12 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
     let ident = &input.ident;
     let vis = &input.vis;
 
-    let ident_columns = syn::Ident::new(&format!("{}Columns", ident), ident.span());
-    let ident_ref = syn::Ident::new(&format!("{}Ref", ident), ident.span());
-    let ident_ref_fetch = syn::Ident::new(&format!("{}RefFetch", ident), ident.span());
-    let ident_ref_mut = syn::Ident::new(&format!("{}RefMut", ident), ident.span());
-    let ident_ref_mut_fetch = syn::Ident::new(&format!("{}RefMutFetch", ident), ident.span());
+    let ident_columns = syn::Ident::new(&format!("{}StecsInternalColumns", ident), ident.span());
+    let ident_ref = syn::Ident::new(&format!("{}StecsInternalRef", ident), ident.span());
+    let ident_ref_fetch = syn::Ident::new(&format!("{}StecsInternalRefFetch", ident), ident.span());
+    let ident_ref_mut = syn::Ident::new(&format!("{}StecsInternalRefMut", ident), ident.span());
+    let ident_ref_mut_fetch =
+        syn::Ident::new(&format!("{}StecsInternalRefMutFetch", ident), ident.span());
 
     let (field_tys, field_members) = struct_fields(&data.fields);
     let field_idents = member_as_idents(&field_members);
@@ -323,11 +324,13 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     let ident = &input.ident;
     let vis = &input.vis;
 
-    let ident_id = syn::Ident::new(&format!("{}Id", ident), ident.span());
-    let ident_ref = syn::Ident::new(&format!("{}Ref", ident), ident.span());
-    let ident_ref_mut = syn::Ident::new(&format!("{}RefMut", ident), ident.span());
-    let ident_world_fetch = syn::Ident::new(&format!("{}WorldFetch", ident), ident.span());
-    let ident_world_data = syn::Ident::new(&format!("{}WorldData", ident), ident.span());
+    let ident_id = syn::Ident::new(&format!("{}StecsInternalId", ident), ident.span());
+    let ident_ref = syn::Ident::new(&format!("{}StecsInternalRef", ident), ident.span());
+    let ident_ref_mut = syn::Ident::new(&format!("{}StecsInternalRefMut", ident), ident.span());
+    let ident_world_fetch =
+        syn::Ident::new(&format!("{}StecsInternalWorldFetch", ident), ident.span());
+    let ident_world_data =
+        syn::Ident::new(&format!("{}StecsInternalWorldData", ident), ident.span());
 
     let variant_idents: Vec<_> = data
         .variants

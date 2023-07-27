@@ -51,7 +51,15 @@ struct Enemy {
 }
 
 #[derive(stecs::Entity, Clone)]
+enum InnerEntity {
+    Player(Player),
+    Enemy(Enemy),
+    Boier(Boier<Position, Velocity>),
+}
+
+#[derive(stecs::Entity, Clone)]
 enum Entity {
+    Inner(InnerEntity),
     Player(Player),
     Enemy(Enemy),
     Boier(Boier<Position, Velocity>),
