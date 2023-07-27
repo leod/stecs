@@ -474,7 +474,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                             unsafe {
                                 <
                                     <WorldData as ::stecs::world::WorldData>::Fetch<'f, F>
-                                    as ::stecs::World::WorldFetch<WorldData>
+                                    as ::stecs::world::WorldFetch<WorldData>
                                 >
                                 ::get(&self.#variant_idents, id)
                             }
@@ -523,16 +523,14 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             where
                 E: ::stecs::entity::EntityVariant<Self::Entity>,
             {
-                /*match id.get() {
+                match id.to_outer().get() {
                     #(
                         #ident_id::#variant_idents(id) => {
-                            let id = ::stecs::EntityId::new_unchecked(id);
-                            #ident::#variant_idents(self.#variant_idents.despawn(id))
+                            let id = ::stecs::EntityId::<#variant_tys>::new_unchecked(id);
+                            self.#variant_idents.despawn(id).map(|entity| #ident::#variant_idents(entity))
                         }
                     )*
-                }*/
-
-                todo!()
+                }
             }
 
             fn entity<E>(&self, id: ::stecs::EntityId<E>) -> ::std::option::Option<E::Ref<'_>>
