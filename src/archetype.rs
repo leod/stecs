@@ -10,7 +10,7 @@ use thunderdome::Arena;
 
 use crate::{
     column::Column,
-    entity::{Columns, EntityBorrow, EntityVariant},
+    entity::{Columns, EntityVariant},
     query::fetch::Fetch,
     world::WorldFetch,
     Entity, EntityId, EntityRef, WorldData,
@@ -80,7 +80,7 @@ impl<T: Columns> Archetype<T> {
         self.ids.push(id.0);
         self.columns.push(entity);
 
-        EntityId::new(id)
+        EntityId::new_unchecked(id)
     }
 
     fn despawn_impl(&mut self, id: EntityId<T::Entity>) -> Option<T::Entity> {
@@ -172,9 +172,9 @@ impl<T: Columns> Default for Archetype<T> {
 // TODO: impl<'a, E: Entity> IntoIterator for &'a Archetype<E>
 
 #[derive(Clone, Copy)]
-pub struct ArchetypeDataFetch<'w, F>(&'w Arena<usize>, Option<F>);
+pub struct ArchetypeWorldFetch<'w, F>(&'w Arena<usize>, Option<F>);
 
-impl<'w, T, F> WorldFetch<Archetype<T>> for ArchetypeDataFetch<'w, F>
+impl<'w, T, F> WorldFetch<Archetype<T>> for ArchetypeWorldFetch<'w, F>
 where
     T: Columns,
     F: Fetch,
@@ -248,7 +248,7 @@ impl<E: Entity> ArchetypeSet for Archetype<E> {
 impl<T: Columns> WorldData for Archetype<T> {
     type Entity = T::Entity;
 
-    type Fetch<'w, F: Fetch + 'w> = ArchetypeDataFetch<'w, F>;
+    type Fetch<'w, F: Fetch + 'w> = ArchetypeWorldFetch<'w, F>;
 
     fn spawn<E>(&mut self, entity: E) -> EntityId<E>
     where
@@ -274,7 +274,7 @@ impl<T: Columns> WorldData for Archetype<T> {
         // enough for the call below to be safe.
         let id = unsafe { transmute_copy::<<T::Entity as Entity>::Id, E::Id>(&id) };
 
-        EntityId::new(id)
+        EntityId::new_unchecked(id)
     }
 
     fn despawn<E>(&mut self, id: EntityId<E>) -> Option<Self::Entity>
@@ -282,13 +282,6 @@ impl<T: Columns> WorldData for Archetype<T> {
         E: EntityVariant<Self::Entity>,
     {
         self.despawn_impl(id.to_outer())
-    }
-
-    fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
-    where
-        F: Fetch + 'w,
-    {
-        ArchetypeDataFetch(&self.indices, F::new(&self.ids, &self.columns))
     }
 
     fn entity<E>(&self, id: EntityId<E>) -> Option<E::Ref<'_>>
@@ -299,5 +292,12 @@ impl<T: Columns> WorldData for Archetype<T> {
         let index = self.indices.get(id.get().0);
 
         todo!()
+    }
+
+    fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
+    where
+        F: Fetch + 'w,
+    {
+        ArchetypeWorldFetch(&self.indices, F::new(&self.ids, &self.columns))
     }
 }

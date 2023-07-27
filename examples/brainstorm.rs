@@ -1,6 +1,4 @@
-use stecs::{
-    query::fetch::Fetch, ArchetypeSet, Component, Entity, EntityId, EntityRef, EntityRefMut,
-};
+use stecs::{query::fetch::Fetch, ArchetypeSet, Component, EntityId, EntityRef, EntityRefMut};
 use thunderdome::Arena;
 
 #[derive(Clone)]
@@ -23,25 +21,32 @@ enum MyEntity {
 }
 */
 
-#[derive(Entity, Clone)]
+#[derive(stecs::Entity, Clone)]
 struct Player {
     pos: Position,
     vel: Velocity,
+
     col: Color,
 }
 
-#[derive(Entity, Clone)]
+#[derive(stecs::Entity, Clone)]
 struct Boier<T: Component, S: Component> {
     pos: T,
     vel: S,
     col: Color,
 }
 
-#[derive(Entity, Clone)]
+#[derive(stecs::Entity, Clone)]
 struct Blob;
 
-#[derive(Entity, Clone)]
+#[derive(stecs::Entity, Clone)]
 struct Blub(u32);
+
+#[derive(stecs::Entity, Clone)]
+enum Entity {
+    Player(Player),
+    Boier(Boier<Position, Velocity>),
+}
 
 /*
 #[derive(Clone, Debug)]

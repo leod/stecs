@@ -6,8 +6,8 @@ use std::{any::type_name, marker::PhantomData};
 
 use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
-    entity::{Columns, ConcreteEntity, EntityBorrow},
-    Component, Entity, EntityRef, EntityRefMut, WorldData,
+    entity::{Columns, ConcreteEntity},
+    Component, EntityRef, EntityRefMut, WorldData,
 };
 
 use self::{

@@ -40,10 +40,6 @@ impl<E> PartialEq for EntityId<E> {
 }
 */
 
-pub trait EntityBorrow<'f> {
-    type Entity: Entity;
-}
-
 pub trait Columns: Default + 'static {
     type Entity: Entity<Id = EntityKey<Self::Entity>> + EntityVariant<Self::Entity>;
 
@@ -71,9 +67,9 @@ pub trait Columns: Default + 'static {
 pub trait Entity: Sized + 'static {
     type Id: Copy + PartialEq + 'static;
 
-    type Ref<'f>: EntityBorrow<'f, Entity = Self>;
+    type Ref<'f>;
 
-    type RefMut<'f>: EntityBorrow<'f, Entity = Self>;
+    type RefMut<'f>;
 
     type WorldData: WorldData<Entity = Self>;
 }
@@ -131,7 +127,7 @@ impl<E: Entity> PartialEq for EntityId<E> {
 }
 
 impl<E: Entity> EntityId<E> {
-    pub(crate) fn new(id: E::Id) -> Self {
+    pub fn new_unchecked(id: E::Id) -> Self {
         Self(id)
     }
 

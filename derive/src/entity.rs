@@ -2,7 +2,9 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{DataEnum, DataStruct, DeriveInput, Error, Result};
 
-use crate::utils::{generics_with_new_lifetime, member_as_idents, struct_fields};
+use crate::utils::{
+    generics_with_new_lifetime, generics_with_new_type_param, member_as_idents, struct_fields,
+};
 
 pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
     match input.data {
@@ -11,7 +13,7 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
         _ => {
             return Err(Error::new_spanned(
                 input.ident,
-                "derive(Entity) does not support enums or unions",
+                "derive(Entity) only supports structs and enums",
             ))
         }
     }
@@ -214,11 +216,6 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             __stecs__phantom: ::std::marker::PhantomData<&#lifetime ()>,
         }
 
-        impl #impl_generics_with_lifetime ::stecs::entity::EntityBorrow<#lifetime>
-        for #ident_ref #ty_generics_with_lifetime #where_clause_with_lifetime {
-            type Entity = #ident #ty_generics;
-        }
-
         // RefMutFetch
 
         #[allow(unused, non_snake_case)]
@@ -296,11 +293,6 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             __stecs__phantom: ::std::marker::PhantomData<&#lifetime mut ()>,
         }
 
-        impl #impl_generics_with_lifetime ::stecs::entity::EntityBorrow<#lifetime>
-        for #ident_ref_mut #ty_generics_with_lifetime #where_clause_with_lifetime {
-            type Entity = #ident #ty_generics;
-        }
-
         // EntityVariant
 
         impl #impl_generics ::stecs::entity::EntityVariant<#ident #ty_generics>
@@ -332,20 +324,262 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     let ident = &input.ident;
     let vis = &input.vis;
 
+    let ident_id = syn::Ident::new(&format!("{}StecsInternalId", ident), ident.span());
     let ident_ref = syn::Ident::new(&format!("{}StecsInternalRef", ident), ident.span());
     let ident_ref_mut = syn::Ident::new(&format!("{}StecsInternalRefMut", ident), ident.span());
+    let ident_world_fetch =
+        syn::Ident::new(&format!("{}StecsInternalWorldFetch", ident), ident.span());
+    let ident_world_data =
+        syn::Ident::new(&format!("{}StecsInternalWorldData", ident), ident.span());
+
+    let variant_idents: Vec<_> = data
+        .variants
+        .iter()
+        .map(|variant| variant.ident.clone())
+        .collect();
+
+    let variant_tys: Vec<_> = data
+        .variants
+        .iter()
+        .map(|variant| match &variant.fields {
+            syn::Fields::Unnamed(fields) if fields.unnamed.len() == 1 => {
+                Ok(fields.unnamed.iter().collect::<Vec<_>>()[0].ty.clone())
+            }
+            _ => Err(Error::new_spanned(
+                ident,
+                "For derive(Entity) on enums, each variant must have exactly one unnamed field",
+            )),
+        })
+        .collect::<Result<_>>()?;
 
     //let (field_tys, field_members) = struct_fields(&data.fields);
     //let field_idents = member_as_idents(&field_members);
 
+    // TODO: Allow generic enum derive(Entity). Should be possible?
+    let lifetime: syn::Lifetime = syn::parse_str("'__stecs__f").unwrap();
+    let type_param: syn::TypeParam = syn::parse_str("__stecs__F").unwrap();
+
+    /*
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let lifetime: syn::Lifetime = syn::parse_str("'__stecs__f").unwrap();
     let generics_with_lifetime = generics_with_new_lifetime(&input.generics, &lifetime);
     let (impl_generics_with_lifetime, ty_generics_with_lifetime, where_clause_with_lifetime) =
         generics_with_lifetime.split_for_impl();
 
-    Ok(quote! {})
+    let generics_with_type_param = generics_with_new_type_param(&input.generics, &type_param);
+    let (impl_generics_with_type_param, ty_generics_with_type_param, where_clause_with_type_param) =
+        generics_with_type_param.split_for_impl();
+    */
+
+    Ok(quote! {
+        // Id
+
+        #[derive(Clone, Copy, PartialEq)]
+        #vis enum #ident_id {
+            #(
+                #variant_idents(<#variant_tys as ::stecs::Entity>::Id),
+            )*
+        }
+
+        // Ref
+
+        #vis enum #ident_ref<#lifetime> {
+            #(
+                #variant_idents(&#lifetime #variant_tys),
+            )*
+        }
+
+        // RefMut
+
+        #vis enum #ident_ref_mut<#lifetime> {
+            #(
+                #variant_idents(&#lifetime mut #variant_tys),
+            )*
+        }
+
+        // WorldFetch
+
+        #vis struct #ident_world_fetch<#lifetime, #type_param>
+        where
+            #type_param: ::stecs::query::fetch::Fetch + #lifetime,
+        {
+            #(
+                #variant_idents:
+                    <
+                        <
+                            #variant_tys
+                            as ::stecs::Entity
+                        >::WorldData
+                        as ::stecs::world::WorldData
+                    >::Fetch<#lifetime, #type_param>,
+            )*
+        }
+
+        #vis impl<#lifetime, #type_param> ::std::clone::Clone
+        for #ident_world_fetch<#lifetime, #type_param>
+        where
+            #type_param: ::stecs::query::fetch::Fetch + #lifetime,
+        {
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+
+        #vis impl<#lifetime, #type_param> ::std::marker::Copy
+        for #ident_world_fetch<#lifetime, #type_param>
+        where
+            #type_param: ::stecs::query::fetch::Fetch + #lifetime,
+        {
+        }
+
+        // TODO: Clean up generic names if we want to allow generic enums.
+        impl<'w, F> ::stecs::world::WorldFetch<#ident_world_data> for #ident_world_fetch<'w, F>
+        where
+            F: ::stecs::query::fetch::Fetch,
+        {
+            type Fetch = F;
+
+            type Iter = ::std::iter::Chain<
+                #(
+                    <
+                        <
+                            <
+                                #variant_tys
+                                as ::stecs::Entity
+                            >::WorldData
+                            as ::stecs::world::WorldData
+                        >::Fetch<'w, F>
+                        as ::stecs::world::WorldFetch<
+                            <
+                                #variant_tys
+                                as ::stecs::Entity
+                            >::WorldData
+                        >
+                    >::Iter,
+                )*
+            >;
+
+            unsafe fn get<'f>(&self, id: #ident_id) -> Option<F::Item<'f>>
+            where
+                Self: 'f,
+            {
+                match id {
+                    #(
+                        #ident_id::#variant_idents(id) => {
+                            //let id = ::stecs::EntityId::<#variant_tys>::new_unchecked(id);
+
+                            type WorldData = <#variant_tys as ::stecs::Entity>::WorldData;
+
+                            // Safety: TODO
+                            unsafe {
+                                <
+                                    <WorldData as ::stecs::world::WorldData>::Fetch<'f, F>
+                                    as ::stecs::World::WorldFetch<WorldData>
+                                >
+                                ::get(&self.#variant_idents, id)
+                            }
+                        }
+                    )*
+                }
+            }
+
+            fn iter(&mut self) -> Self::Iter {
+                todo!()
+            }
+        }
+
+        // WorldData
+
+        #vis struct #ident_world_data {
+            #(
+                #variant_idents: <#variant_tys as ::stecs::Entity>::WorldData,
+            )*
+        }
+
+        impl ::stecs::WorldData for #ident_world_data {
+            type Entity = #ident;
+
+            type Fetch<'w, F: ::stecs::query::fetch::Fetch + 'w> = #ident_world_fetch<'w, F>;
+
+            fn spawn<E>(&mut self, entity: E) -> ::stecs::EntityId<E>
+            where
+                E: ::stecs::entity::EntityVariant<#ident>,
+            {
+                /*match <E as ::stecs::entity::EntityVariant<#ident>>::into_outer(entity) {
+                    #(
+                        #ident::#variant_idents(entity) => {
+                            #ident_id::#variant_idents(self.#variant_idents.spawn(entity).get())
+                        }
+                    )*
+                }*/
+
+                todo!()
+            }
+
+            fn despawn<E>(
+                &mut self,
+                id: ::stecs::EntityId<E>,
+            ) -> ::std::option::Option<Self::Entity>
+            where
+                E: ::stecs::entity::EntityVariant<Self::Entity>,
+            {
+                /*match id.get() {
+                    #(
+                        #ident_id::#variant_idents(id) => {
+                            let id = ::stecs::EntityId::new_unchecked(id);
+                            #ident::#variant_idents(self.#variant_idents.despawn(id))
+                        }
+                    )*
+                }*/
+
+                todo!()
+            }
+
+            fn entity<E>(&self, id: ::stecs::EntityId<E>) -> ::std::option::Option<E::Ref<'_>>
+            where
+                E: ::stecs::entity::EntityVariant<#ident>,
+            {
+                /*match id.get() {
+                    #(
+                        #ident_id::#variant_idents(id) => {
+                            let id = ::stecs::EntityId::new_unchecked(id);
+                            #ident_ref::#variant_idents(self.#variant_idents.entity(id))
+                        }
+                    )*
+                }*/
+
+                todo!()
+            }
+
+            fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
+            where
+                F: ::stecs::query::fetch::Fetch + 'w,
+            {
+                todo!()
+            }
+        }
+
+        // EntityVariant
+
+        impl ::stecs::entity::EntityVariant<#ident> for #ident {
+            fn into_outer(self) -> Self {
+                self
+            }
+
+            fn id_to_outer(id: Self::Id) -> Self::Id {
+                id
+            }
+        }
+
+        // Entity
+
+        impl ::stecs::Entity for #ident {
+            type Id = #ident_id;
+            type Ref<#lifetime> = #ident_ref<#lifetime>;
+            type RefMut<#lifetime> = #ident_ref_mut<#lifetime>;
+            type WorldData = #ident_world_data;
+        }
+    })
 }
 
 fn add_additional_bounds_to_generic_params(generics: &mut syn::Generics) {

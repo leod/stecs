@@ -4,6 +4,8 @@ use crate::{
     Entity, EntityId, Query,
 };
 
+// TODO: This should probably be generic in `Fetch` rather than `WorldData`, but
+// this works for now.
 pub trait WorldFetch<D: WorldData>: Clone {
     type Fetch: Fetch;
     type Iter: Iterator<Item = Self::Fetch>;
@@ -38,6 +40,8 @@ pub trait WorldData: Sized + 'static {
     fn entity<E>(&self, id: EntityId<E>) -> Option<E::Ref<'_>>
     where
         E: EntityVariant<Self::Entity>;
+
+    // TODO: entity_mut
 
     #[doc(hidden)]
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
