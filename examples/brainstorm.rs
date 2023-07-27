@@ -1,4 +1,4 @@
-use stecs::{Component, EntityId, WorldData};
+use stecs::{Component, EntityId, EntityRefMut, WorldData};
 
 #[derive(Clone)]
 struct Position(f32);
@@ -97,7 +97,7 @@ fn main() {
         p.0 += 3.0;
     }
 
-    //println!("p0: {:?}", world.players.get_mut(p1).unwrap().pos.0);
+    // /println!("p0: {:?}", world.entity::<Player>(p1).unwrap().pos.0);
 
     println!("Position");
     for p in world.query::<&Position>() {
@@ -119,7 +119,6 @@ fn main() {
     dbg!("--");
 
     /*
-    /*
     while let Some((p, v, nest)) = world
         .stream::<(&mut Position, &Velocity)>()
         .nest::<&mut Position>()
@@ -128,6 +127,7 @@ fn main() {
     }
     */
 
+    /*
     struct Link {}
 
     struct RopeNode {
@@ -139,7 +139,6 @@ fn main() {
         b: AnyEntityId<World>,
     }
 
-    /*
     while let Some(((node, pos), join)) = world
         .stream::<(&mut RopeNode, &Position)>()
         .join::<(&mut RopeNode, &Position)>()
@@ -152,10 +151,6 @@ fn main() {
         .join_flat::<(&RopeNode, &mut Position)>(|(node, _)| node.next.into_iter())
     {}
     */
-
-    /*for (p, q) in world.query::<(&mut Position, &mut Position)>() {
-        p.0 += q.0;
-    }*/
 
     println!("Position, Position");
     for (p, q) in world.query::<(&Position, &Position)>() {
@@ -223,7 +218,7 @@ fn main() {
     */
 
     println!("Target, nest with Position");
-    for (target, mut nest) in world.query::<(&Target)>().nest::<&mut Position>() {
+    for (target, mut nest) in world.query::<&Target>().nest::<&mut Position>() {
         let Some(target_pos) = nest.get(target.0) else {
             continue;
         };
@@ -237,6 +232,7 @@ fn main() {
 
     println!("Target, nest with Position as EntityRefMut");
 
+    /*
     for (target, mut nest) in world.query::<(&Target)>().nest::<EntityRefMut<Player>>() {
         let Some(target_pos) = nest.get(target.0) else {
             continue;
@@ -248,6 +244,7 @@ fn main() {
         println!("targeting {:?} @ {:?}", target, target_pos.pos.0);
         //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
     }
+    */
 
     /*
     let foo: Vec<_> = world
@@ -267,6 +264,7 @@ fn main() {
     }
     */
 
+    /*
     println!("Enemies");
     let iter = world.enemies.iter_mut();
 
@@ -305,11 +303,15 @@ fn main() {
 
         *enemy.pos = Position(enemy.pos.0 + 100.0);
     }
+    */
 
     // This panics:
     println!("mut Position, Position");
     for (p, q) in world.query::<(&mut Position, &Position)>() {
         p.0 += q.0;
     }
-    */
+
+    for (p, q) in world.query::<(&mut Position, &mut Position)>() {
+        p.0 += q.0;
+    }
 }

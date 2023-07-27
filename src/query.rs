@@ -169,6 +169,7 @@ where
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
         <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        <J::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
 
         // Safety: TODO
         let query_iter = unsafe { DataFetchIter::new(self.archetype_set) };

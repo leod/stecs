@@ -1,7 +1,7 @@
 use crate::{
     entity::EntityVariant,
     query::{fetch::Fetch, QueryResult},
-    Entity, EntityId, Query,
+    Entity, EntityId, EntityRef, Query,
 };
 
 // TODO: This should probably be generic in `Fetch` rather than `WorldData`, but
@@ -43,7 +43,11 @@ pub trait WorldData: Default + Sized + 'static {
 
     fn entity<E>(&self, id: EntityId<E>) -> Option<E::Ref<'_>>
     where
-        E: EntityVariant<Self::Entity>;
+        E: EntityVariant<Self::Entity>,
+    {
+        // /self.fetch::<EntityRef<E>>().get(id.get())
+        todo!()
+    }
 
     // TODO: entity_mut
 
