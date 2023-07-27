@@ -53,26 +53,6 @@ pub struct Archetype<T: Columns> {
 }
 
 impl<T: Columns> Archetype<T> {
-    fn len(&self) -> usize {
-        self.ids.len()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    fn indices(&self) -> &Arena<usize> {
-        &self.indices
-    }
-
-    fn ids(&self) -> &Column<thunderdome::Index> {
-        &self.ids
-    }
-
-    fn columns(&self) -> &T {
-        &self.columns
-    }
-
     fn spawn_impl(&mut self, entity: T::Entity) -> EntityId<T::Entity> {
         let index = self.ids.len();
         let id = EntityKey::new_unchecked(self.indices.insert(index));

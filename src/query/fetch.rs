@@ -102,6 +102,12 @@ where
     }
 }
 
+pub struct FetchEntityKey<E>(ColumnRawParts<thunderdome::Index>, PhantomData<E>);
+
+/*impl<E> Fetch for FetchEntityKey<E>
+where
+    E: */
+
 unsafe impl<F0, F1> Fetch for (F0, F1)
 where
     F0: Fetch,
@@ -216,96 +222,3 @@ where
         F::check_borrows(checker);
     }
 }
-
-/*
-pub struct FetchAnyEntityId<S: ArchetypeSet> {
-    ids_raw_parts: ColumnRawParts<thunderdome::Index>,
-    id_to_any_entity_id: fn(thunderdome::Index) -> S::AnyEntityId,
-}
-
-impl<S: ArchetypeSet> Clone for FetchAnyEntityId<S> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<S: ArchetypeSet> Copy for FetchAnyEntityId<S> {}
-
-unsafe impl<S: ArchetypeSet> Fetch for FetchAnyEntityId<S> {
-    type Item<'f> = S::AnyEntityId where Self: 'f;
-
-    fn len(&self) -> usize {
-        self.ids_raw_parts.len
-    }
-
-    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
-    where
-        Self: 'f,
-    {
-        assert!(index < <Self as Fetch>::len(self));
-
-        let id = unsafe { *self.ids_raw_parts.ptr.add(index) };
-
-        (self.id_to_any_entity_id)(id)
-    }
-
-    fn check_borrows(checker: &mut BorrowChecker) {}
-}
-
-unsafe impl<S: ArchetypeSet> FetchFromSet<S> for FetchAnyEntityId<S> {
-    fn new<E: InArchetypeSet<S>>(ids: &Column<thunderdome::Index>, _: &E::Columns) -> Option<Self> {
-        Some(Self {
-            ids_raw_parts: ids.as_raw_parts(),
-            id_to_any_entity_id: |id| E::any_entity_id(E::entity_id(id)),
-        })
-    }
-}
-
-pub struct FetchEntityId<E> {
-    ids_raw_parts: ColumnRawParts<thunderdome::Index>,
-    _phantom: PhantomData<E>,
-}
-
-impl<E> Clone for FetchEntityId<E> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<E> Copy for FetchEntityId<E> {}
-
-unsafe impl<E: Entity> Fetch for FetchEntityId<E> {
-    type Item<'f> = EntityId<E> where Self: 'f;
-
-    fn len(&self) -> usize {
-        self.ids_raw_parts.len
-    }
-
-    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
-    where
-        Self: 'f,
-    {
-        assert!(index < <Self as Fetch>::len(self));
-
-        let id = unsafe { *self.ids_raw_parts.ptr.add(index) };
-
-        EntityId::new_unchecked(id)
-    }
-
-    fn check_borrows(checker: &mut BorrowChecker) {}
-}
-
-unsafe impl<E, S> FetchFromSet<S> for FetchEntityId<E>
-where
-    E: Entity,
-    S: ArchetypeSet,
-{
-    fn new<F: InArchetypeSet<S>>(ids: &Column<thunderdome::Index>, _: &F::Columns) -> Option<Self> {
-        Some(Self {
-            ids_raw_parts: ids.as_raw_parts(),
-            _phantom: PhantomData,
-        })
-    }
-}
-
-*/
