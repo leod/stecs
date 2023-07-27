@@ -2,9 +2,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{DataEnum, DataStruct, DeriveInput, Error, Result};
 
-use crate::utils::{
-    generics_with_new_lifetime, generics_with_new_type_param, member_as_idents, struct_fields,
-};
+use crate::utils::{generics_with_new_lifetime, member_as_idents, struct_fields};
 
 pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
     match input.data {
@@ -101,7 +99,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             fn new_fetch<'__stecs__w, #lifetime>(
                 &'__stecs__w self,
                 len: usize,
-            ) -> <Self::Entity as ::stecs::entity::EntityFetch>::Fetch<'__stecs__w>
+            ) -> <Self::Entity as ::stecs::entity::Entity>::Fetch<'__stecs__w>
             where
                 '__stecs__w: #lifetime,
             {
@@ -120,7 +118,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             fn new_fetch_mut<'__stecs__w, #lifetime>(
                 &'__stecs__w self,
                 len: usize,
-            ) -> <Self::Entity as ::stecs::entity::EntityFetch>::FetchMut<'__stecs__w>
+            ) -> <Self::Entity as ::stecs::entity::Entity>::FetchMut<'__stecs__w>
             where
                 '__stecs__w: #lifetime,
             {
@@ -135,15 +133,6 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
                     )*
                 }
             }
-        }
-
-        // EntityFetch
-
-        impl #impl_generics ::stecs::entity::EntityFetch
-        for #ident #ty_generics #where_clause {
-            type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
-
-            type FetchMut<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
         }
 
         // RefFetch
@@ -333,11 +322,10 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
 
         impl #impl_generics ::stecs::Entity for #ident #ty_generics #where_clause {
             type Id = ::stecs::archetype::EntityKey<Self>;
-
             type Ref<#lifetime> = #ident_ref #ty_generics_with_lifetime;
-
             type RefMut<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
-
+            type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
+            type FetchMut<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
             type WorldData = ::stecs::archetype::Archetype<#ident_columns #ty_generics>;
         }
     })
@@ -445,7 +433,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         )]
         #vis enum #ident_ref_fetch<'w> {
             #(
-                #variant_idents(<#variant_tys as ::stecs::entity::EntityFetch>::Fetch<'w>),
+                #variant_idents(<#variant_tys as ::stecs::entity::Entity>::Fetch<'w>),
             )*
         }
 
@@ -490,7 +478,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
             fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
                 #(
-                    <#variant_tys as ::stecs::entity::EntityFetch>::Fetch::<'w>::check_borrows(checker);
+                    <#variant_tys as ::stecs::entity::Entity>::Fetch::<'w>::check_borrows(checker);
                 )*
             }
 
@@ -522,7 +510,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         )]
         #vis enum #ident_ref_mut_fetch<'w> {
             #(
-                #variant_idents(<#variant_tys as ::stecs::entity::EntityFetch>::FetchMut<'w>),
+                #variant_idents(<#variant_tys as ::stecs::entity::Entity>::FetchMut<'w>),
             )*
         }
 
@@ -567,7 +555,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
             fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
                 #(
-                    <#variant_tys as ::stecs::entity::EntityFetch>::FetchMut::<'w>::check_borrows(checker);
+                    <#variant_tys as ::stecs::entity::Entity>::FetchMut::<'w>::check_borrows(checker);
                 )*
             }
 
@@ -820,20 +808,14 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             }
         }
 
-        // EntityFetch
-
-        impl ::stecs::entity::EntityFetch for #ident {
-            type Fetch<'__stecs__w> = #ident_ref_fetch<'__stecs__w>;
-
-            type FetchMut<'__stecs__w> = #ident_ref_mut_fetch<'__stecs__w>;
-        }
-
         // Entity
 
         impl ::stecs::Entity for #ident {
             type Id = #ident_id;
             type Ref<#lifetime> = #ident_ref<#lifetime>;
             type RefMut<#lifetime> = #ident_ref_mut<#lifetime>;
+            type Fetch<'__stecs__w> = #ident_ref_fetch<'__stecs__w>;
+            type FetchMut<'__stecs__w> = #ident_ref_mut_fetch<'__stecs__w>;
             type WorldData = #ident_world_data;
         }
     })

@@ -42,7 +42,7 @@ impl<E> PartialEq for EntityId<E> {
 */
 
 pub trait Columns: Default + 'static {
-    type Entity: Entity<Id = EntityKey<Self::Entity>> + EntityVariant<Self::Entity> + EntityFetch;
+    type Entity: Entity<Id = EntityKey<Self::Entity>> + EntityVariant<Self::Entity>;
 
     fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>>;
 
@@ -51,21 +51,14 @@ pub trait Columns: Default + 'static {
     fn remove(&mut self, index: usize) -> Self::Entity;
 
     // FIXME: I really don't know about these lifetimes.
-    fn new_fetch<'w, 'f>(&'w self, len: usize) -> <Self::Entity as EntityFetch>::Fetch<'f>
+    fn new_fetch<'w, 'f>(&'w self, len: usize) -> <Self::Entity as Entity>::Fetch<'f>
     where
         'w: 'f;
 
     // FIXME: I really don't know about these lifetimes.
-    fn new_fetch_mut<'w, 'f>(&'w self, len: usize) -> <Self::Entity as EntityFetch>::FetchMut<'f>
+    fn new_fetch_mut<'w, 'f>(&'w self, len: usize) -> <Self::Entity as Entity>::FetchMut<'f>
     where
         'w: 'f;
-}
-
-// TODO: Merge with `Entity`.
-pub trait EntityFetch: Entity {
-    type Fetch<'w>: Fetch<Item<'w> = <Self as Entity>::Ref<'w>>;
-
-    type FetchMut<'w>: Fetch<Item<'w> = <Self as Entity>::RefMut<'w>>;
 }
 
 pub trait Entity: Sized + 'static {
@@ -74,6 +67,10 @@ pub trait Entity: Sized + 'static {
     type Ref<'f>: Query;
 
     type RefMut<'f>: Query;
+
+    type Fetch<'w>: Fetch<Item<'w> = <Self as Entity>::Ref<'w>>;
+
+    type FetchMut<'w>: Fetch<Item<'w> = <Self as Entity>::RefMut<'w>>;
 
     type WorldData: WorldData<Entity = Self>;
 }

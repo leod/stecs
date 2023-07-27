@@ -6,8 +6,7 @@ use std::{any::type_name, marker::PhantomData};
 
 use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
-    entity::EntityFetch,
-    Component, EntityRef, EntityRefMut, WorldData,
+    Component, WorldData,
 };
 
 use self::{
@@ -33,24 +32,6 @@ where
 {
     type Fetch<'w> = ColumnRawPartsMut<C>;
 }
-
-/*
-impl<'q, E> Query for EntityRef<'q, E>
-where
-    E: EntityFetch,
-{
-    // FIXME: The lifetimes seem wrong.
-    type Fetch<'f> = E::Fetch<'f>;
-}
-
-impl<'q, E> Query for EntityRefMut<'q, E>
-where
-    E: EntityFetch,
-{
-    // FIXME: The lifetimes seem wrong.
-    type Fetch<'f> = E::FetchMut<'f>;
-}
-*/
 
 impl<Q0, Q1> Query for (Q0, Q1)
 where
