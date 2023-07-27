@@ -76,10 +76,6 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
         for #ident_columns #ty_generics #where_clause {
             type Entity = #ident #ty_generics;
 
-            type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
-
-            type FetchMut<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
-
             fn column<__stecs__C: ::stecs::Component>(
                 &self,
             )
@@ -112,7 +108,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             fn new_fetch<'__stecs__w, #lifetime>(
                 &'__stecs__w self,
                 len: usize,
-            ) -> Self::Fetch<'__stecs__w>
+            ) -> <Self::Entity as ::stecs::entity::EntityFetch>::Fetch<'__stecs__w>
             where
                 '__stecs__w: #lifetime,
             {
@@ -131,7 +127,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             fn new_fetch_mut<'__stecs__w, #lifetime>(
                 &'__stecs__w self,
                 len: usize,
-            ) -> Self::FetchMut<'__stecs__w>
+            ) -> <Self::Entity as ::stecs::entity::EntityFetch>::FetchMut<'__stecs__w>
             where
                 '__stecs__w: #lifetime,
             {
@@ -146,6 +142,15 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
                     )*
                 }
             }
+        }
+
+        // EntityFetch
+
+        impl #impl_generics ::stecs::entity::EntityFetch
+        for #ident #ty_generics #where_clause {
+            type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
+
+            type FetchMut<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
         }
 
         // RefFetch
