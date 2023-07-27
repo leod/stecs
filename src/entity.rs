@@ -65,7 +65,7 @@ pub trait Columns: Default + 'static {
 }
 
 pub trait Entity: Sized + 'static {
-    type Id: Copy + PartialEq + 'static;
+    type Id: Copy + Debug + PartialEq + 'static;
 
     type Ref<'f>;
 
@@ -119,6 +119,12 @@ impl<E: Entity> Clone for EntityId<E> {
 }
 
 impl<E: Entity> Copy for EntityId<E> {}
+
+impl<E: Entity> Debug for EntityId<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Entityid").field(&self.0).finish()
+    }
+}
 
 impl<E: Entity> PartialEq for EntityId<E> {
     fn eq(&self, other: &Self) -> bool {

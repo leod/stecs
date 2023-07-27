@@ -20,10 +20,14 @@ pub trait WorldFetch<D: WorldData>: Clone {
     fn iter(&mut self) -> Self::Iter;
 }
 
-pub trait WorldData: Sized + 'static {
+pub trait WorldData: Default + Sized + 'static {
     type Entity: EntityVariant<Self::Entity>;
 
     type Fetch<'w, F: Fetch + 'w>: WorldFetch<Self, Fetch = F>;
+
+    fn new(self) -> Self {
+        Self::default()
+    }
 
     fn spawn<E>(&mut self, entity: E) -> EntityId<E>
     where

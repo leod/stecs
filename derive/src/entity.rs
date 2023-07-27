@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{DataEnum, DataStruct, DeriveInput, Error, Result};
+use syn::{parse_quote, DataEnum, DataStruct, DeriveInput, Error, Result};
 
 use crate::utils::{
     generics_with_new_lifetime, generics_with_new_type_param, member_as_idents, struct_fields,
@@ -352,6 +352,33 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         })
         .collect::<Result<_>>()?;
 
+    let world_fetch_iter = variant_tys
+        .iter()
+        .map(|ty| {
+            quote! {
+                <
+                    <
+                        <
+                            #ty
+                            as ::stecs::Entity
+                        >::WorldData
+                        as ::stecs::world::WorldData
+                    >::Fetch<'w, F>
+                    as ::stecs::world::WorldFetch<
+                        <
+                            #ty
+                            as ::stecs::Entity
+                        >::WorldData
+                    >
+                >::Iter
+            }
+        })
+        .fold(quote! { ::std::iter::Empty<F> }, |chain, ty| {
+            quote! {
+                ::std::iter::Chain<#chain, #ty>
+            }
+        });
+
     // TODO: Allow generic enum derive(Entity). Should be possible?
     let lifetime: syn::Lifetime = syn::parse_str("'__stecs__f").unwrap();
     let type_param: syn::TypeParam = syn::parse_str("__stecs__F").unwrap();
@@ -371,7 +398,12 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     Ok(quote! {
         // Id
 
-        #[derive(Clone, Copy, PartialEq)]
+        #[derive(
+            ::std::clone::Clone,
+            ::std::marker::Copy,
+            ::std::fmt::Debug,
+            ::std::cmp::PartialEq,
+        )]
         #vis enum #ident_id {
             #(
                 #variant_idents(<#variant_tys as ::stecs::Entity>::Id),
@@ -396,6 +428,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
         // WorldFetch
 
+        #[allow(non_snake_case)]
         #vis struct #ident_world_fetch<#lifetime, #type_param>
         where
             #type_param: ::stecs::query::fetch::Fetch + #lifetime,
@@ -436,25 +469,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         {
             type Fetch = F;
 
-            type Iter = ::std::iter::Chain<
-                #(
-                    <
-                        <
-                            <
-                                #variant_tys
-                                as ::stecs::Entity
-                            >::WorldData
-                            as ::stecs::world::WorldData
-                        >::Fetch<'w, F>
-                        as ::stecs::world::WorldFetch<
-                            <
-                                #variant_tys
-                                as ::stecs::Entity
-                            >::WorldData
-                        >
-                    >::Iter,
-                )*
-            >;
+            type Iter = #world_fetch_iter;
 
             unsafe fn get<'f>(&self, id: #ident_id) -> Option<F::Item<'f>>
             where
@@ -479,12 +494,28 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             }
 
             fn iter(&mut self) -> Self::Iter {
-                todo!()
+                let iter = ::std::iter::empty();
+                #(
+                    let iter = ::std::iter::Iterator::chain(
+                        iter,
+                        <
+                            <<#variant_tys as ::stecs::Entity>::WorldData as ::stecs::world::WorldData>::Fetch<'w, F>
+                            as ::stecs::world::WorldFetch<<#variant_tys as ::stecs::Entity>::WorldData>
+                        >
+                        ::iter(&mut self.#variant_idents)
+                    );
+                )*
+
+                iter
             }
         }
 
         // WorldData
 
+        // TODO: Consider exposing the `WorldData` struct. In this case, convert
+        // field names to snake case first.
+        #[allow(non_snake_case)]
+        #[derive(::std::default::Default)]
         #vis struct #ident_world_data {
             #(
                 #variant_idents: <#variant_tys as ::stecs::Entity>::WorldData,
@@ -500,7 +531,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             where
                 E: ::stecs::entity::EntityVariant<#ident>,
             {
-                // FIXME: Ok, this is too crazy. All of this just so we can
+                // FIXME: Ok, this is too crazy. All of this "just" so we can
                 // return `EntityId<E>` rather than the outer `Id`.
 
                 #(
@@ -578,6 +609,18 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         }
 
         // EntityVariant
+
+        #(
+            impl ::stecs::entity::EntityVariant<#ident> for #variant_tys {
+                fn into_outer(self) -> #ident {
+                    #ident::#variant_idents(self)
+                }
+
+                fn id_to_outer(id: Self::Id) -> #ident_id {
+                    #ident_id::#variant_idents(id)
+                }
+            }
+        )*
 
         impl ::stecs::entity::EntityVariant<#ident> for #ident {
             fn into_outer(self) -> Self {

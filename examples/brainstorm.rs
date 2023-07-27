@@ -1,5 +1,4 @@
-use stecs::{query::fetch::Fetch, ArchetypeSet, Component, EntityId, EntityRef, EntityRefMut};
-use thunderdome::Arena;
+use stecs::{Component, EntityId, WorldData};
 
 #[derive(Clone)]
 struct Position(f32);
@@ -42,155 +41,25 @@ struct Blob;
 #[derive(stecs::Entity, Clone)]
 struct Blub(u32);
 
-#[derive(stecs::Entity, Clone)]
-enum Entity {
-    Player(Player),
-    Boier(Boier<Position, Velocity>),
-}
-
-/*
 #[derive(Clone, Debug)]
-struct Target(EntityId<World>);
+struct Target(EntityId<Entity>);
 
-#[derive(Entity, Clone)]
+#[derive(stecs::Entity, Clone)]
 struct Enemy {
     pos: Position,
     target: Target,
 }
 
-// TODO: Clone in Derive?
-#[derive(Default, ArchetypeSet)]
-struct World {
-    players: Archetype<Player>,
-    enemies: Archetype<Enemy>,
-}
-
-// generated
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum WorldEntityId {
-    Player(EntityId<Player>),
-    Enemy(EntityId<Enemy>),
-}
-
-enum WorldEntity {
+#[derive(stecs::Entity, Clone)]
+enum Entity {
     Player(Player),
     Enemy(Enemy),
+    Boier(Boier<Position, Velocity>),
 }
 
-impl From<Player> for WorldEntity {
-    fn from(entity: Player) -> Self {
-        Self::Player(entity)
-    }
-}
-
-impl From<Enemy> for WorldEntity {
-    fn from(entity: Enemy) -> Self {
-        Self::Enemy(entity)
-    }
-}
-
-#[derive(Clone)]
-struct WorldFetch<'a, F> {
-    players: Option<(&'a Arena<usize>, F)>,
-    enemies: Option<(&'a Arena<usize>, F)>,
-}
-
-impl<'a, F> ArchetypeSetFetch<World> for WorldFetch<'a, F>
-where
-    F: Fetch,
-{
-    type Fetch = F;
-
-    type Iter = std::iter::Flatten<std::array::IntoIter<Option<F>, 2>>;
-
-    unsafe fn get<'b>(&self, id: AnyEntityId<World>) -> Option<F::Item<'b>> {
-        match id {
-            WorldEntityId::Player(key) => self
-                .players
-                .as_ref()
-                .and_then(|(arena, fetch)| arena.get(key.0).map(|&index| fetch.get(index))),
-            WorldEntityId::Enemy(key) => self
-                .enemies
-                .as_ref()
-                .and_then(|(arena, fetch)| arena.get(key.0).map(|&index| fetch.get(index))),
-        }
-    }
-
-    fn iter(&mut self) -> Self::Iter {
-        [
-            self.players.as_ref().map(|(_, fetch)| *fetch),
-            self.enemies.as_ref().map(|(_, fetch)| *fetch),
-        ]
-        .into_iter()
-        .flatten()
-    }
-}
-
-impl stecs::ArchetypeSet for World {
-    type AnyEntityId = WorldEntityId;
-
-    type AnyEntity = WorldEntity;
-
-    type Fetch<'w, F: Fetch + 'w> = WorldFetch<'w, F>;
-
-    fn spawn<E>(&mut self, entity: E) -> Self::AnyEntityId {
-        match entity {
-            WorldEntity::Player(entity) => WorldEntityId::Player(self.players.spawn(entity)),
-            WorldEntity::Enemy(entity) => WorldEntityId::Enemy(self.enemies.spawn(entity)),
-        }
-    }
-
-    fn despawn(&mut self, id: Self::AnyEntityId) -> Option<Self::AnyEntity> {
-        match id {
-            WorldEntityId::Player(key) => self.players.despawn(key).map(WorldEntity::Player),
-            WorldEntityId::Enemy(key) => self.enemies.despawn(key).map(WorldEntity::Enemy),
-        }
-    }
-
-    fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
-    where
-        F: Fetch + 'w,
-    {
-        let players = F::new(self.players.ids(), self.players.columns())
-            .map(|fetch| (self.players.indices(), fetch));
-        let enemies = F::new(self.enemies.ids(), self.enemies.columns())
-            .map(|fetch| (self.enemies.indices(), fetch));
-
-        WorldFetch { players, enemies }
-    }
-}
-
-impl InArchetypeSet<World> for Player {
-    fn embed_entity(self) -> WorldEntity {
-        WorldEntity::Player(self)
-    }
-}
-
-impl SubArchetypeSet<World> for Archetype<Player> {
-    fn embed_entity_id(id: EntityId<Player>) -> WorldEntityId {
-        WorldEntityId::Player(id)
-    }
-}
-
-impl InArchetypeSet<World> for Enemy {
-    fn embed_entity(self) -> WorldEntity {
-        WorldEntity::Enemy(self)
-    }
-}
-
-impl SubArchetypeSet<World> for Archetype<Enemy> {
-    fn embed_entity_id(id: EntityId<Enemy>) -> WorldEntityId {
-        WorldEntityId::Enemy(id)
-    }
-}
-
-/*impl Query<World> for WorldEntityId {
-    type Fetch<'f> = FetchAnyEntityId<World>;
-}*/
+type World = stecs::World<Entity>;
 
 fn main() {
-    //let id = EntityId::<World>::Player(0);
-
     let mut world = World::default();
 
     let p0 = world.spawn(Player {
@@ -199,7 +68,7 @@ fn main() {
         col: Color(3.0),
     });
 
-    let p1 = world.players.spawn(Player {
+    let p1 = world.spawn(Player {
         pos: Position(1.5),
         vel: Velocity(2.0),
         col: Color(3.0),
@@ -207,12 +76,12 @@ fn main() {
 
     world.spawn(Enemy {
         pos: Position(-1.5),
-        target: Target(p0),
+        target: Target(p0.to_outer()),
     });
 
     world.spawn(Enemy {
         pos: Position(-1.6),
-        target: Target(p0),
+        target: Target(p0.to_outer()),
     });
 
     for p in world.query::<&mut Position>() {
@@ -220,7 +89,7 @@ fn main() {
         p.0 += 3.0;
     }
 
-    println!("p0: {:?}", world.players.get_mut(p1).unwrap().pos.0);
+    //println!("p0: {:?}", world.players.get_mut(p1).unwrap().pos.0);
 
     println!("Position");
     for p in world.query::<&Position>() {
@@ -237,10 +106,11 @@ fn main() {
         p.0 += v.0;
     }
 
-    println!("p0: {:?}", world.players.get_mut(p1).unwrap().pos.0);
+    //println!("p0: {:?}", world.players.get_mut(p1).unwrap().pos.0);
 
     dbg!("--");
 
+    /*
     /*
     while let Some((p, v, nest)) = world
         .stream::<(&mut Position, &Velocity)>()
@@ -433,8 +303,5 @@ fn main() {
     for (p, q) in world.query::<(&mut Position, &Position)>() {
         p.0 += q.0;
     }
+    */
 }
-
-*/
-
-fn main() {}
