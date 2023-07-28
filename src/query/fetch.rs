@@ -18,6 +18,10 @@ pub unsafe trait Fetch: Copy {
 
     fn len(&self) -> usize;
 
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Fetches the components specified by `Self::Query` for the entity stored
     /// at `index`.
     ///

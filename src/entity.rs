@@ -1,45 +1,11 @@
 use std::{
     cell::RefCell,
     fmt::{self, Debug},
-    ops::{Deref, DerefMut},
 };
 
 use crate::{
     archetype::EntityKey, column::Column, query::fetch::Fetch, Component, Query, WorldData,
 };
-
-/*
-// TODO: Eq, Hash, PartialOrd, Ord.
-// https://github.com/rust-lang/rust/issues/26925
-pub struct EntityId<E>(pub thunderdome::Index, PhantomData<E>);
-
-impl<E> EntityId<E> {
-    #[doc(hidden)]
-    pub fn new_unchecked(id: thunderdome::Index) -> Self {
-        Self(id, PhantomData)
-    }
-}
-
-impl<E> Clone for EntityId<E> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<E> Copy for EntityId<E> {}
-
-impl<E> Debug for EntityId<E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("EntityId").field(&self.0).finish()
-    }
-}
-
-impl<E> PartialEq for EntityId<E> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-*/
 
 pub trait Columns: Default + 'static {
     type Entity: Entity<Id = EntityKey<Self::Entity>> + EntityVariant<Self::Entity>;
@@ -68,8 +34,10 @@ pub trait Entity: Sized + 'static {
 
     type RefMut<'f>: Query;
 
+    #[doc(hidden)]
     type Fetch<'w>: Fetch<Item<'w> = <Self as Entity>::Ref<'w>>;
 
+    #[doc(hidden)]
     type FetchMut<'w>: Fetch<Item<'w> = <Self as Entity>::RefMut<'w>>;
 
     type WorldData: WorldData<Entity = Self>;

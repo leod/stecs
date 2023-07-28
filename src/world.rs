@@ -27,7 +27,7 @@ pub trait WorldData: Default + Sized + 'static {
 
     type Fetch<'w, F: Fetch + 'w>: WorldFetch<'w, Self, Fetch = F>;
 
-    fn new(self) -> Self {
+    fn new() -> Self {
         Self::default()
     }
 
