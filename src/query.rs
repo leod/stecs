@@ -13,7 +13,7 @@ use crate::{
 
 use self::{
     borrow_checker::BorrowChecker,
-    fetch::{Fetch, WithFetch, WithoutFetch},
+    fetch::{Fetch, UnitFetch, WithFetch, WithoutFetch},
     iter::{DataFetchIter, Nest, NestDataFetchIter},
 };
 
@@ -43,20 +43,25 @@ impl<E: Entity> Query for EntityId<E> {
 
 impl<E: Entity> QueryShared for EntityId<E> {}
 
-impl<Q0, Q1> Query for (Q0, Q1)
-where
-    Q0: Query,
-    Q1: Query,
-{
-    type Fetch<'w> = (Q0::Fetch<'w>, Q1::Fetch<'w>);
+macro_rules! tuple_impl {
+    () => {
+        impl Query for () {
+            type Fetch<'w> = UnitFetch;
+        }
+    };
+    ($($name: ident),*) => {
+        impl<$($name: Query,)*> Query for ($($name,)*) {
+            type Fetch<'w> = ($($name::Fetch<'w>,)*);
+        }
+
+        impl<$($name: QueryShared,)*> QueryShared for ($($name,)*) {
+        }
+    };
 }
 
-impl<Q0, Q1> QueryShared for (Q0, Q1)
-where
-    Q0: QueryShared,
-    Q1: QueryShared,
-{
-}
+smaller_tuples_too!(
+    tuple_impl, F0, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15
+);
 
 pub struct With<Q, R>(PhantomData<(Q, R)>);
 
@@ -156,10 +161,7 @@ where
         }
     }
 
-    pub fn get_mut<'f, E>(
-        &'f mut self,
-        id: EntityId<E>,
-    ) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
+    pub fn get<'f, E>(&'f self, id: EntityId<E>) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
     where
         'w: 'f,
         E: EntityVariant<D::Entity>,
@@ -178,7 +180,10 @@ where
         unsafe { world_fetch.get(id.get()) }
     }
 
-    pub fn get<'f, E>(&'f self, id: EntityId<E>) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
+    pub fn get_mut<'f, E>(
+        &'f mut self,
+        id: EntityId<E>,
+    ) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
     where
         'w: 'f,
         E: EntityVariant<D::Entity>,
@@ -203,7 +208,10 @@ pub struct NestQueryResult<'w, Q, J, S> {
     _phantom: PhantomData<(Q, J)>,
 }
 
-// TODO: Implement `get` for `NestQueryResult`
+// TODO: Implement `get` for `NestQueryResult`.
+
+// TODO: Implement `nest` for `NestQueryResult`; require non-overlapping borrows
+// for multiple nests.
 
 impl<'w, Q, J, D> IntoIterator for NestQueryResult<'w, Q, J, D>
 where

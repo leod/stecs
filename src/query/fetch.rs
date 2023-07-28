@@ -145,38 +145,74 @@ where
     fn check_borrows(_: &mut BorrowChecker) {}
 }
 
-unsafe impl<F0, F1> Fetch for (F0, F1)
-where
-    F0: Fetch,
-    F1: Fetch,
-{
-    type Item<'f> = (F0::Item<'f>, F1::Item<'f>) where Self: 'f;
+macro_rules! tuple_impl {
+    () => {
+        #[derive(Copy, Clone)]
+        pub struct UnitFetch(usize);
 
-    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
-        let f0 = F0::new(ids, columns)?;
-        let f1 = F1::new(ids, columns)?;
+        unsafe impl Fetch for UnitFetch {
+            type Item<'f> = ();
 
-        assert_eq!(f0.len(), f1.len());
+            fn new<T: Columns>(ids: &Column<thunderdome::Index>, _: &T) -> Option<Self> {
+                Some(Self(ids.len()))
+            }
 
-        Some((f0, f1))
-    }
+            fn len(&self) -> usize {
+                self.0
+            }
 
-    fn len(&self) -> usize {
-        self.0.len()
-    }
+            unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f> {
+                assert!(index < self.len());
 
-    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
-    where
-        Self: 'f,
-    {
-        (self.0.get(index), self.1.get(index))
-    }
+                ()
+            }
 
-    fn check_borrows(checker: &mut BorrowChecker) {
-        F0::check_borrows(checker);
-        F1::check_borrows(checker);
-    }
+            fn check_borrows(_: &mut BorrowChecker) {}
+        }
+    };
+    ($($name: ident),*) => {
+        unsafe impl<$($name: Fetch,)*> Fetch for ($($name,)*) {
+            type Item<'f> = ($($name::Item<'f>,)*) where Self: 'f;
+
+            #[allow(non_snake_case, unused)]
+            fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
+                let len = None;
+                $(
+                    let $name = $name::new(ids, columns)?;
+
+                    if let Some(len) = len {
+                        assert_eq!($name.len(), len);
+                    }
+                    let len = Some($name.len());
+                )*
+
+                Some(($($name,)*))
+            }
+
+            fn len(&self) -> usize {
+                self.0.len()
+            }
+
+            unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+            where
+                Self: 'f,
+            {
+                #[allow(non_snake_case)]
+                let ($($name,)*) = self;
+
+                ($($name.get(index),)*)
+            }
+
+            fn check_borrows(checker: &mut BorrowChecker) {
+                $($name::check_borrows(checker);)*
+            }
+        }
+    };
 }
+
+smaller_tuples_too!(
+    tuple_impl, F0, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15
+);
 
 #[derive(Clone, Copy)]
 pub struct WithFetch<F, R> {
