@@ -106,7 +106,7 @@ where
     }
 }
 
-pub struct FetchEntityKey<E>(ColumnRawParts<thunderdome::Index>, PhantomData<E>);
+pub struct EntityKeyFetch<E>(ColumnRawParts<thunderdome::Index>, PhantomData<E>);
 
 /*impl<E> Fetch for FetchEntityKey<E>
 where
@@ -146,12 +146,12 @@ where
 }
 
 #[derive(Clone, Copy)]
-pub struct FetchWith<F, R> {
+pub struct WithFetch<F, R> {
     fetch: F,
     _phantom: PhantomData<R>,
 }
 
-unsafe impl<F, R> Fetch for FetchWith<F, R>
+unsafe impl<F, R> Fetch for WithFetch<F, R>
 where
     F: Fetch,
     R: Fetch,
@@ -186,12 +186,12 @@ where
 }
 
 #[derive(Clone, Copy)]
-pub struct FetchWithout<F, R> {
+pub struct WithoutFetch<F, R> {
     fetch: F,
     _phantom: PhantomData<R>,
 }
 
-unsafe impl<F, R> Fetch for FetchWithout<F, R>
+unsafe impl<F, R> Fetch for WithoutFetch<F, R>
 where
     F: Fetch,
     R: Fetch,

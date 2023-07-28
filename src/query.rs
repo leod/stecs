@@ -13,7 +13,7 @@ use crate::{
 
 use self::{
     borrow_checker::BorrowChecker,
-    fetch::{Fetch, FetchWith, FetchWithout},
+    fetch::{Fetch, WithFetch, WithoutFetch},
     iter::{DataFetchIter, Nest, NestDataFetchIter},
 };
 
@@ -50,7 +50,7 @@ where
     Q: Query,
     R: Query,
 {
-    type Fetch<'w> = FetchWith<Q::Fetch<'w>, R::Fetch<'w>>;
+    type Fetch<'w> = WithFetch<Q::Fetch<'w>, R::Fetch<'w>>;
 }
 
 pub struct Without<Q, R>(PhantomData<(Q, R)>);
@@ -60,7 +60,7 @@ where
     Q: Query,
     R: Query,
 {
-    type Fetch<'w> = FetchWithout<Q::Fetch<'w>, R::Fetch<'w>>;
+    type Fetch<'w> = WithoutFetch<Q::Fetch<'w>, R::Fetch<'w>>;
 }
 
 pub struct QueryResult<'w, Q, D> {

@@ -728,7 +728,9 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                     #(
                         #ident_id::#variant_idents(id) => {
                             let id = ::stecs::EntityId::<#variant_tys>::new_unchecked(id);
-                            self.#variant_idents.despawn(id).map(|entity| #ident::#variant_idents(entity))
+                            self.#variant_idents
+                                .despawn(id)
+                                .map(|entity| #ident::#variant_idents(entity))
                         }
                     )*
                 }
