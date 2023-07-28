@@ -1,5 +1,5 @@
 use std::{
-    any::TypeId,
+    any::{type_name, TypeId},
     fmt::{self, Debug},
     marker::PhantomData,
     mem::transmute_copy,
@@ -35,7 +35,9 @@ impl<E> Copy for EntityKey<E> {}
 
 impl<E> Debug for EntityKey<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("EntityKey").field(&self.0).finish()
+        f.debug_tuple(&format!("EntityKey::<{}>", type_name::<E>()))
+            .field(&self.0)
+            .finish()
     }
 }
 

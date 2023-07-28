@@ -31,14 +31,16 @@ pub trait Entity: Sized + 'static {
     type Id: Copy + Debug + PartialEq + 'static;
 
     type Ref<'f>: Query;
+    /*where
+    for<'w> <Self::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = Self::Ref<'w>>;*/
 
     type RefMut<'f>: Query;
 
     #[doc(hidden)]
-    type Fetch<'w>: Fetch<Item<'w> = <Self as Entity>::Ref<'w>>;
+    type Fetch<'w>: Fetch<Item<'w> = Self::Ref<'w>>;
 
     #[doc(hidden)]
-    type FetchMut<'w>: Fetch<Item<'w> = <Self as Entity>::RefMut<'w>>;
+    type FetchMut<'w>: Fetch<Item<'w> = Self::RefMut<'w>>;
 
     type WorldData: WorldData<Entity = Self>;
 }
@@ -71,7 +73,7 @@ impl<E: Entity> Copy for EntityId<E> {}
 
 impl<E: Entity> Debug for EntityId<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Entityid").field(&self.0).finish()
+        f.debug_tuple("EntityId").field(&self.0).finish()
     }
 }
 

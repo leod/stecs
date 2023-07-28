@@ -71,8 +71,6 @@ pub trait WorldData: Default + Sized + 'static {
         unsafe { fetch.get(id.get()) }
     }
 
-    // TODO: entity_mut
-
     #[doc(hidden)]
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where

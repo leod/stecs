@@ -65,6 +65,8 @@ fn main() {
         col: Color(3.0),
     });
 
+    println!("muh id {:?}", p0);
+
     let p1 = world.spawn(Player {
         pos: Position(1.5),
         vel: Velocity(2.0),
