@@ -1,6 +1,6 @@
 use crate::{
     entity::EntityVariant,
-    query::{fetch::Fetch, QueryResult},
+    query::{fetch::Fetch, QueryResult, QueryShared},
     Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
 
@@ -37,6 +37,10 @@ pub trait WorldData: Default + Sized + 'static {
     fn despawn<E>(&mut self, id: EntityId<E>) -> Option<Self::Entity>
     where
         E: EntityVariant<Self::Entity>;
+
+    fn query<Q: QueryShared>(&self) -> QueryResult<Q, Self> {
+        QueryResult::new(self)
+    }
 
     fn query_mut<Q: Query>(&mut self) -> QueryResult<Q, Self> {
         QueryResult::new(self)

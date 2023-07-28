@@ -353,4 +353,7 @@ fn main() {
 
         *enemy.pos = Position(enemy.pos.0 + 100.0);
     }
+
+    // No compile:
+    //for (p, v) in world.query::<(&mut Position, &Velocity)>() {}
 }

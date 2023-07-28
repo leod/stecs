@@ -93,7 +93,7 @@ where
 }
 
 pub struct QueryResult<'w, Q, D> {
-    data: &'w mut D,
+    data: &'w D,
     _phantom: PhantomData<Q>,
 }
 
@@ -125,7 +125,7 @@ where
     Q: Query,
     D: WorldData,
 {
-    pub(crate) fn new(data: &'w mut D) -> Self {
+    pub(crate) fn new(data: &'w D) -> Self {
         Self {
             data,
             _phantom: PhantomData,
@@ -151,7 +151,7 @@ where
         R: Query,
     {
         NestQueryResult {
-            archetype_set: self.data,
+            data: self.data,
             _phantom: PhantomData,
         }
     }
@@ -199,7 +199,7 @@ where
 }
 
 pub struct NestQueryResult<'w, Q, J, S> {
-    archetype_set: &'w mut S,
+    data: &'w S,
     _phantom: PhantomData<(Q, J)>,
 }
 
@@ -222,8 +222,8 @@ where
         <J::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
 
         // Safety: TODO
-        let query_iter = unsafe { DataFetchIter::new(self.archetype_set) };
-        let nest_fetch = self.archetype_set.fetch();
+        let query_iter = unsafe { DataFetchIter::new(self.data) };
+        let nest_fetch = self.data.fetch();
 
         NestDataFetchIter {
             query_iter,
