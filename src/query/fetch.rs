@@ -1,8 +1,9 @@
-use std::marker::PhantomData;
+use std::{any::TypeId, marker::PhantomData};
 
 use crate::{
+    archetype::EntityKey,
     column::{Column, ColumnRawParts, ColumnRawPartsMut},
-    entity::Columns,
+    entity::{Columns, EntityStruct},
     Component, WorldData,
 };
 
@@ -14,7 +15,7 @@ pub unsafe trait Fetch: Copy {
     where
         Self: 'f;
 
-    fn new<A: Columns>(ids: &Column<thunderdome::Index>, columns: &A) -> Option<Self>;
+    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self>;
 
     fn len(&self) -> usize;
 
@@ -52,7 +53,7 @@ where
 {
     type Item<'f> = &'f C where Self: 'f;
 
-    fn new<A: Columns>(_: &Column<thunderdome::Index>, columns: &A) -> Option<Self> {
+    fn new<T: Columns>(_: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
         columns
             .column::<C>()
             .map(|column| column.borrow().as_raw_parts())
@@ -82,7 +83,7 @@ where
 {
     type Item<'f> = &'f mut C where Self: 'f;
 
-    fn new<A: Columns>(_: &Column<thunderdome::Index>, columns: &A) -> Option<Self> {
+    fn new<T: Columns>(_: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
         columns
             .column::<C>()
             .map(|column| column.borrow_mut().as_raw_parts_mut())
@@ -108,9 +109,41 @@ where
 
 pub struct EntityKeyFetch<E>(ColumnRawParts<thunderdome::Index>, PhantomData<E>);
 
-/*impl<E> Fetch for FetchEntityKey<E>
+impl<E> Clone for EntityKeyFetch<E> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<E> Copy for EntityKeyFetch<E> {}
+
+unsafe impl<E> Fetch for EntityKeyFetch<E>
 where
-    E: */
+    E: EntityStruct<Id = EntityKey<E>>,
+{
+    type Item<'f> = EntityKey<E>;
+
+    fn new<T: Columns>(ids: &Column<thunderdome::Index>, _: &T) -> Option<Self> {
+        if TypeId::of::<T::Entity>() == TypeId::of::<E>() {
+            Some(Self(ids.as_raw_parts(), PhantomData))
+        } else {
+            None
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+    where
+        Self: 'f,
+    {
+        EntityKey::new_unchecked(*Fetch::get(&self.0, index))
+    }
+
+    fn check_borrows(_: &mut BorrowChecker) {}
+}
 
 unsafe impl<F0, F1> Fetch for (F0, F1)
 where
@@ -119,7 +152,7 @@ where
 {
     type Item<'f> = (F0::Item<'f>, F1::Item<'f>) where Self: 'f;
 
-    fn new<A: Columns>(ids: &Column<thunderdome::Index>, columns: &A) -> Option<Self> {
+    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
         let f0 = F0::new(ids, columns)?;
         let f1 = F1::new(ids, columns)?;
 
@@ -158,7 +191,7 @@ where
 {
     type Item<'f> = F::Item<'f> where Self: 'f;
 
-    fn new<A: Columns>(ids: &Column<thunderdome::Index>, columns: &A) -> Option<Self> {
+    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
         let fetch = F::new(ids, columns)?;
 
         R::new(ids, columns)?;
@@ -198,7 +231,7 @@ where
 {
     type Item<'f> = F::Item<'f> where Self: 'f;
 
-    fn new<A: Columns>(ids: &Column<thunderdome::Index>, columns: &A) -> Option<Self> {
+    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
         let fetch = F::new(ids, columns)?;
 
         if R::new(ids, columns).is_some() {

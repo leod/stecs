@@ -42,14 +42,14 @@ pub trait Entity: Sized + 'static {
     #[doc(hidden)]
     type FetchMut<'w>: Fetch<Item<'w> = Self::RefMut<'w>>;
 
+    type FetchId<'w>: Fetch<Item<'w> = Self::Id>;
+
     type WorldData: WorldData<Entity = Self>;
 }
 
 pub trait EntityStruct: Entity {
     type Columns: Columns<Entity = Self>;
 }
-
-pub trait EntityEnum: Entity {}
 
 pub trait EntityVariant<EOuter: Entity>: Entity {
     fn into_outer(self) -> EOuter;

@@ -8,7 +8,7 @@ use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
     entity::EntityVariant,
     world::WorldFetch,
-    Component, EntityId, WorldData,
+    Component, Entity, EntityId, WorldData,
 };
 
 use self::{
@@ -18,21 +18,23 @@ use self::{
 };
 
 pub trait Query {
+    // TODO: Strongly consider getting rid of the 'w lifetime. It makes traits
+    // much more complex. Also, `Fetch` is not directly used by users, and its
+    // main method `get` already is `unsafe`, i.e. we can ensure within the
+    // library that the borrowed world data still lives.
     type Fetch<'w>: Fetch + 'w;
 }
 
-impl<'q, C> Query for &'q C
-where
-    C: Component,
-{
+impl<'q, C: Component> Query for &'q C {
     type Fetch<'w> = ColumnRawParts<C>;
 }
 
-impl<'q, C> Query for &'q mut C
-where
-    C: Component,
-{
+impl<'q, C: Component> Query for &'q mut C {
     type Fetch<'w> = ColumnRawPartsMut<C>;
+}
+
+impl<E: Entity> Query for EntityId<E> {
+    type Fetch<'w> = E::FetchId<'w>;
 }
 
 impl<Q0, Q1> Query for (Q0, Q1)
