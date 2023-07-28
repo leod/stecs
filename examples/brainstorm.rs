@@ -40,9 +40,15 @@ struct Enemy {
 }
 
 #[derive(stecs::Entity, Clone)]
+struct Enemy2 {
+    pos: Position,
+    targets: Vec<EntityId<Entity>>,
+}
+
+#[derive(stecs::Entity, Clone)]
 struct InnerEnemy {
     pos: Position,
-    target: Target,
+    targets: Vec<EntityId<Entity>>,
 }
 
 #[derive(stecs::Entity, Clone)]
@@ -56,6 +62,7 @@ enum Entity {
     Inner(InnerEntity),
     Player(Player),
     Enemy(Enemy),
+    Enemy2(Enemy2),
     Boier(Boier<Position, Velocity>),
 }
 
@@ -88,18 +95,21 @@ fn main() {
         target: Target(p0.to_outer()),
     });
 
-    world.spawn(Entity::Inner(
-        InnerEnemy {
-            pos: Position(-1.67777),
-            target: Target(p1.to_outer()),
-        }
-        .into_outer(),
-    ));
+    let entity = world.spawn(Enemy2 {
+        pos: Position(-1.67777),
+        targets: vec![p0.to_outer(), p1.to_outer()],
+    });
+
+    world
+        .entity_mut(entity)
+        .unwrap()
+        .targets
+        .push(entity.to_outer());
 
     world.spawn::<InnerEntity>(
         InnerEnemy {
             pos: Position(-1.67777),
-            target: Target(p1.to_outer()),
+            targets: vec![p1.to_outer()],
         }
         .into_outer(),
     );
@@ -331,6 +341,7 @@ fn main() {
         match entity {
             Ref::Player(_) => println!("player"),
             Ref::Enemy(_) => println!("enemy"),
+            Ref::Enemy2(_) => println!("enemy2"),
             Ref::Boier(_) => println!("boier"),
             Ref::Inner(_) => println!("no way"),
         }
@@ -342,6 +353,17 @@ fn main() {
 
     for id in world.query_mut::<EntityId<Entity>>() {
         println!("got id: {:?}", id);
+    }
+
+    println!("Fetch aliasing check");
+
+    for ((id, enemy), nest) in world
+        .query_mut::<(EntityId<Entity>, EntityRefMut<Enemy2>)>()
+        .nest_off_diagonal::<(EntityId<Entity>, &mut Position)>()
+    {
+        for (id2, p) in nest {
+            println!("{:?} {:?} {} {}", id, id2, p.0, enemy.pos.0);
+        }
     }
 
     // These panic:
@@ -362,4 +384,11 @@ fn main() {
 
     // No compile:
     //for (p, v) in world.query::<(&mut Position, &Velocity)>() {}
+
+    /*let x: Vec<_> = world
+    .query_mut::<&mut Position>()
+    .nest_off_diagonal::<&Position>()
+    .into_iter()
+    .map(|(p, mut nest)| (p, nest.get_mut(p0)))
+    .collect();*/
 }

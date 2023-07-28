@@ -46,6 +46,9 @@ pub trait WorldData: Default + Sized + 'static {
         QueryBorrow::new(self)
     }
 
+    // TODO: Add `queries` and `queries_mut` to allow borrowing multiple
+    // non-aliasing queries.
+
     fn entity<'w, E>(&'w self, id: EntityId<E>) -> Option<EntityRef<'w, E>>
     where
         E: EntityVariant<Self::Entity>,

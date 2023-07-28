@@ -14,12 +14,21 @@ pub(crate) struct FetchIter<'f, F> {
     _phantom: PhantomData<&'f ()>,
 }
 
-impl<'f, F> FetchIter<'f, F> {
+impl<'f, F> FetchIter<'f, F>
+where
+    F: Fetch + 'f,
+{
     pub fn new(fetch: F) -> Self {
         Self {
             i: 0,
             fetch,
             _phantom: PhantomData,
+        }
+    }
+
+    fn skip_one(&mut self) {
+        if self.i < self.fetch.len() {
+            self.i += 1;
         }
     }
 }
@@ -90,6 +99,12 @@ where
             current_fetch_iter,
         }
     }
+
+    fn skip_one(&mut self) {
+        if let Some(fetch_iter) = self.current_fetch_iter.as_mut() {
+            fetch_iter.skip_one();
+        }
+    }
 }
 
 pub struct NestOffDiagonal<'w, J, D>
@@ -97,7 +112,8 @@ where
     J: Fetch + 'w,
     D: WorldData + 'w,
 {
-    pub(crate) ignore_id: Option<<D::Entity as Entity>::Id>,
+    pub(crate) data: &'w D,
+    pub(crate) ignore_id: <D::Entity as Entity>::Id,
     pub(crate) fetch: D::Fetch<'w, J>,
 }
 
@@ -107,7 +123,8 @@ where
     J: Fetch + 'w,
     D: WorldData,
 {
-    pub(crate) query_iter: WorldFetchIter<'w, F, D>,
+    pub(crate) data: &'w D,
+    pub(crate) query_iter: WorldFetchIter<'w, (<D::Entity as Entity>::FetchId<'w>, F), D>,
     pub(crate) nest_fetch: D::Fetch<'w, J>,
 }
 
@@ -120,9 +137,10 @@ where
     type Item = (<F as Fetch>::Item<'w>, NestOffDiagonal<'w, J, D>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let item = self.query_iter.next()?;
+        let (id, item) = self.query_iter.next()?;
         let nest = NestOffDiagonal {
-            ignore_id: None,
+            data: self.data,
+            ignore_id: id,
             fetch: self.nest_fetch.clone(),
         };
 
@@ -147,14 +165,86 @@ where
 
         // Safety: Do not allow borrowing the entity that the iterator that
         // produced `self` currently points to.
-        if let Some(ignore_id) = self.ignore_id {
-            if ignore_id == id.get() {
-                // TODO: Consider panicking. Design question.
-                return None;
-            }
+        if id.get() == self.ignore_id {
+            // TODO: Consider panicking. Design question.
+            return None;
         }
 
         // Safety: TODO
         unsafe { self.fetch.get(id.get()) }
+    }
+}
+
+pub struct NestOffDiagonalIter<'w, J, D>
+where
+    J: Fetch + 'w,
+    D: WorldData + 'w,
+{
+    ignore_id: <D::Entity as Entity>::Id,
+    id_iter: WorldFetchIter<'w, <D::Entity as Entity>::FetchId<'w>, D>,
+    data_iter: WorldFetchIter<'w, J, D>,
+}
+
+impl<'w, J, D> Iterator for NestOffDiagonalIter<'w, J, D>
+where
+    J: Fetch + 'w,
+    D: WorldData + 'w,
+{
+    type Item = J::Item<'w>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let Some(mut id) = self.id_iter.next() else {
+            self.data_iter.next();
+            return None;
+        };
+
+        // At this point, `id_iter` has been advanced one more time than
+        // `data_iter`.
+
+        while id == self.ignore_id {
+            // Safety: We are viewing the entity that is to be ignored, so we
+            // must *not* call `next()` instead of `skip_one()`, since that
+            // could create an aliasing reference. Instead, we just let the
+            // pointers skip over the current entity.
+            self.data_iter.skip_one();
+
+            let next_id = self.id_iter.next();
+
+            let Some(next_id) = next_id else {
+                self.data_iter.next();
+                return None;
+            };
+
+            id = next_id;
+        }
+
+        // Safety: Again, `id_iter` has been advanced one more time than
+        // `data_iter`, and now we now know that they do *not* point at the same
+        // entity, so it is safe to call `next()` on `data_iter`.
+        self.data_iter.next()
+    }
+}
+
+impl<'w, J, D> IntoIterator for NestOffDiagonal<'w, J, D>
+where
+    J: Fetch,
+    D: WorldData + 'w,
+{
+    type Item = J::Item<'w>;
+
+    type IntoIter = NestOffDiagonalIter<'w, J, D>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        // Safety: Ids cannot be mutably borrowed, so there is no invalid aliasing.
+        let id_iter = unsafe { WorldFetchIter::new(self.data) };
+
+        // Safety: TODO
+        let data_iter = unsafe { WorldFetchIter::new(self.data) };
+
+        NestOffDiagonalIter {
+            ignore_id: self.ignore_id,
+            id_iter,
+            data_iter,
+        }
     }
 }

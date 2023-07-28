@@ -84,8 +84,12 @@ impl<E: Entity> PartialEq for EntityId<E> {
 }
 
 impl<E: Entity> EntityId<E> {
-    pub fn new_unchecked(id: E::Id) -> Self {
+    pub fn new(id: E::Id) -> Self {
         Self(id)
+    }
+
+    pub fn from<EInner: EntityVariant<E>>(id: EntityId<EInner>) -> Self {
+        id.to_outer()
     }
 
     pub fn get(self) -> E::Id {
