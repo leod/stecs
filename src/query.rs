@@ -97,12 +97,12 @@ where
 {
 }
 
-pub struct QueryResult<'w, Q, D> {
+pub struct QueryBorrow<'w, Q, D> {
     data: &'w D,
     _phantom: PhantomData<Q>,
 }
 
-impl<'w, Q, D> IntoIterator for QueryResult<'w, Q, D>
+impl<'w, Q, D> IntoIterator for QueryBorrow<'w, Q, D>
 where
     Q: Query,
     D: WorldData,
@@ -125,7 +125,7 @@ where
     }
 }
 
-impl<'w, Q, D> QueryResult<'w, Q, D>
+impl<'w, Q, D> QueryBorrow<'w, Q, D>
 where
     Q: Query,
     D: WorldData,
@@ -137,25 +137,25 @@ where
         }
     }
 
-    pub fn with<R>(self) -> QueryResult<'w, With<Q, R>, D>
+    pub fn with<R>(self) -> QueryBorrow<'w, With<Q, R>, D>
     where
         R: Query,
     {
-        QueryResult::new(self.data)
+        QueryBorrow::new(self.data)
     }
 
-    pub fn without<R>(self) -> QueryResult<'w, Without<Q, R>, D>
+    pub fn without<R>(self) -> QueryBorrow<'w, Without<Q, R>, D>
     where
         R: Query,
     {
-        QueryResult::new(self.data)
+        QueryBorrow::new(self.data)
     }
 
-    pub fn nest<R>(self) -> NestQueryResult<'w, Q, R, D>
+    pub fn nest<R>(self) -> NestQueryBorrow<'w, Q, R, D>
     where
         R: Query,
     {
-        NestQueryResult {
+        NestQueryBorrow {
             data: self.data,
             _phantom: PhantomData,
         }
@@ -203,7 +203,7 @@ where
     }
 }
 
-pub struct NestQueryResult<'w, Q, J, S> {
+pub struct NestQueryBorrow<'w, Q, J, S> {
     data: &'w S,
     _phantom: PhantomData<(Q, J)>,
 }
@@ -213,7 +213,7 @@ pub struct NestQueryResult<'w, Q, J, S> {
 // TODO: Implement `nest` for `NestQueryResult`; require non-overlapping borrows
 // for multiple nests.
 
-impl<'w, Q, J, D> IntoIterator for NestQueryResult<'w, Q, J, D>
+impl<'w, Q, J, D> IntoIterator for NestQueryBorrow<'w, Q, J, D>
 where
     Q: Query,
     J: Query,

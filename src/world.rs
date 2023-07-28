@@ -1,6 +1,6 @@
 use crate::{
     entity::EntityVariant,
-    query::{fetch::Fetch, QueryResult, QueryShared},
+    query::{fetch::Fetch, QueryBorrow, QueryShared},
     Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
 
@@ -38,12 +38,12 @@ pub trait WorldData: Default + Sized + 'static {
     where
         E: EntityVariant<Self::Entity>;
 
-    fn query<Q: QueryShared>(&self) -> QueryResult<Q, Self> {
-        QueryResult::new(self)
+    fn query<Q: QueryShared>(&self) -> QueryBorrow<Q, Self> {
+        QueryBorrow::new(self)
     }
 
-    fn query_mut<Q: Query>(&mut self) -> QueryResult<Q, Self> {
-        QueryResult::new(self)
+    fn query_mut<Q: Query>(&mut self) -> QueryBorrow<Q, Self> {
+        QueryBorrow::new(self)
     }
 
     // TODO: Introduce `QueryShared` and `query`.
