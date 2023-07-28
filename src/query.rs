@@ -25,9 +25,13 @@ pub trait Query {
     type Fetch<'w>: Fetch + 'w;
 }
 
+pub trait QueryShared: Query {}
+
 impl<'q, C: Component> Query for &'q C {
     type Fetch<'w> = ColumnRawParts<C>;
 }
+
+impl<'q, C: Component> QueryShared for &'q C {}
 
 impl<'q, C: Component> Query for &'q mut C {
     type Fetch<'w> = ColumnRawPartsMut<C>;
@@ -37,12 +41,21 @@ impl<E: Entity> Query for EntityId<E> {
     type Fetch<'w> = E::FetchId<'w>;
 }
 
+impl<E: Entity> QueryShared for EntityId<E> {}
+
 impl<Q0, Q1> Query for (Q0, Q1)
 where
     Q0: Query,
     Q1: Query,
 {
     type Fetch<'w> = (Q0::Fetch<'w>, Q1::Fetch<'w>);
+}
+
+impl<Q0, Q1> QueryShared for (Q0, Q1)
+where
+    Q0: QueryShared,
+    Q1: QueryShared,
+{
 }
 
 pub struct With<Q, R>(PhantomData<(Q, R)>);
@@ -55,6 +68,13 @@ where
     type Fetch<'w> = WithFetch<Q::Fetch<'w>, R::Fetch<'w>>;
 }
 
+impl<Q, R> QueryShared for With<Q, R>
+where
+    Q: QueryShared,
+    R: Query,
+{
+}
+
 pub struct Without<Q, R>(PhantomData<(Q, R)>);
 
 impl<Q, R> Query for Without<Q, R>
@@ -63,6 +83,13 @@ where
     R: Query,
 {
     type Fetch<'w> = WithoutFetch<Q::Fetch<'w>, R::Fetch<'w>>;
+}
+
+impl<Q, R> QueryShared for Without<Q, R>
+where
+    Q: QueryShared,
+    R: Query,
+{
 }
 
 pub struct QueryResult<'w, Q, D> {
@@ -129,7 +156,29 @@ where
         }
     }
 
-    pub fn get<'f, E>(&'f mut self, id: EntityId<E>) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
+    pub fn get_mut<'f, E>(
+        &'f mut self,
+        id: EntityId<E>,
+    ) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
+    where
+        'w: 'f,
+        E: EntityVariant<D::Entity>,
+    {
+        let id = id.to_outer();
+
+        // TODO: Cache?
+
+        // Safety: Check that the query does not specify borrows that violate
+        // Rust's borrowing rules.
+        <Q::Fetch<'f> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+
+        let world_fetch = self.data.fetch::<Q::Fetch<'f>>();
+
+        // Safety: TODO
+        unsafe { world_fetch.get(id.get()) }
+    }
+
+    pub fn get<'f, E>(&'f self, id: EntityId<E>) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
     where
         'w: 'f,
         E: EntityVariant<D::Entity>,
