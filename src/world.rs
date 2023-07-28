@@ -46,8 +46,6 @@ pub trait WorldData: Default + Sized + 'static {
         QueryBorrow::new(self)
     }
 
-    // TODO: Introduce `QueryShared` and `query`.
-
     fn entity<'w, E>(&'w self, id: EntityId<E>) -> Option<EntityRef<'w, E>>
     where
         E: EntityVariant<Self::Entity>,
