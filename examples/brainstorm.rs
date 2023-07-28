@@ -1,4 +1,4 @@
-use stecs::{Component, EntityId, EntityRef, EntityRefMut, WorldData};
+use stecs::{entity::EntityVariant, Component, EntityId, EntityRef, EntityRefMut, WorldData};
 
 #[derive(Clone)]
 struct Position(f32);
@@ -80,6 +80,14 @@ fn main() {
         pos: Position(-1.6),
         target: Target(p0.to_outer()),
     });
+
+    world.spawn(Entity::Inner(
+        Enemy {
+            pos: Position(-1.67777),
+            target: Target(p1.to_outer()),
+        }
+        .into_outer(),
+    ));
 
     for p in world.query_mut::<&mut Position>() {
         dbg!(p.0);

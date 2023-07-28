@@ -701,7 +701,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                     }
                 )*
 
-                assert_eq!(::std::any::TypeId::of::<E>(), ::std::any::TypeId::of::<#ident_id>());
+                assert_eq!(::std::any::TypeId::of::<E>(), ::std::any::TypeId::of::<#ident>());
 
                 let id: #ident_id =
                     match <E as ::stecs::entity::EntityVariant<#ident>>::into_outer(entity) {

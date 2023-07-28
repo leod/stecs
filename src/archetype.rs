@@ -85,56 +85,6 @@ impl<T: Columns> Archetype<T> {
         // Safety: TODO
         Some(unsafe { fetch.get(index) })
     }
-
-    /*
-
-        pub fn iter(&self) -> impl Iterator<Item = (EntityId<T>, Option<EntityRef<T::Entity>>)> + '_ {
-            // Safety: TODO
-            let fetch = <T::Ref<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
-
-            self.ids
-                .as_slice()
-                .iter()
-                .map(|id| EntityId::new_unchecked(*id))
-                .zip(FetchIter::new(fetch))
-        }
-
-        pub fn values(&self) -> impl Iterator<Item = T::Ref<'_>> + '_ {
-            // Safety: TODO
-            let fetch = <T::Ref<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
-
-            FetchIter::new(fetch)
-        }
-
-        pub fn get_mut(&mut self, id: EntityId<T>) -> Option<T::RefMut<'_>> {
-            let index = *self.indices.get(id.0)?;
-
-            debug_assert!(index < self.ids.len());
-
-            let fetch = <T::RefMut<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
-
-            // Safety: TODO
-            Some(unsafe { fetch.get(index) })
-        }
-
-        pub fn iter_mut(&mut self) -> impl Iterator<Item = (EntityId<T>, T::RefMut<'_>)> + '_ {
-            // Safety: TODO
-            let fetch = <T::RefMut<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
-
-            self.ids
-                .as_slice()
-                .iter()
-                .map(|id| EntityId::new_unchecked(*id))
-                .zip(FetchIter::new(fetch))
-        }
-
-        pub fn values_mut(&mut self) -> impl Iterator<Item = T::RefMut<'_>> + '_ {
-            // Safety: TODO
-            let fetch = <T::RefMut<'_> as EntityBorrow<'_>>::new_fetch(self.ids.len(), &self.columns);
-
-            FetchIter::new(fetch)
-        }
-    */
 }
 
 impl<T: Columns> Default for Archetype<T> {
@@ -147,9 +97,7 @@ impl<T: Columns> Default for Archetype<T> {
     }
 }
 
-// TODO: impl<E: Entity> IntoIterator for Archetype<E>
-// TODO: impl<'a, E: Entity> IntoIterator for &'a mut Archetype<E>
-// TODO: impl<'a, E: Entity> IntoIterator for &'a Archetype<E>
+// TODO: impl<T> IntoIterator for Archetype<T>
 
 #[derive(Clone, Copy)]
 pub struct ArchetypeWorldFetch<'w, F>(&'w Arena<usize>, Option<F>);
