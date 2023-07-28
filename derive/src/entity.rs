@@ -204,6 +204,10 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
         }
 
+        impl #impl_generics_with_lifetime ::stecs::QueryShared
+        for #ident_ref #ty_generics_with_lifetime #where_clause {
+        }
+
         // Ref
 
         // FIXME: This should be a tuple struct for tuple structs.
@@ -479,7 +483,9 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 )*
             }
 
-            fn filter_by_outer<__stecs__DOuter: WorldData>(fetch: &mut Option<Self>) {
+            fn filter_by_outer<__stecs__DOuter: ::stecs::world::WorldData>(
+                fetch: &mut Option<Self>,
+            ) {
                 if ::std::any::TypeId::of::<__stecs__DOuter>() !=
                     ::std::any::TypeId::of::<#ident_world_data>() {
                     *fetch = None;
@@ -542,7 +548,9 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 )*
             }
 
-            fn filter_by_outer<__stecs__DOuter: WorldData>(fetch: &mut Option<Self>) {
+            fn filter_by_outer<__stecs__DOuter: ::stecs::world::WorldData>(
+                fetch: &mut Option<Self>,
+            ) {
                 if ::std::any::TypeId::of::<__stecs__DOuter>() !=
                     ::std::any::TypeId::of::<#ident_world_data>() {
                     *fetch = None;
@@ -552,6 +560,9 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
         impl<'q> ::stecs::Query for #ident_ref<'q> {
             type Fetch<'w> = #ident_ref_fetch<'w>;
+        }
+
+        impl<'q> ::stecs::QueryShared for #ident_ref<'q> {
         }
 
         // Ref
@@ -617,7 +628,9 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 )*
             }
 
-            fn filter_by_outer<__stecs__DOuter: WorldData>(fetch: &mut Option<Self>) {
+            fn filter_by_outer<__stecs__DOuter: ::stecs::world::WorldData>(
+                fetch: &mut Option<Self>,
+            ) {
                 if ::std::any::TypeId::of::<__stecs__DOuter>() !=
                     ::std::any::TypeId::of::<#ident_world_data>() {
                     *fetch = None;

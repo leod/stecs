@@ -4,7 +4,7 @@ use crate::{
     archetype::EntityKey,
     column::{Column, ColumnRawParts, ColumnRawPartsMut},
     entity::{Columns, EntityStruct},
-    Component, WorldData,
+    Component, EntityId, WorldData,
 };
 
 use super::borrow_checker::BorrowChecker;
@@ -123,7 +123,7 @@ unsafe impl<E> Fetch for EntityKeyFetch<E>
 where
     E: EntityStruct<Id = EntityKey<E>>,
 {
-    type Item<'f> = EntityKey<E>;
+    type Item<'f> = EntityId<E>;
 
     fn new<T: Columns>(ids: &Column<thunderdome::Index>, _: &T) -> Option<Self> {
         if TypeId::of::<T::Entity>() == TypeId::of::<E>() {
@@ -141,7 +141,7 @@ where
     where
         Self: 'f,
     {
-        EntityKey::new_unchecked(*Fetch::get(&self.0, index))
+        EntityId::new(EntityKey::new_unchecked(*Fetch::get(&self.0, index)))
     }
 
     fn check_borrows(_: &mut BorrowChecker) {}
