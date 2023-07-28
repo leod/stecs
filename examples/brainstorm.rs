@@ -40,10 +40,15 @@ struct Enemy {
 }
 
 #[derive(stecs::Entity, Clone)]
+struct InnerEnemy {
+    pos: Position,
+    target: Target,
+}
+
+#[derive(stecs::Entity, Clone)]
 enum InnerEntity {
-    Player(Player),
-    Enemy(Enemy),
-    Boier(Boier<Position, Velocity>),
+    Enemy(InnerEnemy),
+    Boier(Boier<Position, Blub>),
 }
 
 #[derive(stecs::Entity, Clone)]
@@ -84,12 +89,20 @@ fn main() {
     });
 
     world.spawn(Entity::Inner(
-        Enemy {
+        InnerEnemy {
             pos: Position(-1.67777),
             target: Target(p1.to_outer()),
         }
         .into_outer(),
     ));
+
+    world.spawn::<InnerEntity>(
+        InnerEnemy {
+            pos: Position(-1.67777),
+            target: Target(p1.to_outer()),
+        }
+        .into_outer(),
+    );
 
     for p in world.query_mut::<&mut Position>() {
         dbg!(p.0);
@@ -242,7 +255,7 @@ fn main() {
         };*/
 
         println!("targeting {:?} @ {:?}", target, target_pos.0);
-        //println!("targeting {:?} @ {:?}", id, target, target_pos_2.0);
+        //println!("targeting {:?} @ {:?}", target, target_pos_2.0);
     }*/
 
     println!("Target, nest with Position as EntityRefMut");
@@ -270,7 +283,7 @@ fn main() {
         };*/
 
         println!("targeting {:?} @ {:?}", target, target_pos.pos.0);
-        //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
+        //println!("targeting {:?} @ {:?}", target, target_pos_2.pos.0);
     }
 
     println!("Enemies query");
@@ -298,7 +311,6 @@ fn main() {
         type Ref<'a> = EntityRef<'a, InnerEntity>;
 
         match entity {
-            Ref::Player(_) => println!("player"),
             Ref::Enemy(_) => println!("enemy"),
             Ref::Boier(_) => println!("boier"),
         }

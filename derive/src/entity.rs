@@ -444,10 +444,8 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 columns: &A,
             ) -> ::std::option::Option<Self> {
                 #(
-                    if ::std::any::TypeId::of::<A::Entity>() ==
-                        ::std::any::TypeId::of::<#variant_tys>() {
-                            return ::stecs::query::fetch::Fetch::new(ids, columns)
-                                .map(#ident_id_fetch::#variant_idents)
+                    if let Some(fetch) = ::stecs::query::fetch::Fetch::new(ids, columns) {
+                        return Some(#ident_id_fetch::#variant_idents(fetch))
                     }
                 )*
 
@@ -509,10 +507,8 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 columns: &A,
             ) -> ::std::option::Option<Self> {
                 #(
-                    if ::std::any::TypeId::of::<A::Entity>() ==
-                        ::std::any::TypeId::of::<#variant_tys>() {
-                            return ::stecs::query::fetch::Fetch::new(ids, columns)
-                                .map(#ident_ref_fetch::#variant_idents)
+                    if let Some(fetch) = ::stecs::query::fetch::Fetch::new(ids, columns) {
+                        return Some(#ident_ref_fetch::#variant_idents(fetch));
                     }
                 )*
 
@@ -586,10 +582,8 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 columns: &A,
             ) -> ::std::option::Option<Self> {
                 #(
-                    if ::std::any::TypeId::of::<A::Entity>() ==
-                        ::std::any::TypeId::of::<#variant_tys>() {
-                            return ::stecs::query::fetch::Fetch::new(ids, columns)
-                                .map(#ident_ref_mut_fetch::#variant_idents)
+                    if let Some(fetch) = ::stecs::query::fetch::Fetch::new(ids, columns) {
+                        return Some(#ident_ref_mut_fetch::#variant_idents(fetch));
                     }
                 )*
 
@@ -832,7 +826,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                     )*
                 };
 
-                #(
+                /*#(
                     <
                         <
                             <
@@ -850,7 +844,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                         >
                     >
                     ::filter_by_outer::<Self>(&mut fetch.#variant_idents);
-                )*
+                )**/
 
                 fetch
             }

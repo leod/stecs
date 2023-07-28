@@ -26,6 +26,7 @@ pub trait WorldData: Default + Sized + 'static {
     type Fetch<'w, F: Fetch + 'w>: WorldFetch<'w, Self, Fetch = F>;
 
     fn new() -> Self {
+        // TODO: Panic if there is a duplicate entity type anywhere.
         Self::default()
     }
 
