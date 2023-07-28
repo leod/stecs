@@ -67,11 +67,12 @@ impl<T: Columns> Archetype<T> {
 
     fn despawn_impl(&mut self, id: EntityId<T::Entity>) -> Option<T::Entity> {
         let index = self.indices.remove(id.get().0)?;
+        let is_last = index + 1 == self.ids.len();
 
         self.ids.remove(index);
 
-        if let Some(last) = self.ids.last() {
-            self.indices[*last] = self.ids.len() - 1;
+        if !is_last {
+            self.indices[*self.ids.get(index)] = index;
         }
 
         Some(self.columns.remove(index))
