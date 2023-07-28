@@ -41,12 +41,17 @@ pub trait WorldData: Default + Sized + 'static {
         QueryResult::new(self)
     }
 
-    fn entity<'w, E>(&'w mut self, id: EntityId<E>) -> Option<EntityRef<'w, E>>
+    fn entity<'w, E>(&'w self, id: EntityId<E>) -> Option<EntityRef<'w, E>>
     where
         E: EntityVariant<Self::Entity>,
         <E::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRef<'w, E>>,
     {
-        self.query::<EntityRef<E>>().get_without_borrow(id)
+        let id = id.to_outer();
+
+        let fetch = self.fetch::<<E::Ref<'w> as Query>::Fetch<'w>>();
+
+        // Safety: TODO
+        unsafe { fetch.get(id.get()) }
     }
 
     fn entity_mut<'w, E>(&'w mut self, id: EntityId<E>) -> Option<EntityRefMut<'w, E>>
