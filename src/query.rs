@@ -234,6 +234,7 @@ where
         let nest_fetch = self.data.fetch();
 
         NestDataFetchIter {
+            data: self.data,
             query_iter,
             nest_fetch,
         }

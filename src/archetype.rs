@@ -62,7 +62,7 @@ impl<T: Columns> Archetype<T> {
         self.ids.push(id.0);
         self.columns.push(entity);
 
-        EntityId::new_unchecked(id)
+        EntityId::new(id)
     }
 
     fn despawn_impl(&mut self, id: EntityId<T::Entity>) -> Option<T::Entity> {
@@ -149,7 +149,7 @@ where
     let id = id.get();
     let id = unsafe { transmute_copy::<ESrc::Id, EDst::Id>(&id) };
 
-    EntityId::new_unchecked(id)
+    EntityId::new(id)
 }
 
 impl<T: Columns> WorldData for Archetype<T> {

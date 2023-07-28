@@ -772,7 +772,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                         )*
                     };
 
-                let id = ::stecs::EntityId::<#ident>::new_unchecked(id);
+                let id = ::stecs::EntityId::<#ident>::new(id);
 
                 ::stecs::archetype::adopt_entity_id_unchecked(id)
             }
@@ -787,7 +787,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 match id.to_outer().get() {
                     #(
                         #ident_id::#variant_idents(id) => {
-                            let id = ::stecs::EntityId::<#variant_tys>::new_unchecked(id);
+                            let id = ::stecs::EntityId::<#variant_tys>::new(id);
                             self.#variant_idents
                                 .despawn(id)
                                 .map(|entity| #ident::#variant_idents(entity))
@@ -804,7 +804,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 /*match id.get() {
                     #(
                         #ident_id::#variant_idents(id) => {
-                            let id = ::stecs::EntityId::new_unchecked(id);
+                            let id = ::stecs::EntityId::new(id);
                             #ident_ref::#variant_idents(self.#variant_idents.entity(id))
                         }
                     )*
