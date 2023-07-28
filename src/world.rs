@@ -1,7 +1,7 @@
 use crate::{
     entity::EntityVariant,
     query::{fetch::Fetch, QueryResult},
-    Entity, EntityId, Query,
+    Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
 
 // TODO: This should probably be generic in `Fetch` rather than `WorldData`, but
@@ -13,9 +13,7 @@ pub trait WorldFetch<'w, D: WorldData>: Clone {
     unsafe fn get<'f>(
         &self,
         id: <D::Entity as Entity>::Id,
-    ) -> Option<<Self::Fetch as Fetch>::Item<'f>>
-    where
-        Self: 'f;
+    ) -> Option<<Self::Fetch as Fetch>::Item<'f>>;
 
     fn iter(&mut self) -> Self::Iter;
 
@@ -43,12 +41,20 @@ pub trait WorldData: Default + Sized + 'static {
         QueryResult::new(self)
     }
 
-    fn entity<E>(&self, id: EntityId<E>) -> Option<E::Ref<'_>>
+    fn entity<'w, E>(&'w mut self, id: EntityId<E>) -> Option<EntityRef<'w, E>>
     where
         E: EntityVariant<Self::Entity>,
+        <E::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRef<'w, E>>,
     {
-        // /self.fetch::<EntityRef<E>>().get(id.get())
-        todo!()
+        self.query::<EntityRef<E>>().get_without_borrow(id)
+    }
+
+    fn entity_mut<'w, E>(&'w mut self, id: EntityId<E>) -> Option<EntityRefMut<'w, E>>
+    where
+        E: EntityVariant<Self::Entity>,
+        <E::RefMut<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRefMut<'w, E>>,
+    {
+        self.query::<EntityRefMut<E>>().get_without_borrow(id)
     }
 
     // TODO: entity_mut

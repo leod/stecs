@@ -6,7 +6,9 @@ use std::{any::type_name, marker::PhantomData};
 
 use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
-    Component, WorldData,
+    entity::EntityVariant,
+    world::WorldFetch,
+    Component, EntityId, WorldData,
 };
 
 use self::{
@@ -80,11 +82,11 @@ where
         // Rust's borrowing rules.
         <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
 
-        // Safety: A `QueryResult` exclusively borrows the `archetype_set: &'w
-        // mut S`. Also, `into_iter` consumes the `QueryResult` while
-        // maintaining the lifetime `'w`. Thus, it is not possible to construct
-        // references to entities in `archetype_set` outside of the returned
-        // iterator, thereby satisfying the requirement of `FetchIter`.
+        // Safety: A `QueryResult` exclusively borrows the `data: &'w mut D`.
+        // Also, `into_iter` consumes the `QueryResult` while maintaining the
+        // lifetime `'w`. Thus, it is not possible to construct references to
+        // entities in `data` outside of the returned iterator, thereby
+        // satisfying the requirement of `FetchIter`.
         unsafe { DataFetchIter::new(self.data) }
     }
 }
@@ -123,6 +125,41 @@ where
             archetype_set: self.data,
             _phantom: PhantomData,
         }
+    }
+
+    pub fn get<'f, E>(&'f mut self, id: EntityId<E>) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
+    where
+        'w: 'f,
+        E: EntityVariant<D::Entity>,
+    {
+        let id = id.to_outer();
+
+        // TODO: Cache?
+        let world_fetch = self.data.fetch::<Q::Fetch<'f>>();
+
+        // Safety: TODO
+        unsafe { world_fetch.get(id.get()) }
+    }
+
+    pub(crate) fn get_without_borrow<'f, E>(
+        &mut self,
+        id: EntityId<E>,
+    ) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
+    where
+        'w: 'f,
+        E: EntityVariant<D::Entity>,
+    {
+        let id = id.to_outer();
+
+        // Safety: Check that the query does not specify borrows that violate
+        // Rust's borrowing rules.
+        <Q::Fetch<'f> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+
+        // TODO: Cache?
+        let world_fetch = self.data.fetch::<Q::Fetch<'f>>();
+
+        // Safety: TODO
+        unsafe { world_fetch.get(id.get()) }
     }
 }
 

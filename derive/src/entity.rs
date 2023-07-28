@@ -622,10 +622,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
             type Iter = #world_fetch_iter;
 
-            unsafe fn get<'f>(&self, id: #ident_id) -> ::std::option::Option<F::Item<'f>>
-            where
-                Self: 'f,
-            {
+            unsafe fn get<'f>(&self, id: #ident_id) -> ::std::option::Option<F::Item<'f>> {
                 match id {
                     #(
                         #ident_id::#variant_idents(id) => {
@@ -650,8 +647,16 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                     let iter = ::std::iter::Iterator::chain(
                         iter,
                         <
-                            <<#variant_tys as ::stecs::Entity>::WorldData as ::stecs::world::WorldData>::Fetch<'w, F>
-                            as ::stecs::world::WorldFetch<<#variant_tys as ::stecs::Entity>::WorldData>
+                            <
+                                <
+                                    #variant_tys
+                                    as ::stecs::Entity
+                                >::WorldData
+                                as ::stecs::world::WorldData
+                            >::Fetch<'w, F>
+                            as ::stecs::world::WorldFetch<
+                                <#variant_tys as ::stecs::Entity>::WorldData
+                            >
                         >
                         ::iter(&mut self.#variant_idents)
                     );
@@ -729,6 +734,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 }
             }
 
+            /*
             fn entity<E>(&self, id: ::stecs::EntityId<E>) -> ::std::option::Option<E::Ref<'_>>
             where
                 E: ::stecs::entity::EntityVariant<#ident>,
@@ -744,6 +750,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
                 todo!()
             }
+            */
 
             fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
             where

@@ -86,7 +86,17 @@ fn main() {
         p.0 += 3.0;
     }
 
-    // /println!("p0: {:?}", world.entity::<Player>(p1).unwrap().pos.0);
+    println!(
+        "entity get p0: {:?}",
+        world.entity::<Player>(p1).unwrap().pos.0
+    );
+
+    world.entity_mut::<Player>(p1).unwrap().pos.0 += 2.0;
+
+    println!(
+        "entity get p0: {:?}",
+        world.entity::<Player>(p1).unwrap().pos.0
+    );
 
     println!("Position");
     for p in world.query::<&Position>() {

@@ -163,10 +163,7 @@ where
 
     type Iter = option::IntoIter<F>;
 
-    unsafe fn get<'f>(&self, id: EntityKey<T::Entity>) -> Option<F::Item<'f>>
-    where
-        Self: 'f,
-    {
+    unsafe fn get<'f>(&self, id: EntityKey<T::Entity>) -> Option<F::Item<'f>> {
         self.1
             .and_then(|fetch| self.0.get(id.0).map(|&index| fetch.get(index)))
     }
@@ -224,16 +221,6 @@ impl<T: Columns> WorldData for Archetype<T> {
         E: EntityVariant<Self::Entity>,
     {
         self.despawn_impl(id.to_outer())
-    }
-
-    fn entity<E>(&self, id: EntityId<E>) -> Option<E::Ref<'_>>
-    where
-        E: EntityVariant<Self::Entity>,
-    {
-        let id = id.to_outer();
-        let index = self.indices.get(id.get().0);
-
-        todo!()
     }
 
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>

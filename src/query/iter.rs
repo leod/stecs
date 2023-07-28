@@ -154,6 +154,7 @@ where
             }
         }
 
+        // Safety: TODO
         unsafe { self.fetch.get(id.get()) }
     }
 }
