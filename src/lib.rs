@@ -28,7 +28,7 @@ pub use stecs_derive::Entity;
 #[doc(inline)]
 pub use self::{
     entity::{Entity, EntityId, EntityRef, EntityRefMut},
-    query::Query,
+    query::{Query, QueryShared},
     world::{World, WorldData},
 };
 pub trait Component: 'static {}

@@ -204,6 +204,10 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
         }
 
+        impl #impl_generics_with_lifetime ::stecs::QueryShared
+        for #ident_ref #ty_generics_with_lifetime #where_clause {
+        }
+
         // Ref
 
         // FIXME: This should be a tuple struct for tuple structs.
@@ -437,7 +441,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         }
 
         unsafe impl<'w> ::stecs::query::fetch::Fetch for #ident_id_fetch<'w> {
-            type Item<'f> = #ident_id where Self: 'f;
+            type Item<'f> = ::stecs::EntityId<#ident> where Self: 'f;
 
             fn new<A: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
@@ -464,13 +468,13 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             where
                 Self: 'f,
             {
-                match self {
+                ::stecs::EntityId::new(match self {
                     #(
                         #ident_id_fetch::#variant_idents(fetch) => {
-                            #ident_id::#variant_idents(fetch.get(index))
+                            #ident_id::#variant_idents(fetch.get(index).get())
                         }
                     )*
-                }
+                })
             }
 
             fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
@@ -479,7 +483,9 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 )*
             }
 
-            fn filter_by_outer<__stecs__DOuter: WorldData>(fetch: &mut Option<Self>) {
+            fn filter_by_outer<__stecs__DOuter: ::stecs::world::WorldData>(
+                fetch: &mut Option<Self>,
+            ) {
                 if ::std::any::TypeId::of::<__stecs__DOuter>() !=
                     ::std::any::TypeId::of::<#ident_world_data>() {
                     *fetch = None;
@@ -542,7 +548,9 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 )*
             }
 
-            fn filter_by_outer<__stecs__DOuter: WorldData>(fetch: &mut Option<Self>) {
+            fn filter_by_outer<__stecs__DOuter: ::stecs::world::WorldData>(
+                fetch: &mut Option<Self>,
+            ) {
                 if ::std::any::TypeId::of::<__stecs__DOuter>() !=
                     ::std::any::TypeId::of::<#ident_world_data>() {
                     *fetch = None;
@@ -552,6 +560,9 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
         impl<'q> ::stecs::Query for #ident_ref<'q> {
             type Fetch<'w> = #ident_ref_fetch<'w>;
+        }
+
+        impl<'q> ::stecs::QueryShared for #ident_ref<'q> {
         }
 
         // Ref
@@ -617,7 +628,9 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 )*
             }
 
-            fn filter_by_outer<__stecs__DOuter: WorldData>(fetch: &mut Option<Self>) {
+            fn filter_by_outer<__stecs__DOuter: ::stecs::world::WorldData>(
+                fetch: &mut Option<Self>,
+            ) {
                 if ::std::any::TypeId::of::<__stecs__DOuter>() !=
                     ::std::any::TypeId::of::<#ident_world_data>() {
                     *fetch = None;

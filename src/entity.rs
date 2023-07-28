@@ -42,7 +42,7 @@ pub trait Entity: Sized + 'static {
     #[doc(hidden)]
     type FetchMut<'w>: Fetch<Item<'w> = Self::RefMut<'w>>;
 
-    type FetchId<'w>: Fetch<Item<'w> = Self::Id>;
+    type FetchId<'w>: Fetch<Item<'w> = EntityId<Self>>;
 
     type WorldData: WorldData<Entity = Self>;
 }

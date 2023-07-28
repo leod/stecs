@@ -16,6 +16,10 @@ impl<C> Column<C> {
         self.len() == 0
     }
 
+    pub fn get(&self, index: usize) -> &C {
+        &self.0[index]
+    }
+
     pub fn push(&mut self, component: C) {
         self.0.push(component);
     }

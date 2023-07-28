@@ -49,6 +49,16 @@ pub trait WorldData: Default + Sized + 'static {
     // TODO: Add `queries` and `queries_mut` to allow borrowing multiple
     // non-aliasing queries.
 
+    fn get<Q: QueryShared>(
+        &self,
+        id: EntityId<Self::Entity>,
+    ) -> Option<<Q::Fetch<'_> as Fetch>::Item<'_>> {
+        let fetch = self.fetch::<<Q as Query>::Fetch<'_>>();
+
+        // Safety: TODO
+        unsafe { fetch.get(id.get()) }
+    }
+
     fn entity<'w, E>(&'w self, id: EntityId<E>) -> Option<EntityRef<'w, E>>
     where
         E: EntityVariant<Self::Entity>,

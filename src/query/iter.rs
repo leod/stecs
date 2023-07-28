@@ -113,7 +113,7 @@ where
     D: WorldData + 'w,
 {
     pub(crate) data: &'w D,
-    pub(crate) ignore_id: <D::Entity as Entity>::Id,
+    pub(crate) ignore_id: EntityId<D::Entity>,
     pub(crate) fetch: D::Fetch<'w, J>,
 }
 
@@ -165,7 +165,7 @@ where
 
         // Safety: Do not allow borrowing the entity that the iterator that
         // produced `self` currently points to.
-        if id.get() == self.ignore_id {
+        if id == self.ignore_id {
             // TODO: Consider panicking. Design question.
             return None;
         }
@@ -180,7 +180,7 @@ where
     J: Fetch + 'w,
     D: WorldData + 'w,
 {
-    ignore_id: <D::Entity as Entity>::Id,
+    ignore_id: EntityId<D::Entity>,
     id_iter: WorldFetchIter<'w, <D::Entity as Entity>::FetchId<'w>, D>,
     data_iter: WorldFetchIter<'w, J, D>,
 }
