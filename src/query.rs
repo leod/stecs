@@ -135,27 +135,11 @@ where
         let id = id.to_outer();
 
         // TODO: Cache?
-        let world_fetch = self.data.fetch::<Q::Fetch<'f>>();
-
-        // Safety: TODO
-        unsafe { world_fetch.get(id.get()) }
-    }
-
-    pub(crate) fn get_without_borrow<'f, E>(
-        &mut self,
-        id: EntityId<E>,
-    ) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
-    where
-        'w: 'f,
-        E: EntityVariant<D::Entity>,
-    {
-        let id = id.to_outer();
 
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
         <Q::Fetch<'f> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
 
-        // TODO: Cache?
         let world_fetch = self.data.fetch::<Q::Fetch<'f>>();
 
         // Safety: TODO
@@ -167,6 +151,8 @@ pub struct NestQueryResult<'w, Q, J, S> {
     archetype_set: &'w mut S,
     _phantom: PhantomData<(Q, J)>,
 }
+
+// TODO: Implement `get` for `NestQueryResult`
 
 impl<'w, Q, J, D> IntoIterator for NestQueryResult<'w, Q, J, D>
 where

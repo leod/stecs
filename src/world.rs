@@ -37,17 +37,20 @@ pub trait WorldData: Default + Sized + 'static {
     where
         E: EntityVariant<Self::Entity>;
 
-    fn query<Q: Query>(&mut self) -> QueryResult<Q, Self> {
+    fn query_mut<Q: Query>(&mut self) -> QueryResult<Q, Self> {
         QueryResult::new(self)
     }
+
+    // TODO: Introduce QueryMut and query.
 
     fn entity<'w, E>(&'w self, id: EntityId<E>) -> Option<EntityRef<'w, E>>
     where
         E: EntityVariant<Self::Entity>,
+
+        // TODO: Can we put the bound below on `Entity` somehow?
         <E::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRef<'w, E>>,
     {
         let id = id.to_outer();
-
         let fetch = self.fetch::<<E::Ref<'w> as Query>::Fetch<'w>>();
 
         // Safety: TODO
@@ -57,9 +60,15 @@ pub trait WorldData: Default + Sized + 'static {
     fn entity_mut<'w, E>(&'w mut self, id: EntityId<E>) -> Option<EntityRefMut<'w, E>>
     where
         E: EntityVariant<Self::Entity>,
+
+        // TODO: Can we put the bound below on `Entity` somehow?
         <E::RefMut<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRefMut<'w, E>>,
     {
-        self.query::<EntityRefMut<E>>().get_without_borrow(id)
+        let id = id.to_outer();
+        let fetch = self.fetch::<<E::RefMut<'w> as Query>::Fetch<'w>>();
+
+        // Safety: TODO
+        unsafe { fetch.get(id.get()) }
     }
 
     // TODO: entity_mut

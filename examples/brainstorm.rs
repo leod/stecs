@@ -81,7 +81,7 @@ fn main() {
         target: Target(p0.to_outer()),
     });
 
-    for p in world.query::<&mut Position>() {
+    for p in world.query_mut::<&mut Position>() {
         dbg!(p.0);
         p.0 += 3.0;
     }
@@ -99,17 +99,17 @@ fn main() {
     );
 
     println!("Position");
-    for p in world.query::<&Position>() {
+    for p in world.query_mut::<&Position>() {
         dbg!(p.0);
     }
 
     println!("Position, Velocity");
-    for (p, v) in world.query::<(&Position, &Velocity)>() {
+    for (p, v) in world.query_mut::<(&Position, &Velocity)>() {
         dbg!(p.0, v.0);
     }
 
     println!("mut Position, Velocity");
-    for (p, v) in world.query::<(&mut Position, &Velocity)>() {
+    for (p, v) in world.query_mut::<(&mut Position, &Velocity)>() {
         p.0 += v.0;
     }
 
@@ -152,7 +152,7 @@ fn main() {
     */
 
     println!("Position, Position");
-    for (p, q) in world.query::<(&Position, &Position)>() {
+    for (p, q) in world.query_mut::<(&Position, &Position)>() {
         dbg!(p.0, q.0);
     }
 
@@ -238,7 +238,7 @@ fn main() {
 
     println!("Target, nest with Position as EntityRefMut");
 
-    for (target, mut nest) in world.query::<&Target>().nest::<EntityRefMut<Player>>() {
+    for (target, mut nest) in world.query_mut::<&Target>().nest::<EntityRefMut<Player>>() {
         let Some(target_pos) = nest.get(target.0) else {
             continue;
         };
@@ -252,7 +252,7 @@ fn main() {
 
     println!("Target, nest with Position as EntityRef");
 
-    for (target, mut nest) in world.query::<&Target>().nest::<EntityRef<Player>>() {
+    for (target, mut nest) in world.query_mut::<&Target>().nest::<EntityRef<Player>>() {
         let Some(target_pos) = nest.get(target.0) else {
             continue;
         };
@@ -267,23 +267,23 @@ fn main() {
     println!("Enemies query");
     //let iter = world.enemies.iter_mut();
 
-    for enemy in world.query::<EntityRefMut<Enemy>>() {
+    for enemy in world.query_mut::<EntityRefMut<Enemy>>() {
         dbg!(enemy.target.0, enemy.pos.0);
 
         *enemy.pos = Position(enemy.pos.0 + 100.0);
     }
 
     println!("Enemies, Enemies query");
-    for (enemy0, enemy1) in world.query::<(EntityRef<Enemy>, EntityRef<Enemy>)>() {
+    for (enemy0, enemy1) in world.query_mut::<(EntityRef<Enemy>, EntityRef<Enemy>)>() {
         dbg!(enemy0.pos.0 - enemy1.pos.0);
     }
 
-    for enemy in world.query::<EntityRef<Enemy>>() {
+    for enemy in world.query_mut::<EntityRef<Enemy>>() {
         dbg!(enemy.target.0, enemy.pos.0);
     }
 
     println!("Any InnerEntity");
-    for entity in world.query::<EntityRef<InnerEntity>>() {
+    for entity in world.query_mut::<EntityRef<InnerEntity>>() {
         println!("got some entity!!!");
 
         type Ref<'a> = EntityRef<'a, InnerEntity>;
@@ -296,7 +296,7 @@ fn main() {
     }
 
     println!("Any Entity");
-    for entity in world.query::<EntityRef<Entity>>() {
+    for entity in world.query_mut::<EntityRef<Entity>>() {
         println!("got some entity!!!");
 
         type Ref<'a> = EntityRef<'a, Entity>;
@@ -355,11 +355,11 @@ fn main() {
 
     // This panics:
     println!("mut Position, Position");
-    for (p, q) in world.query::<(&mut Position, &Position)>() {
+    for (p, q) in world.query_mut::<(&mut Position, &Position)>() {
         p.0 += q.0;
     }
 
-    for (p, q) in world.query::<(&mut Position, &mut Position)>() {
+    for (p, q) in world.query_mut::<(&mut Position, &mut Position)>() {
         p.0 += q.0;
     }
 }
