@@ -208,7 +208,7 @@ fn main() {
     println!("EntityId, Target, nest with Position");
     for ((id, target), mut nest) in world
         .query_mut::<(EntityId<Entity>, &Target)>()
-        .nest::<&mut Position>()
+        .nest_off_diagonal::<&mut Position>()
     {
         let Some(target_pos) = nest.get_mut(target.0) else {
             continue;
@@ -225,7 +225,7 @@ fn main() {
 
     for ((id, target), mut nest) in world
         .query_mut::<(EntityId<Entity>, &Target)>()
-        .nest::<EntityRefMut<Player>>()
+        .nest_off_diagonal::<EntityRefMut<Player>>()
     {
         let Some(target_pos) = nest.get_mut(target.0) else {
             continue;
@@ -260,7 +260,10 @@ fn main() {
 
     println!("Target, nest with Position as EntityRefMut");
 
-    for (target, mut nest) in world.query_mut::<&Target>().nest::<EntityRefMut<Player>>() {
+    for (target, mut nest) in world
+        .query_mut::<&Target>()
+        .nest_off_diagonal::<EntityRefMut<Player>>()
+    {
         let Some(target_pos) = nest.get_mut(target.0) else {
             continue;
         };
@@ -274,7 +277,10 @@ fn main() {
 
     println!("Target, nest with Position as EntityRef");
 
-    for (target, mut nest) in world.query_mut::<&Target>().nest::<EntityRef<Player>>() {
+    for (target, mut nest) in world
+        .query_mut::<&Target>()
+        .nest_off_diagonal::<EntityRef<Player>>()
+    {
         let Some(target_pos) = nest.get_mut(target.0) else {
             continue;
         };

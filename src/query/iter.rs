@@ -44,7 +44,7 @@ where
     }
 }
 
-pub struct DataFetchIter<'w, F, D>
+pub struct WorldFetchIter<'w, F, D>
 where
     F: Fetch + 'w,
     D: WorldData + 'w,
@@ -53,7 +53,7 @@ where
     current_fetch_iter: Option<FetchIter<'w, F>>,
 }
 
-impl<'w, F, D> Iterator for DataFetchIter<'w, F, D>
+impl<'w, F, D> Iterator for WorldFetchIter<'w, F, D>
 where
     F: Fetch + 'w,
     D: WorldData,
@@ -76,7 +76,7 @@ where
     }
 }
 
-impl<'w, F, D> DataFetchIter<'w, F, D>
+impl<'w, F, D> WorldFetchIter<'w, F, D>
 where
     F: Fetch,
     D: WorldData,
@@ -92,7 +92,7 @@ where
     }
 }
 
-pub struct Nest<'w, J, D>
+pub struct NestOffDiagonal<'w, J, D>
 where
     J: Fetch + 'w,
     D: WorldData + 'w,
@@ -107,7 +107,7 @@ where
     J: Fetch + 'w,
     D: WorldData,
 {
-    pub(crate) query_iter: DataFetchIter<'w, F, D>,
+    pub(crate) query_iter: WorldFetchIter<'w, F, D>,
     pub(crate) nest_fetch: D::Fetch<'w, J>,
 }
 
@@ -117,11 +117,11 @@ where
     J: Fetch + 'w,
     D: WorldData,
 {
-    type Item = (<F as Fetch>::Item<'w>, Nest<'w, J, D>);
+    type Item = (<F as Fetch>::Item<'w>, NestOffDiagonal<'w, J, D>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = self.query_iter.next()?;
-        let nest = Nest {
+        let nest = NestOffDiagonal {
             ignore_id: None,
             fetch: self.nest_fetch.clone(),
         };
@@ -130,7 +130,7 @@ where
     }
 }
 
-impl<'w, J, D> Nest<'w, J, D>
+impl<'w, J, D> NestOffDiagonal<'w, J, D>
 where
     J: Fetch,
     D: WorldData + 'w,

@@ -14,7 +14,7 @@ use crate::{
 use self::{
     borrow_checker::BorrowChecker,
     fetch::{Fetch, UnitFetch, WithFetch, WithoutFetch},
-    iter::{DataFetchIter, Nest, NestDataFetchIter},
+    iter::{NestDataFetchIter, NestOffDiagonal, WorldFetchIter},
 };
 
 pub trait Query {
@@ -109,7 +109,7 @@ where
 {
     type Item = <Q::Fetch<'w> as Fetch>::Item<'w>;
 
-    type IntoIter = DataFetchIter<'w, Q::Fetch<'w>, D>;
+    type IntoIter = WorldFetchIter<'w, Q::Fetch<'w>, D>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
@@ -121,7 +121,7 @@ where
         // lifetime `'w`. Thus, it is not possible to construct references to
         // entities in `data` outside of the returned iterator, thereby
         // satisfying the requirement of `FetchIter`.
-        unsafe { DataFetchIter::new(self.data) }
+        unsafe { WorldFetchIter::new(self.data) }
     }
 }
 
@@ -151,11 +151,11 @@ where
         QueryBorrow::new(self.data)
     }
 
-    pub fn nest<R>(self) -> NestQueryBorrow<'w, Q, R, D>
+    pub fn nest_off_diagonal<R>(self) -> NestOffDiagonalQueryBorrow<'w, Q, R, D>
     where
         R: Query,
     {
-        NestQueryBorrow {
+        NestOffDiagonalQueryBorrow {
             data: self.data,
             _phantom: PhantomData,
         }
@@ -203,23 +203,23 @@ where
     }
 }
 
-pub struct NestQueryBorrow<'w, Q, J, S> {
+pub struct NestOffDiagonalQueryBorrow<'w, Q, J, S> {
     data: &'w S,
     _phantom: PhantomData<(Q, J)>,
 }
 
-// TODO: Implement `get` for `NestQueryResult`.
+// TODO: Implement `get` for `NestOffDiagonaQueryResult`.
 
-// TODO: Implement `nest` for `NestQueryResult`; require non-overlapping borrows
-// for multiple nests.
-
-impl<'w, Q, J, D> IntoIterator for NestQueryBorrow<'w, Q, J, D>
+impl<'w, Q, J, D> IntoIterator for NestOffDiagonalQueryBorrow<'w, Q, J, D>
 where
     Q: Query,
     J: Query,
     D: WorldData,
 {
-    type Item = (<Q::Fetch<'w> as Fetch>::Item<'w>, Nest<'w, J::Fetch<'w>, D>);
+    type Item = (
+        <Q::Fetch<'w> as Fetch>::Item<'w>,
+        NestOffDiagonal<'w, J::Fetch<'w>, D>,
+    );
 
     type IntoIter = NestDataFetchIter<'w, Q::Fetch<'w>, J::Fetch<'w>, D>;
 
@@ -230,7 +230,7 @@ where
         <J::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
 
         // Safety: TODO
-        let query_iter = unsafe { DataFetchIter::new(self.data) };
+        let query_iter = unsafe { WorldFetchIter::new(self.data) };
         let nest_fetch = self.data.fetch();
 
         NestDataFetchIter {
