@@ -1,6 +1,7 @@
 pub mod borrow_checker;
 pub mod fetch;
 pub mod iter;
+pub mod join;
 pub mod nest;
 
 use std::{any::type_name, marker::PhantomData};
@@ -9,12 +10,13 @@ use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
     entity::EntityVariant,
     world::WorldFetch,
-    Component, Entity, EntityId, WorldData,
+    Component, Entity, EntityId, SecondaryQuery, SecondaryWorld, WorldData,
 };
 
 use self::{
     borrow_checker::BorrowChecker,
     fetch::{Fetch, UnitFetch, WithFetch, WithoutFetch},
+    join::JoinQueryBorrow,
     nest::NestOffDiagonalQueryBorrow,
 };
 
@@ -135,6 +137,20 @@ where
     {
         NestOffDiagonalQueryBorrow {
             data: self.data,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn join<J>(
+        self,
+        secondary_world: &'w SecondaryWorld<D::Entity>,
+    ) -> JoinQueryBorrow<'w, Q, J, D>
+    where
+        J: SecondaryQuery<D::Entity>,
+    {
+        JoinQueryBorrow {
+            data: self.data,
+            secondary_world,
             _phantom: PhantomData,
         }
     }

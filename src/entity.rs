@@ -88,7 +88,7 @@ impl<E: Entity> Eq for EntityId<E> {}
 
 impl<E: Entity> PartialOrd for EntityId<E> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 

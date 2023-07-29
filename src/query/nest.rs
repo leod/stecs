@@ -57,9 +57,9 @@ where
     J: Fetch + 'w,
     D: WorldData,
 {
-    pub(crate) data: &'w D,
-    pub(crate) query_iter: WorldFetchIter<'w, (<D::Entity as Entity>::FetchId<'w>, F), D>,
-    pub(crate) nest_fetch: D::Fetch<'w, J>,
+    data: &'w D,
+    query_iter: WorldFetchIter<'w, (<D::Entity as Entity>::FetchId<'w>, F), D>,
+    nest_fetch: D::Fetch<'w, J>,
 }
 
 impl<'w, F, J, D> Iterator for NestDataFetchIter<'w, F, J, D>
