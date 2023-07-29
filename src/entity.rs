@@ -1,10 +1,12 @@
 use std::{
     cell::RefCell,
     fmt::{self, Debug},
+    hash::{Hash, Hasher},
 };
 
 use crate::{
-    archetype::EntityKey, column::Column, query::fetch::Fetch, Component, Query, WorldData,
+    archetype::EntityKey, column::Column, query::fetch::Fetch, Component, Query, QueryShared,
+    WorldData,
 };
 
 pub trait Columns: Default + 'static {
@@ -28,9 +30,9 @@ pub trait Columns: Default + 'static {
 }
 
 pub trait Entity: Sized + 'static {
-    type Id: Copy + Debug + PartialEq + 'static;
+    type Id: Copy + Debug + Eq + Ord + Hash + 'static;
 
-    type Ref<'f>: Query;
+    type Ref<'f>: QueryShared;
     /*where
     for<'w> <Self::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = Self::Ref<'w>>;*/
 
@@ -80,6 +82,26 @@ impl<E: Entity> Debug for EntityId<E> {
 impl<E: Entity> PartialEq for EntityId<E> {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
+    }
+}
+
+impl<E: Entity> Eq for EntityId<E> {}
+
+impl<E: Entity> PartialOrd for EntityId<E> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<E: Entity> Ord for EntityId<E> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
+impl<E: Entity> Hash for EntityId<E> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
     }
 }
 

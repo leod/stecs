@@ -1,6 +1,8 @@
 pub mod borrow_checker;
 pub mod fetch;
 pub mod iter;
+pub mod join;
+pub mod nest;
 
 use std::{any::type_name, marker::PhantomData};
 
@@ -8,13 +10,14 @@ use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
     entity::EntityVariant,
     world::WorldFetch,
-    Component, Entity, EntityId, WorldData,
+    Component, Entity, EntityId, SecondaryQuery, SecondaryQueryShared, SecondaryWorld, WorldData,
 };
 
 use self::{
     borrow_checker::BorrowChecker,
     fetch::{Fetch, UnitFetch, WithFetch, WithoutFetch},
-    iter::{NestDataFetchIter, NestOffDiagonal, WorldFetchIter},
+    join::JoinQueryBorrow,
+    nest::NestOffDiagonalQueryBorrow,
 };
 
 pub trait Query {
@@ -102,29 +105,6 @@ pub struct QueryBorrow<'w, Q, D> {
     _phantom: PhantomData<Q>,
 }
 
-impl<'w, Q, D> IntoIterator for QueryBorrow<'w, Q, D>
-where
-    Q: Query,
-    D: WorldData,
-{
-    type Item = <Q::Fetch<'w> as Fetch>::Item<'w>;
-
-    type IntoIter = WorldFetchIter<'w, Q::Fetch<'w>, D>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        // Safety: Check that the query does not specify borrows that violate
-        // Rust's borrowing rules.
-        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
-
-        // Safety: A `QueryResult` exclusively borrows the `data: &'w mut D`.
-        // Also, `into_iter` consumes the `QueryResult` while maintaining the
-        // lifetime `'w`. Thus, it is not possible to construct references to
-        // entities in `data` outside of the returned iterator, thereby
-        // satisfying the requirement of `FetchIter`.
-        unsafe { WorldFetchIter::new(self.data) }
-    }
-}
-
 impl<'w, Q, D> QueryBorrow<'w, Q, D>
 where
     Q: Query,
@@ -157,6 +137,34 @@ where
     {
         NestOffDiagonalQueryBorrow {
             data: self.data,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn join<J>(
+        self,
+        secondary_world: &'w SecondaryWorld<D::Entity>,
+    ) -> JoinQueryBorrow<'w, Q, J, D>
+    where
+        J: SecondaryQueryShared<D::Entity>,
+    {
+        JoinQueryBorrow {
+            data: self.data,
+            secondary_world,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn join_mut<J>(
+        self,
+        secondary_world: &'w SecondaryWorld<D::Entity>,
+    ) -> JoinQueryBorrow<'w, Q, J, D>
+    where
+        J: SecondaryQuery<D::Entity>,
+    {
+        JoinQueryBorrow {
+            data: self.data,
+            secondary_world,
             _phantom: PhantomData,
         }
     }
@@ -200,43 +208,5 @@ where
 
         // Safety: TODO
         unsafe { world_fetch.get(id.get()) }
-    }
-}
-
-pub struct NestOffDiagonalQueryBorrow<'w, Q, J, S> {
-    data: &'w S,
-    _phantom: PhantomData<(Q, J)>,
-}
-
-// TODO: Implement `get` for `NestOffDiagonaQueryResult`.
-
-impl<'w, Q, J, D> IntoIterator for NestOffDiagonalQueryBorrow<'w, Q, J, D>
-where
-    Q: Query,
-    J: Query,
-    D: WorldData,
-{
-    type Item = (
-        <Q::Fetch<'w> as Fetch>::Item<'w>,
-        NestOffDiagonal<'w, J::Fetch<'w>, D>,
-    );
-
-    type IntoIter = NestDataFetchIter<'w, Q::Fetch<'w>, J::Fetch<'w>, D>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        // Safety: Check that the query does not specify borrows that violate
-        // Rust's borrowing rules.
-        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
-        <J::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
-
-        // Safety: TODO
-        let query_iter = unsafe { WorldFetchIter::new(self.data) };
-        let nest_fetch = self.data.fetch();
-
-        NestDataFetchIter {
-            data: self.data,
-            query_iter,
-            nest_fetch,
-        }
     }
 }

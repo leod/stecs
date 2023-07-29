@@ -165,8 +165,6 @@ macro_rules! tuple_impl {
 
             unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f> {
                 assert!(index < self.len());
-
-                ()
             }
 
             fn check_borrows(_: &mut BorrowChecker) {}
