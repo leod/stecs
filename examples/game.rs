@@ -102,16 +102,12 @@ fn align_to_target(world: &mut World) {
         .query_mut::<(&Position, &mut Target)>()
         .nest_off_diagonal::<(EntityId<Player>, EntityRef<Player>)>()
     {
-        // We can use `nest` to perform nested queries. `nest` prevents aliasing
-        // by disallowing to query the current entity. (In this case, the two
-        // queries are non-overlapping anyway, so we could also use
-        // `World::queries()` to obtain multiple independent queries, but I
-        // haven't actually implemented that yet.)
-
         if target.0.is_some() {
             continue;
         }
 
+        // We can use `nest` to perform nested queries. `nest` prevents aliasing
+        // by disallowing to query the current entity.
         target.0 = nest
             .into_iter()
             .min_by_key(|(_, player)| player.pos.distance(pos))
@@ -134,7 +130,7 @@ fn align_to_target(world: &mut World) {
             target.0 = None;
         }
 
-        vel.0 = (pos.0 - target_pos.0).signum();
+        vel.0 = (target_pos.0 - pos.0).signum();
     }
 }
 
@@ -212,7 +208,7 @@ fn print_world(world: &World) {
             EntityRef::<Entity>::Enemy(entity) => {
                 println!("Evil Enemy: {:?} {:?}", entity.pos, entity.health)
             }
-            EntityRef::<Entity>::Bullet(entity) => println!("Meh Bullet: {:?}", entity.pos),
+            EntityRef::<Entity>::Bullet(_) => {}
         }
     }
 }
@@ -220,7 +216,7 @@ fn print_world(world: &World) {
 fn main() {
     let mut world = create_world();
 
-    for _ in 0..10 {
+    for _ in 0..5 {
         run_tick(&mut world);
     }
 
