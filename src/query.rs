@@ -10,7 +10,7 @@ use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
     entity::EntityVariant,
     world::WorldFetch,
-    Component, Entity, EntityId, SecondaryQuery, SecondaryWorld, WorldData,
+    Component, Entity, EntityId, SecondaryQuery, SecondaryQueryShared, SecondaryWorld, WorldData,
 };
 
 use self::{
@@ -142,6 +142,20 @@ where
     }
 
     pub fn join<J>(
+        self,
+        secondary_world: &'w SecondaryWorld<D::Entity>,
+    ) -> JoinQueryBorrow<'w, Q, J, D>
+    where
+        J: SecondaryQueryShared<D::Entity>,
+    {
+        JoinQueryBorrow {
+            data: self.data,
+            secondary_world,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn join_mut<J>(
         self,
         secondary_world: &'w SecondaryWorld<D::Entity>,
     ) -> JoinQueryBorrow<'w, Q, J, D>
