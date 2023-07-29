@@ -1,4 +1,4 @@
-use crate::{Component, Entity, EntityId, SecondaryWorld};
+use crate::{query::borrow_checker::BorrowChecker, Component, Entity, EntityId, SecondaryWorld};
 
 use super::column::SecondaryColumn;
 
@@ -15,6 +15,9 @@ pub trait SecondaryFetch<'w, E: Entity>: Copy + 'w {
     unsafe fn get<'f>(&self, id: EntityId<E>) -> Option<Self::Item<'f>>
     where
         Self: 'f;
+
+    #[doc(hidden)]
+    fn check_borrows(checker: &mut BorrowChecker);
 }
 
 pub trait SecondaryQuery<E: Entity> {
@@ -51,6 +54,10 @@ impl<'w, E: Entity, C: Component> SecondaryFetch<'w, E> for ComponentFetch<'w, E
 
             &*ptr
         })
+    }
+
+    fn check_borrows(checker: &mut BorrowChecker) {
+        checker.borrow::<C>();
     }
 }
 
@@ -89,6 +96,10 @@ impl<'w, E: Entity, C: Component> SecondaryFetch<'w, E> for ComponentMutFetch<'w
             &mut *ptr
         })
     }
+
+    fn check_borrows(checker: &mut BorrowChecker) {
+        checker.borrow_mut::<C>();
+    }
 }
 
 impl<'q, E: Entity, C: Component> SecondaryQuery<E> for &'q mut C {
@@ -122,6 +133,11 @@ macro_rules! tuple_impl {
                 let ($($name,)*) = self;
 
                 Some(($($name.get(id)?,)*))
+            }
+
+            #[allow(unused)]
+            fn check_borrows(checker: &mut BorrowChecker) {
+                $($name::check_borrows(checker);)*
             }
         }
 
