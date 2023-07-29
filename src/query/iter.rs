@@ -248,3 +248,5 @@ where
         }
     }
 }
+
+// TODO: Size hints for iterators

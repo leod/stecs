@@ -19,6 +19,7 @@ pub mod archetype;
 pub mod column;
 pub mod entity;
 pub mod query;
+pub mod secondary;
 pub mod world;
 
 pub use thunderdome;
@@ -29,6 +30,7 @@ pub use stecs_derive::Entity;
 pub use self::{
     entity::{Entity, EntityId, EntityRef, EntityRefMut},
     query::{Query, QueryShared},
+    secondary::{query::SecondaryQuery, query::SecondaryQueryShared, world::SecondaryWorld},
     world::{World, WorldData},
 };
 pub trait Component: 'static {}
