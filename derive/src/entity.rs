@@ -421,6 +421,10 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             ::std::marker::Copy,
             ::std::fmt::Debug,
             ::std::cmp::PartialEq,
+            ::std::cmp::Eq,
+            ::std::cmp::PartialOrd,
+            ::std::cmp::Ord,
+            ::std::hash::Hash,
         )]
         #vis enum #ident_id {
             #(

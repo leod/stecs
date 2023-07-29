@@ -163,7 +163,7 @@ fn update_bullets(world: &mut World) {
         // For performance reasons, this check would usually be done with
         // a spatial acceleration structure rather than an inner loop.
         for (id, pos, health) in nest {
-            if bullet.pos.0 == pos.0 {
+            if bullet.pos.0 == pos.0 && *bullet.owner != id {
                 println!("Bullet by {:?} hit {:?}", bullet.owner, id);
                 health.0 -= 1;
             }
