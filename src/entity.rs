@@ -5,7 +5,8 @@ use std::{
 };
 
 use crate::{
-    archetype::EntityKey, column::Column, query::fetch::Fetch, Component, Query, WorldData,
+    archetype::EntityKey, column::Column, query::fetch::Fetch, Component, Query, QueryShared,
+    WorldData,
 };
 
 pub trait Columns: Default + 'static {
@@ -31,7 +32,7 @@ pub trait Columns: Default + 'static {
 pub trait Entity: Sized + 'static {
     type Id: Copy + Debug + Eq + Ord + Hash + 'static;
 
-    type Ref<'f>: Query;
+    type Ref<'f>: QueryShared;
     /*where
     for<'w> <Self::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = Self::Ref<'w>>;*/
 

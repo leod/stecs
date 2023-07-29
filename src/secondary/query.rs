@@ -49,7 +49,7 @@ impl<'w, E: Entity, C: Component> SecondaryFetch<'w, E> for ComponentFetch<'w, E
     where
         Self: 'f,
     {
-        self.0.get(&id).map(|cell| unsafe {
+        self.0.get(id).map(|cell| unsafe {
             let ptr = cell.get();
 
             &*ptr
@@ -90,7 +90,7 @@ impl<'w, E: Entity, C: Component> SecondaryFetch<'w, E> for ComponentMutFetch<'w
     where
         Self: 'f,
     {
-        self.0.get(&id).map(|cell| unsafe {
+        self.0.get(id).map(|cell| unsafe {
             let ptr = cell.get();
 
             &mut *ptr
