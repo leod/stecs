@@ -66,6 +66,12 @@ enum Entity {
     Boier(Boier<Position, Velocity>),
 }
 
+#[derive(stecs::Query)]
+pub struct PhysicsObject<'a> {
+    position: &'a mut Position,
+    velocity: &'a mut Velocity,
+}
+
 type World = stecs::World<Entity>;
 
 fn main() {
@@ -139,6 +145,11 @@ fn main() {
     println!("Position, Velocity");
     for (p, v) in world.query_mut::<(&Position, &Velocity)>() {
         dbg!(p.0, v.0);
+    }
+
+    println!("PhysicsObject");
+    for (id, q) in world.query_mut::<(EntityId<Entity>, PhysicsObject)>() {
+        println!("{:?}: {:?} {:?}", id, q.position.0, q.velocity.0);
     }
 
     println!("mut Position, Velocity");

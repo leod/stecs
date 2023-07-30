@@ -29,7 +29,7 @@ pub fn struct_fields(fields: &syn::Fields) -> (Vec<&syn::Type>, Vec<syn::Member>
 }
 
 // Copied from `hecs`.
-pub fn member_as_idents(members: &[syn::Member]) -> Vec<Cow<'_, syn::Ident>> {
+pub fn members_as_idents(members: &[syn::Member]) -> Vec<Cow<'_, syn::Ident>> {
     members
         .iter()
         .map(|member| match member {

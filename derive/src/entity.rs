@@ -2,7 +2,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{DataEnum, DataStruct, DeriveInput, Error, Result};
 
-use crate::utils::{generics_with_new_lifetime, member_as_idents, struct_fields};
+use crate::utils::{generics_with_new_lifetime, members_as_idents, struct_fields};
 
 pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
     match input.data {
@@ -29,7 +29,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
         syn::Ident::new(&format!("{ident}StecsInternalRefMutFetch"), ident.span());
 
     let (field_tys, field_members) = struct_fields(&data.fields);
-    let field_idents = member_as_idents(&field_members);
+    let field_idents = members_as_idents(&field_members);
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -77,7 +77,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
                     }
                 )*
 
-                None
+                ::std::option::Option::None
             }
 
             fn push(&mut self, entity: Self::Entity) {
@@ -168,12 +168,12 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
                     let columns: &#ident_columns #ty_generics =
                         (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
 
-                    Some(
+                    ::std::option::Option::Some(
                         <#ident_columns #ty_generics as ::stecs::entity::Columns>
                             ::new_fetch(columns, ids.len()),
                     )
                 } else {
-                    None
+                    ::std::option::Option::None
                 }
             }
 
@@ -254,12 +254,12 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
                     let columns: &#ident_columns #ty_generics =
                         (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
 
-                    Some(
+                    ::std::option::Option::Some(
                         <#ident_columns #ty_generics as ::stecs::entity::Columns>
                             ::new_fetch_mut(columns, ids.len()),
                     )
                 } else {
-                    None
+                    ::std::option::Option::None
                 }
             }
 
@@ -401,6 +401,14 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     let lifetime: syn::Lifetime = syn::parse_str("'__stecs__f").unwrap();
     let type_param: syn::TypeParam = syn::parse_str("__stecs__F").unwrap();
 
+    // TODO: We could probably remove this requirement.
+    if !input.generics.params.is_empty() {
+        return Err(Error::new_spanned(
+            ident,
+            "derive(Entity) for enums must not have any generics",
+        ));
+    }
+
     /*
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -452,12 +460,13 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 columns: &A,
             ) -> ::std::option::Option<Self> {
                 #(
-                    if let Some(fetch) = ::stecs::query::fetch::Fetch::new(ids, columns) {
-                        return Some(#ident_id_fetch::#variant_idents(fetch))
+                    if let ::std::option::Option::Some(fetch) =
+                        ::stecs::query::fetch::Fetch::new(ids, columns) {
+                        return ::std::option::Option::Some(#ident_id_fetch::#variant_idents(fetch))
                     }
                 )*
 
-                None
+                ::std::option::Option::None
             }
 
             fn len(&self) -> usize {
@@ -492,7 +501,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             ) {
                 if ::std::any::TypeId::of::<__stecs__DOuter>() !=
                     ::std::any::TypeId::of::<#ident_world_data>() {
-                    *fetch = None;
+                    *fetch = ::std::option::Option::None;
                 }
             }
         }
@@ -517,12 +526,13 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 columns: &A,
             ) -> ::std::option::Option<Self> {
                 #(
-                    if let Some(fetch) = ::stecs::query::fetch::Fetch::new(ids, columns) {
-                        return Some(#ident_ref_fetch::#variant_idents(fetch));
+                    if let ::std::option::Option::Some(fetch) =
+                        ::stecs::query::fetch::Fetch::new(ids, columns) {
+                        return ::std::option::Option::Some(#ident_ref_fetch::#variant_idents(fetch));
                     }
                 )*
 
-                None
+                ::std::option::Option::None
             }
 
             fn len(&self) -> usize {
@@ -557,7 +567,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             ) {
                 if ::std::any::TypeId::of::<__stecs__DOuter>() !=
                     ::std::any::TypeId::of::<#ident_world_data>() {
-                    *fetch = None;
+                    *fetch = ::std::option::Option::None;
                 }
             }
         }
@@ -597,12 +607,13 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 columns: &A,
             ) -> ::std::option::Option<Self> {
                 #(
-                    if let Some(fetch) = ::stecs::query::fetch::Fetch::new(ids, columns) {
-                        return Some(#ident_ref_mut_fetch::#variant_idents(fetch));
+                    if let ::std::option::Option::Some(fetch) =
+                        ::stecs::query::fetch::Fetch::new(ids, columns) {
+                        return ::std::option::Option::Some(#ident_ref_mut_fetch::#variant_idents(fetch));
                     }
                 )*
 
-                None
+                ::std::option::Option::None
             }
 
             fn len(&self) -> usize {
@@ -637,7 +648,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             ) {
                 if ::std::any::TypeId::of::<__stecs__DOuter>() !=
                     ::std::any::TypeId::of::<#ident_world_data>() {
-                    *fetch = None;
+                    *fetch = ::std::option::Option::None;
                 }
             }
         }
