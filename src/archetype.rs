@@ -1,12 +1,13 @@
 use std::{
     any::{type_name, TypeId},
     fmt::{self, Debug},
-    hash::{Hash, Hasher},
+    hash::{Hasher},
     marker::PhantomData,
     mem::transmute_copy,
     option,
 };
 
+use derivative::Derivative;
 use thunderdome::Arena;
 
 use crate::{
@@ -17,7 +18,42 @@ use crate::{
     Entity, EntityId, EntityRef, WorldData,
 };
 
-pub struct EntityKey<E>(pub thunderdome::Index, PhantomData<E>);
+#[derive(Derivative)]
+#[derivative(
+    Copy(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    PartialOrd(bound = ""),
+    Ord(bound = ""),
+    Hash(bound = "")
+)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct EntityKey<E>(
+    #[cfg_attr(feature = "serde", serde(with = "serde_index"))] pub thunderdome::Index,
+    PhantomData<E>,
+);
+
+#[cfg(feature = "serde")]
+mod serde_index {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(index: &thunderdome::Index, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u64(index.to_bits())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<thunderdome::Index, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bits = u64::deserialize(deserializer)?;
+        thunderdome::Index::from_bits(bits)
+            .ok_or_else(|| serde::de::Error::custom("Failed to deserialize thunderdome::Index"))
+    }
+}
 
 impl<E> EntityKey<E> {
     #[doc(hidden)]
@@ -26,45 +62,11 @@ impl<E> EntityKey<E> {
     }
 }
 
-impl<E> Clone for EntityKey<E> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<E> Copy for EntityKey<E> {}
-
 impl<E> Debug for EntityKey<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple(&format!("EntityKey::<{}>", type_name::<E>()))
             .field(&self.0)
             .finish()
-    }
-}
-
-impl<E> PartialEq for EntityKey<E> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<E> Eq for EntityKey<E> {}
-
-impl<E> PartialOrd for EntityKey<E> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<E> Ord for EntityKey<E> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.cmp(&other.0)
-    }
-}
-
-impl<E> Hash for EntityKey<E> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
     }
 }
 

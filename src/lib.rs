@@ -24,6 +24,9 @@ pub mod world;
 
 pub use thunderdome;
 
+#[cfg(feature = "serde")]
+pub use serde;
+
 pub use stecs_derive::{Entity, Query};
 
 #[doc(inline)]

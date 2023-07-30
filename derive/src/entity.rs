@@ -1,13 +1,38 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{DataEnum, DataStruct, DeriveInput, Error, Result};
+use syn::{parse::Parse, DataEnum, DataStruct, DeriveInput, Error, Result};
 
 use crate::utils::{generics_with_new_lifetime, members_as_idents, struct_fields};
 
+struct AttrNames {
+    names: syn::punctuated::Punctuated<syn::Ident, syn::Token![,]>,
+}
+
+impl Parse for AttrNames {
+    fn parse(input: syn::parse::ParseStream) -> Result<Self> {
+        let names = input.parse_terminated(syn::Ident::parse, syn::Token![,])?;
+
+        Ok(Self {
+            names,
+        })
+    }
+}
+
 pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
+    let mut attrs = Vec::new();
+
+    for attr in &input.attrs {
+        if !attr.path().is_ident("stecs") {
+            continue;
+        }
+
+        let attr_names: AttrNames = attr.parse_args()?;
+        attrs.extend(attr_names.names.into_iter().map(|ident| ident.to_string()));
+    }
+
     match input.data {
         syn::Data::Struct(ref data) => derive_struct(&input, data),
-        syn::Data::Enum(ref data) => derive_enum(&input, data),
+        syn::Data::Enum(ref data) => derive_enum(&input, data, attrs),
         _ => Err(Error::new_spanned(
             input.ident,
             "derive(Entity) only supports structs and enums",
@@ -358,7 +383,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
     })
 }
 
-fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
+fn derive_enum(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Result<TokenStream2> {
     let ident = &input.ident;
     let vis = &input.vis;
 
@@ -433,6 +458,15 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         ));
     }
 
+    let derive_serde = if attrs.iter().any(|a| a == "serde") {
+        quote! {
+            #[derive(::stecs::serde::Serialize, ::stecs::serde::Deserialize)]
+            #[serde(crate = "::stecs::serde")]
+        }
+    } else {
+        quote! {}
+    };
+
     /*
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -458,6 +492,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             ::std::cmp::Ord,
             ::std::hash::Hash,
         )]
+        #derive_serde
         #vis enum #ident_id {
             #(
                 #variant_idents(<#variant_tys as ::stecs::Entity>::Id),

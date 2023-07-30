@@ -4,6 +4,8 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use derivative::Derivative;
+
 use crate::{
     archetype::EntityKey, column::Column, query::fetch::Fetch, Component, Query, QueryShared,
     WorldData,
@@ -65,47 +67,19 @@ pub type EntityRef<'f, E> = <E as Entity>::Ref<'f>;
 
 pub type EntityRefMut<'f, E> = <E as Entity>::RefMut<'f>;
 
+#[derive(Derivative)]
+#[derivative(
+    Copy(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    PartialOrd(bound = ""),
+    Ord(bound = ""),
+    Hash(bound = ""),
+    Debug(bound = "")
+)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EntityId<E: Entity>(E::Id);
-
-impl<E: Entity> Clone for EntityId<E> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<E: Entity> Copy for EntityId<E> {}
-
-impl<E: Entity> Debug for EntityId<E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("EntityId").field(&self.0).finish()
-    }
-}
-
-impl<E: Entity> PartialEq for EntityId<E> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
-    }
-}
-
-impl<E: Entity> Eq for EntityId<E> {}
-
-impl<E: Entity> PartialOrd for EntityId<E> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<E: Entity> Ord for EntityId<E> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.cmp(&other.0)
-    }
-}
-
-impl<E: Entity> Hash for EntityId<E> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-    }
-}
 
 impl<E: Entity> EntityId<E> {
     pub fn new(id: E::Id) -> Self {
