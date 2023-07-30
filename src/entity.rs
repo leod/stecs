@@ -29,7 +29,7 @@ pub trait Columns: Default + 'static {
         'w: 'f;
 }
 
-pub trait Entity: Sized + 'static {
+pub trait Entity: Clone + 'static {
     type Id: Copy + Debug + Eq + Ord + Hash + 'static;
 
     type Ref<'f>: QueryShared;
