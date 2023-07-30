@@ -72,7 +72,7 @@ impl<E: Entity> SecondaryWorld<E> {
     pub fn synchronize<'w>(
         &'w mut self,
         world: &'w E::WorldData,
-        new_entity: impl Fn(&mut Self, E::Ref<'_>),
+        new_entity: impl Fn(&mut Self, EntityId<E>, E::Ref<'_>),
     ) where
         // TODO: Can we put the bound below on `Entity` somehow?
         <E::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRef<'w, E>>,
@@ -84,7 +84,7 @@ impl<E: Entity> SecondaryWorld<E> {
 
         for (id, entity) in world.query::<(EntityId<E>, EntityRef<E>)>() {
             if !self.ids.contains(&id) {
-                new_entity(self, entity);
+                new_entity(self, id, entity);
             }
         }
 
