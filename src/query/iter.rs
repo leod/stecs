@@ -81,7 +81,8 @@ where
     F: Fetch + 'w,
     D: WorldData + 'w,
 {
-    data_iter: <D::Fetch<'w, F> as WorldFetch<'w, D>>::Iter,
+    len: usize,
+    world_iter: <D::Fetch<'w, F> as WorldFetch<'w, D>>::Iter,
     current_fetch_iter: Option<FetchIter<'w, F>>,
 }
 
@@ -102,10 +103,21 @@ where
                 return Some(item);
             }
 
-            self.current_fetch_iter = self.data_iter.next().map(FetchIter::new);
+            self.current_fetch_iter = self.world_iter.next().map(FetchIter::new);
             self.current_fetch_iter.as_ref()?;
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.len, Some(self.len))
+    }
+}
+
+impl<'w, F, D> ExactSizeIterator for WorldFetchIter<'w, F, D>
+where
+    F: Fetch + 'w,
+    D: WorldData,
+{
 }
 
 impl<'w, F, D> WorldFetchIter<'w, F, D>
@@ -114,11 +126,14 @@ where
     D: WorldData,
 {
     pub(crate) unsafe fn new(data: &'w D) -> Self {
-        let mut data_iter = data.fetch::<F>().iter();
-        let current_fetch_iter = data_iter.next().map(FetchIter::new);
+        let mut world_fetch = data.fetch::<F>();
+        let len = world_fetch.len();
+        let mut world_iter = world_fetch.iter();
+        let current_fetch_iter = world_iter.next().map(FetchIter::new);
 
         Self {
-            data_iter,
+            len,
+            world_iter,
             current_fetch_iter,
         }
     }
