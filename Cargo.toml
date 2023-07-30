@@ -8,6 +8,11 @@ stecs-derive = { path = "derive" }
 thunderdome = "0.6.1"
 hashbrown = { version = "0.14.0", features = ["raw"] }
 downcast-rs = "1.2.0"
+derivative = "2.2.0"
+
+# FIXME: This dependency _should_ be optional, but we'd also optionally need it
+# in derive macros, and I don't know how to make that happen.
+serde = { version = "1.0", optional = true }
 
 [workspace]
 members = ["derive"]
