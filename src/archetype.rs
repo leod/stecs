@@ -153,8 +153,12 @@ where
         self.1.into_iter()
     }
 
-    fn filter_by_outer<DOuter: WorldData>(&mut self) {
-        F::filter_by_outer::<DOuter>(&mut self.1)
+    fn len(&self) -> usize {
+        if self.1.is_some() {
+            self.0.len()
+        } else {
+            0
+        }
     }
 }
 

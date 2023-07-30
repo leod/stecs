@@ -792,6 +792,9 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resu
                 #(
                     let iter = ::std::iter::Iterator::chain(
                         iter,
+
+                        // FIXME: These type names are needlessly complex and
+                        // copy-pasted.
                         <
                             <
                                 <
@@ -809,6 +812,28 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resu
                 )*
 
                 iter
+            }
+
+            fn len(&self) -> usize {
+                let len = 0;
+                #(
+                    let len = len +
+                        <
+                            <
+                                <
+                                    #variant_tys
+                                    as ::stecs::Entity
+                                >::WorldData
+                                as ::stecs::world::WorldData
+                            >::Fetch<'w, F>
+                            as ::stecs::world::WorldFetch<
+                                <#variant_tys as ::stecs::Entity>::WorldData
+                            >
+                        >
+                        ::len(&self.#variant_idents);
+                )*
+
+                len
             }
         }
 

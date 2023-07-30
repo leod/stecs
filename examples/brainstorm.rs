@@ -1,3 +1,5 @@
+use std::iter::ExactSizeIterator;
+
 use serde::{Deserialize, Serialize};
 use stecs::{entity::EntityVariant, Component, EntityId, EntityRef, EntityRefMut, WorldData};
 
@@ -229,6 +231,13 @@ fn main() {
     {
         dbg!(id, pos.0);
     }
+
+    println!("len");
+    dbg!(world
+        .query_mut::<(EntityId<Entity>, &Position)>()
+        .without::<&Target>()
+        .into_iter()
+        .len());
 
     println!("EntityId, Target");
     for (id, target) in world.query_mut::<(EntityId<Entity>, &Target)>() {
