@@ -38,12 +38,31 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
     let (impl_generics_with_lifetime, ty_generics_with_lifetime, where_clause_with_lifetime) =
         generics_with_lifetime.split_for_impl();
 
+    let from_ref = match &data.fields {
+        syn::Fields::Named(_) => quote! {
+            Self {
+                #(
+                    #field_members: ::std::clone::Clone::clone(entity.#field_idents),
+                )*
+            }
+        },
+        syn::Fields::Unnamed(_) => quote! {
+            Self(
+                #(
+                    ::std::clone::Clone::clone(entity.#field_idents),
+                )*
+            )
+        },
+        syn::Fields::Unit => quote! {Self},
+    };
+
     Ok(quote! {
         // Columns
 
         // TODO: Provide a way to derive traits for the column struct.
         // Otherwise, we lose the ability to derive things for our World.
         #[allow(unused)]
+        #[derive(::std::clone::Clone)]
         #vis struct #ident_columns #impl_generics #where_clause {
             #(
                 #field_idents: ::std::cell::RefCell<::stecs::column::Column<#field_tys>>
@@ -212,6 +231,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
 
         // FIXME: This should be a tuple struct for tuple structs.
         #[allow(unused, non_snake_case)]
+        #[derive(::std::clone::Clone)]
         #vis struct #ident_ref #impl_generics_with_lifetime #where_clause_with_lifetime {
             #(
                 #field_idents: &#lifetime #field_tys,
@@ -330,6 +350,10 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
             type FetchMut<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
             type FetchId<'__stecs__w> = ::stecs::query::fetch::EntityKeyFetch<#ident #ty_generics>;
             type WorldData = ::stecs::archetype::Archetype<#ident_columns #ty_generics>;
+
+            fn from_ref<'f>(entity: Self::Ref<'f>) -> Self {
+                #from_ref
+            }
         }
     })
 }
@@ -581,6 +605,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
         // Ref
 
+        #[derive(::std::clone::Clone)]
         #vis enum #ident_ref<#lifetime> {
             #(
                 #variant_idents(<#variant_tys as ::stecs::Entity>::Ref<#lifetime>),
@@ -759,7 +784,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         // TODO: Consider exposing the `WorldData` struct. In this case, convert
         // field names to snake case first.
         #[allow(non_snake_case)]
-        #[derive(::std::default::Default)]
+        #[derive(::std::default::Default, ::std::clone::Clone)]
         #vis struct #ident_world_data {
             #(
                 #variant_idents: <#variant_tys as ::stecs::Entity>::WorldData,
@@ -912,6 +937,18 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             type FetchMut<'__stecs__w> = #ident_ref_mut_fetch<'__stecs__w>;
             type FetchId<'__stecs__w> = #ident_id_fetch<'__stecs__w>;
             type WorldData = #ident_world_data;
+
+            fn from_ref<'f>(entity: Self::Ref<'f>) -> Self {
+                match entity {
+                    #(
+                        #ident_ref::#variant_idents(entity) => {
+                            #ident::#variant_idents(
+                                <#variant_tys as ::stecs::Entity>::from_ref(entity),
+                            )
+                        }
+                    )*
+                }
+            }
         }
     })
 }
