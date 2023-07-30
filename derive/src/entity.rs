@@ -942,6 +942,12 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resu
             }
         }
 
+        // Safety: TODO. This is needed because `T` can contain `RefCell`.
+        // However, this is thread-safe, because `WorldData` only allows
+        // mutation with `&mut self`.
+        unsafe impl ::std::marker::Send for #ident_world_data {}
+        unsafe impl ::std::marker::Sync for #ident_world_data {}
+
         // EntityVariant
 
         #(

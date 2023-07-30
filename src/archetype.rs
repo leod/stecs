@@ -227,3 +227,8 @@ impl<T: Columns> WorldData for Archetype<T> {
         ArchetypeWorldFetch(&self.indices, F::new(&self.ids, &self.columns))
     }
 }
+
+// Safety: TODO. This is needed because `T` can contain `RefCell`. However, this
+// is thread-safe, because `WorldData` only allows mutation with `&mut self`.
+unsafe impl<T: Columns> Send for Archetype<T> {}
+unsafe impl<T: Columns> Sync for Archetype<T> {}

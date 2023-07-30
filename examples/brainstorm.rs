@@ -85,8 +85,15 @@ pub struct SerDeThing {
     id2: EntityId<Entity>,
 }
 
+fn send_me<W: Send>(world: &W) {}
+
+fn sync_me<W: Sync>(world: &W) {}
+
 fn main() {
     let mut world = World::default();
+
+    send_me(&world);
+    sync_me(&world);
 
     let p0 = world.spawn(Player {
         pos: Position(1.0),
