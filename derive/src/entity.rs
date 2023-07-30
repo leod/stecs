@@ -709,7 +709,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             )*
         }
 
-        #vis impl<#lifetime, #type_param> ::std::clone::Clone
+        impl<#lifetime, #type_param> ::std::clone::Clone
         for #ident_world_fetch<#lifetime, #type_param>
         where
             #type_param: ::stecs::query::fetch::Fetch + #lifetime,
@@ -719,7 +719,7 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             }
         }
 
-        #vis impl<#lifetime, #type_param> ::std::marker::Copy
+        impl<#lifetime, #type_param> ::std::marker::Copy
         for #ident_world_fetch<#lifetime, #type_param>
         where
             #type_param: ::stecs::query::fetch::Fetch + #lifetime,
