@@ -97,6 +97,12 @@ pub trait WorldData: Default + Clone + 'static {
         unsafe { fetch.get(id.get()) }
     }
 
+    fn spawn_at(
+        &mut self,
+        id: EntityId<Self::Entity>,
+        entity: Self::Entity,
+    ) -> Option<Self::Entity>;
+
     #[doc(hidden)]
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where

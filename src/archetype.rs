@@ -1,7 +1,7 @@
 use std::{
     any::{type_name, TypeId},
     fmt::{self, Debug},
-    hash::{Hasher},
+    hash::Hasher,
     marker::PhantomData,
     mem::transmute_copy,
     option,
@@ -86,6 +86,13 @@ impl<T: Columns> Archetype<T> {
         self.columns.push(entity);
 
         EntityId::new(id)
+    }
+
+    fn spawn_at_impl(&mut self, id: EntityId<T::Entity>, entity: T::Entity) {
+        self.indices.insert_at(id.get().0, self.ids.len());
+
+        self.ids.push(id.get().0);
+        self.columns.push(entity);
     }
 
     fn despawn_impl(&mut self, id: EntityId<T::Entity>) -> Option<T::Entity> {
@@ -195,6 +202,18 @@ impl<T: Columns> WorldData for Archetype<T> {
         E: EntityVariant<Self::Entity>,
     {
         self.despawn_impl(id.to_outer())
+    }
+
+    fn spawn_at(
+        &mut self,
+        id: EntityId<Self::Entity>,
+        entity: Self::Entity,
+    ) -> Option<Self::Entity> {
+        let old = self.despawn(id);
+
+        self.spawn_at_impl(id, entity);
+
+        old
     }
 
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>

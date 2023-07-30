@@ -12,9 +12,7 @@ impl Parse for AttrNames {
     fn parse(input: syn::parse::ParseStream) -> Result<Self> {
         let names = input.parse_terminated(syn::Ident::parse, syn::Token![,])?;
 
-        Ok(Self {
-            names,
-        })
+        Ok(Self { names })
     }
 }
 
@@ -884,23 +882,24 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resu
                 }
             }
 
-            /*
-            fn entity<E>(&self, id: ::stecs::EntityId<E>) -> ::std::option::Option<E::Ref<'_>>
-            where
-                E: ::stecs::entity::EntityVariant<#ident>,
-            {
-                /*match id.get() {
+            fn spawn_at(
+                &mut self,
+                id: ::stecs::EntityId<Self::Entity>,
+                entity: Self::Entity,
+            ) -> ::std::option::Option<Self::Entity> {
+                match (id.get(), entity) {
                     #(
-                        #ident_id::#variant_idents(id) => {
-                            let id = ::stecs::EntityId::new(id);
-                            #ident_ref::#variant_idents(self.#variant_idents.entity(id))
+                        (#ident_id::#variant_idents(id), #ident::#variant_idents(entity)) => {
+                            self.#variant_idents.spawn_at(
+                                ::stecs::EntityId::new(id),
+                                entity,
+                            )
+                            .map(#ident::#variant_idents)
                         }
                     )*
-                }*/
-
-                todo!()
+                    _ => panic!("Incompatible EntityId and Entity variants in `spawn_at`"),
+                }
             }
-            */
 
             fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
             where
@@ -913,26 +912,6 @@ fn derive_enum(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resu
                             ::fetch::<F>(&self.#variant_idents),
                     )*
                 };
-
-                /*#(
-                    <
-                        <
-                            <
-                                #variant_tys
-                                as ::stecs::Entity
-                            >::WorldData
-                            as ::stecs::world::WorldData
-                        >::Fetch<'w, F>
-                        as ::stecs::world::WorldFetch<
-                            'w,
-                            <
-                                #variant_tys
-                                as ::stecs::Entity
-                            >::WorldData
-                        >
-                    >
-                    ::filter_by_outer::<Self>(&mut fetch.#variant_idents);
-                )**/
 
                 fetch
             }
