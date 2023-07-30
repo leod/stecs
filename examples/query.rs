@@ -1,4 +1,7 @@
+#[derive(Clone)]
 pub struct Position(f32);
+
+#[derive(Clone)]
 pub struct Velocity(f32);
 
 #[derive(stecs::Query)]

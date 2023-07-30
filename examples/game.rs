@@ -11,13 +11,13 @@ impl Position {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Velocity(i32);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Health(i32);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Target(Option<EntityId<Entity>>);
 
 // Entities
