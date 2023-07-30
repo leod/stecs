@@ -33,6 +33,6 @@ pub use self::{
     secondary::{query::SecondaryQuery, query::SecondaryQueryShared, world::SecondaryWorld},
     world::{World, WorldData},
 };
-pub trait Component: 'static {}
+pub trait Component: Clone + 'static {}
 
-impl<T> Component for T where T: 'static {}
+impl<T> Component for T where T: Clone + 'static {}

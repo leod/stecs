@@ -46,7 +46,7 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
     Ok(quote! {
         // Fetch
 
-        #[allow(unused)]
+        #[allow(unused, non_snake_case)]
         #[derive(::std::clone::Clone, ::std::marker::Copy)]
         #vis struct #ident_fetch<#lifetime> {
             __stecs__len: usize,

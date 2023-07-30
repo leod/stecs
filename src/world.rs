@@ -20,7 +20,7 @@ pub trait WorldFetch<'w, D: WorldData>: Clone {
     fn filter_by_outer<DOuter: WorldData>(&mut self) {}
 }
 
-pub trait WorldData: Default + Sized + 'static {
+pub trait WorldData: Default + Clone + 'static {
     type Entity: EntityVariant<Self::Entity>;
 
     type Fetch<'w, F: Fetch + 'w>: WorldFetch<'w, Self, Fetch = F>;

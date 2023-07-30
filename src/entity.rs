@@ -9,7 +9,7 @@ use crate::{
     WorldData,
 };
 
-pub trait Columns: Default + 'static {
+pub trait Columns: Default + Clone + 'static {
     type Entity: Entity<Id = EntityKey<Self::Entity>> + EntityVariant<Self::Entity>;
 
     fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>>;
@@ -29,10 +29,10 @@ pub trait Columns: Default + 'static {
         'w: 'f;
 }
 
-pub trait Entity: Sized + 'static {
+pub trait Entity: Clone + 'static {
     type Id: Copy + Debug + Eq + Ord + Hash + 'static;
 
-    type Ref<'f>: QueryShared;
+    type Ref<'f>: QueryShared + Clone;
     /*where
     for<'w> <Self::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = Self::Ref<'w>>;*/
 
@@ -47,6 +47,8 @@ pub trait Entity: Sized + 'static {
     type FetchId<'w>: Fetch<Item<'w> = EntityId<Self>>;
 
     type WorldData: WorldData<Entity = Self>;
+
+    fn from_ref<'f>(entity: Self::Ref<'f>) -> Self;
 }
 
 pub trait EntityStruct: Entity {

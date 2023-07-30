@@ -11,25 +11,25 @@ impl Position {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Velocity(i32);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Health(i32);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Target(Option<EntityId<Entity>>);
 
 // Entities
 
-#[derive(stecs::Entity)]
+#[derive(stecs::Entity, Clone)]
 struct Player {
     pos: Position,
     vel: Velocity,
     health: Health,
 }
 
-#[derive(stecs::Entity)]
+#[derive(stecs::Entity, Clone)]
 struct Enemy {
     pos: Position,
     vel: Velocity,
@@ -37,7 +37,7 @@ struct Enemy {
     target: Target,
 }
 
-#[derive(stecs::Entity)]
+#[derive(stecs::Entity, Clone)]
 struct Bullet {
     pos: Position,
     vel: Velocity,
@@ -47,7 +47,7 @@ struct Bullet {
 // World
 
 // Define your world by declaring an enum that contains all the entity variants:
-#[derive(stecs::Entity)]
+#[derive(stecs::Entity, Clone)]
 enum Entity {
     Player(Player),
     Enemy(Enemy),
