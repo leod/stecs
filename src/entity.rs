@@ -78,6 +78,7 @@ pub type EntityRefMut<'f, E> = <E as Entity>::RefMut<'f>;
     Hash(bound = ""),
     Debug(bound = "")
 )]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EntityId<E: Entity>(E::Id);
 
 impl<E: Entity> EntityId<E> {

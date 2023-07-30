@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use stecs::{entity::EntityVariant, Component, EntityId, EntityRef, EntityRefMut, WorldData};
 
 #[derive(Clone)]
@@ -52,12 +53,14 @@ struct InnerEnemy {
 }
 
 #[derive(stecs::Entity, Clone)]
+#[stecs(serde)]
 enum InnerEntity {
     Enemy(InnerEnemy),
     Boier(Boier<Position, Blub>),
 }
 
 #[derive(stecs::Entity, Clone)]
+#[stecs(serde)]
 enum Entity {
     Inner(InnerEntity),
     Player(Player),
@@ -73,6 +76,12 @@ pub struct PhysicsObject<'a> {
 }
 
 type World = stecs::World<Entity>;
+
+#[derive(Serialize, Deserialize)]
+pub struct SerDeThing {
+    id: EntityId<Player>,
+    id2: EntityId<Entity>,
+}
 
 fn main() {
     let mut world = World::default();

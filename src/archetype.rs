@@ -1,7 +1,7 @@
 use std::{
     any::{type_name, TypeId},
     fmt::{self, Debug},
-    hash::{Hash, Hasher},
+    hash::{Hasher},
     marker::PhantomData,
     mem::transmute_copy,
     option,
@@ -28,7 +28,32 @@ use crate::{
     Ord(bound = ""),
     Hash(bound = "")
 )]
-pub struct EntityKey<E>(pub thunderdome::Index, PhantomData<E>);
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct EntityKey<E>(
+    #[cfg_attr(feature = "serde", serde(with = "serde_index"))] pub thunderdome::Index,
+    PhantomData<E>,
+);
+
+#[cfg(feature = "serde")]
+mod serde_index {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(index: &thunderdome::Index, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u64(index.to_bits())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<thunderdome::Index, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bits = u64::deserialize(deserializer)?;
+        thunderdome::Index::from_bits(bits)
+            .ok_or_else(|| serde::de::Error::custom("Failed to deserialize thunderdome::Index"))
+    }
+}
 
 impl<E> EntityKey<E> {
     #[doc(hidden)]

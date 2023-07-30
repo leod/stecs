@@ -5,7 +5,7 @@ mod entity;
 mod query;
 mod utils;
 
-#[proc_macro_derive(Entity)]
+#[proc_macro_derive(Entity, attributes(stecs))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     match entity::derive(input) {
