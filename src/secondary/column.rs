@@ -7,9 +7,15 @@ use crate::{Component, Entity, EntityId};
 
 pub struct SecondaryColumn<E: Entity, C>(HashMap<EntityId<E>, UnsafeCell<C>>);
 
+impl<E: Entity, C> Default for SecondaryColumn<E, C> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
 impl<E: Entity, C> SecondaryColumn<E, C> {
     pub fn new() -> Self {
-        Self(Default::default())
+        Default::default()
     }
 
     pub fn get(&self, id: EntityId<E>) -> Option<&UnsafeCell<C>> {

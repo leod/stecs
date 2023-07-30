@@ -2,7 +2,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{DeriveInput, Error, Result};
 
-use crate::utils::{generics_with_new_lifetime, members_as_idents, struct_fields};
+use crate::utils::{members_as_idents, struct_fields};
 
 pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
     let ident = &input.ident;
