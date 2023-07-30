@@ -259,7 +259,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
         #[derive(::std::clone::Clone)]
         #vis struct #ident_ref #impl_generics_with_lifetime #where_clause_with_lifetime {
             #(
-                #field_idents: &#lifetime #field_tys,
+                #vis #field_idents: &#lifetime #field_tys,
             )*
             __stecs__phantom: ::std::marker::PhantomData<&#lifetime ()>,
         }
@@ -341,7 +341,7 @@ fn derive_struct(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2>
         #[allow(unused, non_snake_case)]
         #vis struct #ident_ref_mut #impl_generics_with_lifetime #where_clause_with_lifetime {
             #(
-                #field_idents: &#lifetime mut #field_tys,
+                #vis #field_idents: &#lifetime mut #field_tys,
             )*
             __stecs__phantom: ::std::marker::PhantomData<&#lifetime mut ()>,
         }
