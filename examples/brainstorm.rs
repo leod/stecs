@@ -304,6 +304,17 @@ fn main() {
         //println!("targeting {:?} @ {:?}", target, target_pos_2.0);
     }*/
 
+    let (positions_and_velocities, positions_b) = world.queries_mut::<(
+        (EntityId<Entity>, &Position, &mut Velocity),
+        (EntityId<Entity>, &Position),
+    )>();
+    for (id_a, position_a, velocity) in positions_and_velocities {
+        for (id_b, position_b) in &positions_b {
+            velocity.0 = position_a.0 - position_b.0;
+            println!("setting {id_a:?} vs {id_b:?}")
+        }
+    }
+
     println!("Target, nest with Position as EntityRefMut");
 
     for (target, mut nest) in world

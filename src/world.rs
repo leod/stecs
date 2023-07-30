@@ -1,6 +1,8 @@
+use std::any::type_name;
+
 use crate::{
     entity::EntityVariant,
-    query::{fetch::Fetch, QueryBorrow, QueryShared},
+    query::{borrow_checker::BorrowChecker, fetch::Fetch, QueryBorrow, QueryShared},
     Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
 
@@ -46,8 +48,13 @@ pub trait WorldData: Send + Sync + Default + Clone + 'static {
         QueryBorrow::new(self)
     }
 
-    // TODO: Add `queries` and `queries_mut` to allow borrowing multiple
-    // non-aliasing queries.
+    fn queries<Q: MultiQueryShared>(&self) -> Q::QueryBorrows<'_, Self> {
+        unsafe { Q::new(self) }
+    }
+
+    fn queries_mut<Q: MultiQuery>(&mut self) -> Q::QueryBorrows<'_, Self> {
+        unsafe { Q::new(self) }
+    }
 
     fn get<Q: QueryShared>(
         &self,
@@ -110,3 +117,33 @@ pub trait WorldData: Send + Sync + Default + Clone + 'static {
 }
 
 pub type World<E> = <E as Entity>::WorldData;
+
+pub trait MultiQuery {
+    type QueryBorrows<'w, D: WorldData>;
+    unsafe fn new<D: WorldData>(world: &D) -> Self::QueryBorrows<'_, D>;
+}
+
+pub trait MultiQueryShared: MultiQuery {}
+
+macro_rules! tuple_impl {
+    ($($name: ident),*) => {
+        #[allow(unused)]
+        impl<$($name: Query,)*> MultiQuery for ($($name,)*) {
+            type QueryBorrows<'w, D: WorldData> = ($(QueryBorrow<'w, $name, D>,)*);
+            unsafe fn new<'w, D: WorldData>(world: &'w D) -> Self::QueryBorrows<'w, D> {
+                let mut checker = BorrowChecker::new(type_name::<Self>());
+
+                // Safety: Check that the query does not specify borrows that violate
+                // Rust's borrowing rules.
+                $(<$name::Fetch<'w> as Fetch>::check_borrows(&mut checker);)*
+
+                ($(QueryBorrow::<$name, _>::new(world),)*)
+            }
+        }
+        impl<$($name: QueryShared,)*> MultiQueryShared for ($($name,)*) {}
+    };
+}
+
+smaller_tuples_too!(
+    tuple_impl, F0, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15
+);
