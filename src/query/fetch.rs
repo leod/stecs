@@ -7,7 +7,7 @@ use crate::{
     Component, EntityId, WorldData,
 };
 
-use super::borrow_checker::BorrowChecker;
+use super::{borrow_checker::BorrowChecker, Or};
 
 // TODO: unsafe maybe not needed.
 pub unsafe trait Fetch: Copy {
@@ -293,5 +293,46 @@ where
 
     fn check_borrows(checker: &mut BorrowChecker) {
         F::check_borrows(checker);
+    }
+}
+
+unsafe impl<L, R> Fetch for Or<L, R>
+where
+    L: Fetch,
+    R: Fetch,
+{
+    type Item<'f> = Or<L::Item<'f>, R::Item<'f>> where Self: 'f;
+
+    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
+        match (L::new(ids, columns), R::new(ids, columns)) {
+            (None, None) => None,
+            (Some(left), None) => Some(Or::Left(left)),
+            (None, Some(right)) => Some(Or::Right(right)),
+            (Some(left), Some(right)) => Some(Or::Both(left, right)),
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            Or::Left(left) => left.len(),
+            Or::Right(right) => right.len(),
+            Or::Both(left, _) => left.len(),
+        }
+    }
+
+    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+    where
+        Self: 'f,
+    {
+        match self {
+            Or::Left(left) => Or::Left(left.get(index)),
+            Or::Right(right) => Or::Right(right.get(index)),
+            Or::Both(left, right) => Or::Both(left.get(index), right.get(index)),
+        }
+    }
+
+    fn check_borrows(checker: &mut BorrowChecker) {
+        L::check_borrows(checker);
+        R::check_borrows(checker);
     }
 }

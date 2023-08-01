@@ -100,6 +100,28 @@ where
 {
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Or<L, R> {
+    Left(L),
+    Right(R),
+    Both(L, R),
+}
+
+impl<L, R> Query for Or<L, R>
+where
+    L: Query,
+    R: Query,
+{
+    type Fetch<'w> = Or<L::Fetch<'w>, R::Fetch<'w>>;
+}
+
+impl<L, R> QueryShared for Or<L, R>
+where
+    L: QueryShared,
+    R: QueryShared,
+{
+}
+
 pub struct QueryBorrow<'w, Q, D> {
     data: &'w D,
     _phantom: PhantomData<Q>,
