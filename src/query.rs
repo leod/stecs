@@ -17,7 +17,7 @@ use self::{
     borrow_checker::BorrowChecker,
     fetch::{Fetch, UnitFetch, WithFetch, WithoutFetch},
     join::JoinQueryBorrow,
-    nest::NestOffDiagonalQueryBorrow,
+    nest::NestQueryBorrow,
 };
 
 pub trait Query {
@@ -131,11 +131,11 @@ where
         QueryBorrow::new(self.data)
     }
 
-    pub fn nest_off_diagonal<R>(self) -> NestOffDiagonalQueryBorrow<'w, Q, R, D>
+    pub fn nest<R>(self) -> NestQueryBorrow<'w, Q, R, D>
     where
         R: Query,
     {
-        NestOffDiagonalQueryBorrow {
+        NestQueryBorrow {
             data: self.data,
             _phantom: PhantomData,
         }

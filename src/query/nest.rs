@@ -4,23 +4,20 @@ use crate::{entity::EntityVariant, world::WorldFetch, Entity, EntityId, Query, W
 
 use super::{borrow_checker::BorrowChecker, fetch::Fetch, iter::WorldFetchIter};
 
-pub struct NestOffDiagonalQueryBorrow<'w, Q, J, S> {
+pub struct NestQueryBorrow<'w, Q, J, S> {
     pub(crate) data: &'w S,
     pub(crate) _phantom: PhantomData<(Q, J)>,
 }
 
-// TODO: Implement `get` for `NestOffDiagonaQueryResult`.
+// TODO: Implement `get` for `NestQueryResult`.
 
-impl<'w, Q, J, D> IntoIterator for NestOffDiagonalQueryBorrow<'w, Q, J, D>
+impl<'w, Q, J, D> IntoIterator for NestQueryBorrow<'w, Q, J, D>
 where
     Q: Query,
     J: Query,
     D: WorldData,
 {
-    type Item = (
-        <Q::Fetch<'w> as Fetch>::Item<'w>,
-        NestOffDiagonal<'w, J::Fetch<'w>, D>,
-    );
+    type Item = (<Q::Fetch<'w> as Fetch>::Item<'w>, Nest<'w, J::Fetch<'w>, D>);
 
     type IntoIter = NestDataFetchIter<'w, Q::Fetch<'w>, J::Fetch<'w>, D>;
 
@@ -41,7 +38,7 @@ where
         }
     }
 }
-pub struct NestOffDiagonal<'w, J, D>
+pub struct Nest<'w, J, D>
 where
     J: Fetch + 'w,
     D: WorldData + 'w,
@@ -68,11 +65,11 @@ where
     J: Fetch + 'w,
     D: WorldData,
 {
-    type Item = (<F as Fetch>::Item<'w>, NestOffDiagonal<'w, J, D>);
+    type Item = (<F as Fetch>::Item<'w>, Nest<'w, J, D>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let (id, item) = self.query_iter.next()?;
-        let nest = NestOffDiagonal {
+        let nest = Nest {
             data: self.data,
             ignore_id: id,
             fetch: self.nest_fetch.clone(),
@@ -82,7 +79,7 @@ where
     }
 }
 
-impl<'w, J, D> NestOffDiagonal<'w, J, D>
+impl<'w, J, D> Nest<'w, J, D>
 where
     J: Fetch,
     D: WorldData + 'w,
@@ -109,7 +106,7 @@ where
     }
 }
 
-pub struct NestOffDiagonalIter<'w, J, D>
+pub struct NestIter<'w, J, D>
 where
     J: Fetch + 'w,
     D: WorldData + 'w,
@@ -119,7 +116,7 @@ where
     data_iter: WorldFetchIter<'w, J, D>,
 }
 
-impl<'w, J, D> Iterator for NestOffDiagonalIter<'w, J, D>
+impl<'w, J, D> Iterator for NestIter<'w, J, D>
 where
     J: Fetch + 'w,
     D: WorldData + 'w,
@@ -160,14 +157,14 @@ where
     }
 }
 
-impl<'w, J, D> IntoIterator for NestOffDiagonal<'w, J, D>
+impl<'w, J, D> IntoIterator for Nest<'w, J, D>
 where
     J: Fetch,
     D: WorldData + 'w,
 {
     type Item = J::Item<'w>;
 
-    type IntoIter = NestOffDiagonalIter<'w, J, D>;
+    type IntoIter = NestIter<'w, J, D>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Ids cannot be mutably borrowed, so there is no invalid aliasing.
@@ -176,7 +173,7 @@ where
         // Safety: TODO
         let data_iter = unsafe { WorldFetchIter::new(self.data) };
 
-        NestOffDiagonalIter {
+        NestIter {
             ignore_id: self.ignore_id,
             id_iter,
             data_iter,

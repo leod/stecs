@@ -254,7 +254,7 @@ fn main() {
     println!("EntityId, Target, nest with Position");
     for ((id, target), mut nest) in world
         .query_mut::<(EntityId<Entity>, &Target)>()
-        .nest_off_diagonal::<&mut Position>()
+        .nest::<&mut Position>()
     {
         let Some(target_pos) = nest.get_mut(target.0) else {
             continue;
@@ -271,7 +271,7 @@ fn main() {
 
     for ((id, target), mut nest) in world
         .query_mut::<(EntityId<Entity>, &Target)>()
-        .nest_off_diagonal::<EntityRefMut<Player>>()
+        .nest::<EntityRefMut<Player>>()
     {
         let Some(target_pos) = nest.get_mut(target.0) else {
             continue;
@@ -317,10 +317,7 @@ fn main() {
 
     println!("Target, nest with Position as EntityRefMut");
 
-    for (target, mut nest) in world
-        .query_mut::<&Target>()
-        .nest_off_diagonal::<EntityRefMut<Player>>()
-    {
+    for (target, mut nest) in world.query_mut::<&Target>().nest::<EntityRefMut<Player>>() {
         let Some(target_pos) = nest.get_mut(target.0) else {
             continue;
         };
@@ -334,10 +331,7 @@ fn main() {
 
     println!("Target, nest with Position as EntityRef");
 
-    for (target, mut nest) in world
-        .query_mut::<&Target>()
-        .nest_off_diagonal::<EntityRef<Player>>()
-    {
+    for (target, mut nest) in world.query_mut::<&Target>().nest::<EntityRef<Player>>() {
         let Some(target_pos) = nest.get_mut(target.0) else {
             continue;
         };
@@ -406,7 +400,7 @@ fn main() {
 
     for ((id, enemy), nest) in world
         .query_mut::<(EntityId<Entity>, EntityRefMut<Enemy2>)>()
-        .nest_off_diagonal::<(EntityId<Entity>, &mut Position)>()
+        .nest::<(EntityId<Entity>, &mut Position)>()
     {
         for (id2, p) in nest {
             println!("{:?} {:?} {} {}", id, id2, p.0, enemy.pos.0);
@@ -434,7 +428,7 @@ fn main() {
 
     /*let x: Vec<_> = world
     .query_mut::<&mut Position>()
-    .nest_off_diagonal::<&Position>()
+    .nest::<&Position>()
     .into_iter()
     .map(|(p, mut nest)| (p, nest.get_mut(p0)))
     .collect();*/

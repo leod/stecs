@@ -100,7 +100,7 @@ fn align_to_target(world: &mut World) {
     // Acquire targets.
     for ((pos, target), nest) in world
         .query_mut::<(&Position, &mut Target)>()
-        .nest_off_diagonal::<(EntityId<Player>, EntityRef<Player>)>()
+        .nest::<(EntityId<Player>, EntityRef<Player>)>()
     {
         if target.0.is_some() {
             continue;
@@ -117,7 +117,7 @@ fn align_to_target(world: &mut World) {
     // Set velocities to point to targets.
     for ((vel, pos, target), mut nest) in world
         .query_mut::<(&mut Velocity, &Position, &mut Target)>()
-        .nest_off_diagonal::<&Position>()
+        .nest::<&Position>()
     {
         let Some(target_pos) = target.0.and_then(|target| nest.get_mut(target)) else {
             continue;
@@ -152,9 +152,10 @@ fn spawn_bullets(world: &mut World) {
 }
 
 fn update_bullets(world: &mut World) {
-    for (bullet, nest) in world
-        .query_mut::<EntityRefMut<Bullet>>()
-        .nest_off_diagonal::<(EntityId<Entity>, &Position, &mut Health)>()
+    for (bullet, nest) in
+        world
+            .query_mut::<EntityRefMut<Bullet>>()
+            .nest::<(EntityId<Entity>, &Position, &mut Health)>()
     {
         // For performance reasons, this check would usually be done with
         // a spatial acceleration structure rather than an inner loop.
