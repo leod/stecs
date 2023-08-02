@@ -1,8 +1,4 @@
-use std::{
-    cell::RefCell,
-    fmt::{self, Debug},
-    hash::{Hash, Hasher},
-};
+use std::{cell::RefCell, fmt::Debug, hash::Hash};
 
 use derivative::Derivative;
 

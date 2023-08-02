@@ -1,7 +1,6 @@
 use std::{
     any::{type_name, TypeId},
     fmt::{self, Debug},
-    hash::Hasher,
     marker::PhantomData,
     mem::transmute_copy,
     option,
@@ -34,6 +33,8 @@ pub struct EntityKey<E>(
     PhantomData<E>,
 );
 
+// FIXME: Figure out the serialization story. By itself,
+// serializing/deserializing a `thunderdome::Index` is not meaningful.
 #[cfg(feature = "serde")]
 mod serde_index {
     use serde::{self, Deserialize, Deserializer, Serializer};
