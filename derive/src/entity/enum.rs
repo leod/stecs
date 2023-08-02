@@ -2,22 +2,22 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{DataEnum, DeriveInput, Error, Result};
 
+use crate::utils::associated_ident;
+
 // FIXME: Use `__stecs__` prefix for generic parameters consistently.
 
 pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Result<TokenStream2> {
     let ident = &input.ident;
     let vis = &input.vis;
 
-    let ident_id = syn::Ident::new(&format!("{ident}StecsInternalId"), ident.span());
-    let ident_id_fetch = syn::Ident::new(&format!("{ident}StecsInternalIdFetch"), ident.span());
-    let ident_ref = syn::Ident::new(&format!("{ident}StecsInternalRef"), ident.span());
-    let ident_ref_fetch = syn::Ident::new(&format!("{ident}StecsInternalRefFetch"), ident.span());
-    let ident_ref_mut = syn::Ident::new(&format!("{ident}StecsInternalRefMut"), ident.span());
-    let ident_ref_mut_fetch =
-        syn::Ident::new(&format!("{ident}StecsInternalRefMutFetch"), ident.span());
-    let ident_world_fetch =
-        syn::Ident::new(&format!("{ident}StecsInternalWorldFetch"), ident.span());
-    let ident_world_data = syn::Ident::new(&format!("{ident}StecsInternalWorldData"), ident.span());
+    let ident_id = associated_ident(ident, "Id");
+    let ident_id_fetch = associated_ident(ident, "IdFetch");
+    let ident_ref = associated_ident(ident, "Ref");
+    let ident_ref_fetch = associated_ident(ident, "RefFetch");
+    let ident_ref_mut = associated_ident(ident, "RefMut");
+    let ident_ref_mut_fetch = associated_ident(ident, "RefMutFetch");
+    let ident_world_fetch = associated_ident(ident, "WorldFetch");
+    let ident_world_data = associated_ident(ident, "WorldData");
 
     let variant_idents: Vec<_> = data
         .variants
@@ -103,6 +103,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
     Ok(quote! {
         // Id
 
+        #[allow(non_camel_case_types)]
         #[derive(
             ::std::clone::Clone,
             ::std::marker::Copy,
@@ -122,6 +123,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
 
         // IdFetch
 
+        #[allow(non_camel_case_types)]
         #[derive(
             ::std::clone::Clone,
             ::std::marker::Copy,
@@ -188,6 +190,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
 
         // RefFetch
 
+        #[allow(non_camel_case_types)]
         #[derive(
             ::std::clone::Clone,
             ::std::marker::Copy,
@@ -261,6 +264,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
 
         // Ref
 
+        #[allow(non_camel_case_types)]
         #[derive(::std::clone::Clone)]
         #vis enum #ident_ref<#lifetime> {
             #(
@@ -270,6 +274,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
 
         // RefFetch
 
+        #[allow(non_camel_case_types)]
         #[derive(
             ::std::clone::Clone,
             ::std::marker::Copy,
@@ -340,6 +345,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
 
         // RefMut
 
+        #[allow(non_camel_case_types)]
         #vis enum #ident_ref_mut<#lifetime> {
             #(
                 #variant_idents(<#variant_tys as ::stecs::Entity>::RefMut<#lifetime>),
@@ -348,7 +354,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
 
         // WorldFetch
 
-        #[allow(non_snake_case)]
+        #[allow(non_snake_case, non_camel_case_types)]
         #vis struct #ident_world_fetch<#lifetime, #type_param>
         where
             #type_param: ::stecs::query::fetch::Fetch + #lifetime,
@@ -464,7 +470,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
 
         // TODO: Consider exposing the `WorldData` struct. In this case, convert
         // field names to snake case first.
-        #[allow(non_snake_case)]
+        #[allow(non_snake_case, non_camel_case_types)]
         #[derive(::std::default::Default, ::std::clone::Clone)]
         #vis struct #ident_world_data {
             #(

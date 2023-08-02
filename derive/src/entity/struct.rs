@@ -2,18 +2,19 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{DataStruct, DeriveInput, Result};
 
-use crate::utils::{generics_with_new_lifetime, members_as_idents, struct_fields};
+use crate::utils::{
+    associated_ident, generics_with_new_lifetime, members_as_idents, struct_fields,
+};
 
 pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
     let ident = &input.ident;
     let vis = &input.vis;
 
-    let ident_columns = syn::Ident::new(&format!("{ident}StecsInternalColumns"), ident.span());
-    let ident_ref = syn::Ident::new(&format!("{ident}StecsInternalRef"), ident.span());
-    let ident_ref_fetch = syn::Ident::new(&format!("{ident}StecsInternalRefFetch"), ident.span());
-    let ident_ref_mut = syn::Ident::new(&format!("{ident}StecsInternalRefMut"), ident.span());
-    let ident_ref_mut_fetch =
-        syn::Ident::new(&format!("{ident}StecsInternalRefMutFetch"), ident.span());
+    let ident_columns = associated_ident(ident, "Columns");
+    let ident_ref = associated_ident(ident, "Ref");
+    let ident_ref_fetch = associated_ident(ident, "RefFetch");
+    let ident_ref_mut = associated_ident(ident, "RefMut");
+    let ident_ref_mut_fetch = associated_ident(ident, "RefMutFetch");
 
     let (field_tys, field_members) = struct_fields(&data.fields);
     let field_idents = members_as_idents(&field_members);
@@ -48,7 +49,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
 
         // TODO: Provide a way to derive traits for the column struct.
         // Otherwise, we lose the ability to derive things for our World.
-        #[allow(unused)]
+        #[allow(unused, non_camel_case_types)]
         #[derive(::std::clone::Clone)]
         #vis struct #ident_columns #impl_generics #where_clause {
             #(
@@ -141,7 +142,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
 
         // RefFetch
 
-        #[allow(unused, non_snake_case)]
+        #[allow(unused, non_snake_case, non_camel_case_types)]
         #vis struct #ident_ref_fetch #impl_generics #where_clause {
             __stecs__len: usize,
             #(
@@ -217,7 +218,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
         // Ref
 
         // FIXME: This should be a tuple struct for tuple structs.
-        #[allow(unused, non_snake_case)]
+        #[allow(unused, non_snake_case, non_camel_case_types)]
         #[derive(::std::clone::Clone)]
         #vis struct #ident_ref #impl_generics_with_lifetime #where_clause_with_lifetime {
             #(
@@ -228,7 +229,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
 
         // RefMutFetch
 
-        #[allow(unused, non_snake_case)]
+        #[allow(unused, non_snake_case, non_camel_case_types)]
         #vis struct #ident_ref_mut_fetch #impl_generics #where_clause {
             __stecs__len: usize,
             #(
@@ -300,7 +301,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
         // RefMut
 
         // FIXME: This should be a tuple struct for tuple structs.
-        #[allow(unused, non_snake_case)]
+        #[allow(unused, non_snake_case, non_camel_case_types)]
         #vis struct #ident_ref_mut #impl_generics_with_lifetime #where_clause_with_lifetime {
             #(
                 #vis #field_idents: &#lifetime mut #field_tys,

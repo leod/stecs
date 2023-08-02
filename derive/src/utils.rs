@@ -2,6 +2,10 @@ use std::borrow::Cow;
 
 use proc_macro2::Span;
 
+pub fn associated_ident(ident: &syn::Ident, ty: &str) -> syn::Ident {
+    syn::Ident::new(&format!("__stecs__{ident}{ty}"), ident.span())
+}
+
 // Copied from `hecs`.
 pub fn struct_fields(fields: &syn::Fields) -> (Vec<&syn::Type>, Vec<syn::Member>) {
     match fields {
