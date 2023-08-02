@@ -8,14 +8,14 @@ use crate::{
 
 // TODO: This should probably be generic in `Fetch` rather than `WorldData`, but
 // this works for now.
-pub trait WorldFetch<'w, D: WorldData>: Clone {
-    type Fetch: Fetch;
-    type Iter: Iterator<Item = Self::Fetch>;
+pub trait WorldFetch<'w, F: Fetch>: Clone {
+    type Data: WorldData;
+    type Iter: Iterator<Item = F>;
 
     unsafe fn get<'f>(
         &self,
-        id: <D::Entity as Entity>::Id,
-    ) -> Option<<Self::Fetch as Fetch>::Item<'f>>;
+        id: <<Self::Data as WorldData>::Entity as Entity>::Id,
+    ) -> Option<F::Item<'f>>;
 
     fn iter(&mut self) -> Self::Iter;
 
@@ -25,7 +25,7 @@ pub trait WorldFetch<'w, D: WorldData>: Clone {
 pub trait WorldData: Send + Sync + Default + Clone + 'static {
     type Entity: EntityVariant<Self::Entity>;
 
-    type Fetch<'w, F: Fetch + 'w>: WorldFetch<'w, Self, Fetch = F>;
+    type Fetch<'w, F: Fetch + 'w>: WorldFetch<'w, F, Data = Self>;
 
     fn new() -> Self {
         // TODO: Panic if there is a duplicate entity type anywhere.

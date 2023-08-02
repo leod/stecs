@@ -45,6 +45,22 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
     };
 
     Ok(quote! {
+        // Entity
+
+        impl #impl_generics ::stecs::Entity for #ident #ty_generics #where_clause {
+            type Id = ::stecs::archetype::EntityKey<Self>;
+            type Ref<#lifetime> = #ident_ref #ty_generics_with_lifetime;
+            type RefMut<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
+            type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
+            type FetchMut<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
+            type FetchId<'__stecs__w> = ::stecs::query::fetch::EntityKeyFetch<#ident #ty_generics>;
+            type WorldData = ::stecs::archetype::Archetype<#ident_columns #ty_generics>;
+
+            fn from_ref<'f>(entity: Self::Ref<'f>) -> Self {
+                #from_ref
+            }
+        }
+
         // Columns
 
         // TODO: Provide a way to derive traits for the column struct.
@@ -326,22 +342,6 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
 
         impl #impl_generics ::stecs::entity::EntityStruct for #ident #ty_generics #where_clause {
             type Columns = #ident_columns #ty_generics;
-        }
-
-        // Entity
-
-        impl #impl_generics ::stecs::Entity for #ident #ty_generics #where_clause {
-            type Id = ::stecs::archetype::EntityKey<Self>;
-            type Ref<#lifetime> = #ident_ref #ty_generics_with_lifetime;
-            type RefMut<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
-            type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
-            type FetchMut<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
-            type FetchId<'__stecs__w> = ::stecs::query::fetch::EntityKeyFetch<#ident #ty_generics>;
-            type WorldData = ::stecs::archetype::Archetype<#ident_columns #ty_generics>;
-
-            fn from_ref<'f>(entity: Self::Ref<'f>) -> Self {
-                #from_ref
-            }
         }
     })
 }

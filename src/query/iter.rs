@@ -105,7 +105,7 @@ where
     D: WorldData + 'w,
 {
     len: usize,
-    world_iter: <D::Fetch<'w, F> as WorldFetch<'w, D>>::Iter,
+    world_iter: <D::Fetch<'w, F> as WorldFetch<'w, F>>::Iter,
     current_fetch_iter: Option<FetchIter<'w, F>>,
 }
 

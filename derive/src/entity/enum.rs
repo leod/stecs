@@ -45,19 +45,10 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             quote! {
                 <
                     <
-                        <
-                            #ty
-                            as ::stecs::Entity
-                        >::WorldData
+                        <#ty as ::stecs::Entity>::WorldData
                         as ::stecs::world::WorldData
                     >::Fetch<'w, F>
-                    as ::stecs::world::WorldFetch<
-                        'w,
-                        <
-                            #ty
-                            as ::stecs::Entity
-                        >::WorldData
-                    >
+                    as ::stecs::world::WorldFetch<'w, F>
                 >::Iter
             }
         })
@@ -67,7 +58,6 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             }
         });
 
-    // TODO: Allow generic enum derive(Entity). Should be possible?
     let lifetime: syn::Lifetime = syn::parse_str("'__stecs__f").unwrap();
     let type_param: syn::TypeParam = syn::parse_str("__stecs__F").unwrap();
 
@@ -88,19 +78,31 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         quote! {}
     };
 
-    /*
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-
-    let generics_with_lifetime = generics_with_new_lifetime(&input.generics, &lifetime);
-    let (impl_generics_with_lifetime, ty_generics_with_lifetime, where_clause_with_lifetime) =
-        generics_with_lifetime.split_for_impl();
-
-    let generics_with_type_param = generics_with_new_type_param(&input.generics, &type_param);
-    let (impl_generics_with_type_param, ty_generics_with_type_param, where_clause_with_type_param) =
-        generics_with_type_param.split_for_impl();
-    */
-
     Ok(quote! {
+        // Entity
+
+        impl ::stecs::Entity for #ident {
+            type Id = #ident_id;
+            type Ref<#lifetime> = #ident_ref<#lifetime>;
+            type RefMut<#lifetime> = #ident_ref_mut<#lifetime>;
+            type Fetch<#lifetime> = #ident_ref_fetch<#lifetime>;
+            type FetchMut<#lifetime> = #ident_ref_mut_fetch<#lifetime>;
+            type FetchId<#lifetime> = #ident_id_fetch<#lifetime>;
+            type WorldData = #ident_world_data;
+
+            fn from_ref<'f>(entity: Self::Ref<'f>) -> Self {
+                match entity {
+                    #(
+                        #ident_ref::#variant_idents(entity) => {
+                            #ident::#variant_idents(
+                                <#variant_tys as ::stecs::Entity>::from_ref(entity),
+                            )
+                        }
+                    )*
+                }
+            }
+        }
+
         // Id
 
         #[allow(non_camel_case_types)]
@@ -388,12 +390,11 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         {
         }
 
-        // TODO: Clean up generic names if we want to allow generic enums.
-        impl<'w, F> ::stecs::world::WorldFetch<'w, #ident_world_data> for #ident_world_fetch<'w, F>
+        impl<'w, F> ::stecs::world::WorldFetch<'w, F> for #ident_world_fetch<'w, F>
         where
             F: ::stecs::query::fetch::Fetch,
         {
-            type Fetch = F;
+            type Data = #ident_world_data;
 
             type Iter = #world_fetch_iter;
 
@@ -407,7 +408,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                             unsafe {
                                 <
                                     <WorldData as ::stecs::world::WorldData>::Fetch<'w, F>
-                                    as ::stecs::world::WorldFetch<WorldData>
+                                    as ::stecs::world::WorldFetch<F>
                                 >
                                 ::get(&self.#variant_idents, id)
                             }
@@ -432,9 +433,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                                 >::WorldData
                                 as ::stecs::world::WorldData
                             >::Fetch<'w, F>
-                            as ::stecs::world::WorldFetch<
-                                <#variant_tys as ::stecs::Entity>::WorldData
-                            >
+                            as ::stecs::world::WorldFetch<F>
                         >
                         ::iter(&mut self.#variant_idents)
                     );
@@ -455,9 +454,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                                 >::WorldData
                                 as ::stecs::world::WorldData
                             >::Fetch<'w, F>
-                            as ::stecs::world::WorldFetch<
-                                <#variant_tys as ::stecs::Entity>::WorldData
-                            >
+                            as ::stecs::world::WorldFetch<F>
                         >
                         ::len(&self.#variant_idents);
                 )*
@@ -600,42 +597,5 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 id
             }
         }
-
-        // Entity
-
-        impl ::stecs::Entity for #ident {
-            type Id = #ident_id;
-            type Ref<#lifetime> = #ident_ref<#lifetime>;
-            type RefMut<#lifetime> = #ident_ref_mut<#lifetime>;
-            type Fetch<'__stecs__w> = #ident_ref_fetch<'__stecs__w>;
-            type FetchMut<'__stecs__w> = #ident_ref_mut_fetch<'__stecs__w>;
-            type FetchId<'__stecs__w> = #ident_id_fetch<'__stecs__w>;
-            type WorldData = #ident_world_data;
-
-            fn from_ref<'f>(entity: Self::Ref<'f>) -> Self {
-                match entity {
-                    #(
-                        #ident_ref::#variant_idents(entity) => {
-                            #ident::#variant_idents(
-                                <#variant_tys as ::stecs::Entity>::from_ref(entity),
-                            )
-                        }
-                    )*
-                }
-            }
-        }
     })
-}
-
-fn add_additional_bounds_to_generic_params(generics: &mut syn::Generics) {
-    for type_param in generics.type_params_mut() {
-        type_param
-            .bounds
-            .push(syn::TypeParamBound::Trait(syn::TraitBound {
-                paren_token: None,
-                modifier: syn::TraitBoundModifier::None,
-                lifetimes: None,
-                path: syn::parse_quote!(::stecs::Component),
-            }))
-    }
 }

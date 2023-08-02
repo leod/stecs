@@ -133,15 +133,22 @@ impl<T: Columns> Default for Archetype<T> {
 
 // TODO: impl<T> IntoIterator for Archetype<T>
 
-#[derive(Clone, Copy)]
-pub struct ArchetypeWorldFetch<'w, F>(&'w Arena<usize>, Option<F>);
+pub struct ArchetypeWorldFetch<'w, F, T>(&'w Arena<usize>, Option<F>, PhantomData<T>);
 
-impl<'w, T, F> WorldFetch<'w, Archetype<T>> for ArchetypeWorldFetch<'w, F>
+impl<'w, F: Copy, T> Clone for ArchetypeWorldFetch<'w, F, T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<'w, F: Copy, T> Copy for ArchetypeWorldFetch<'w, F, T> {}
+
+impl<'w, F, T> WorldFetch<'w, F> for ArchetypeWorldFetch<'w, F, T>
 where
-    T: Columns,
     F: Fetch + 'w,
+    T: Columns,
 {
-    type Fetch = F;
+    type Data = Archetype<T>;
 
     type Iter = option::IntoIter<F>;
 
@@ -191,7 +198,7 @@ where
 impl<T: Columns> WorldData for Archetype<T> {
     type Entity = T::Entity;
 
-    type Fetch<'w, F: Fetch + 'w> = ArchetypeWorldFetch<'w, F>;
+    type Fetch<'w, F: Fetch + 'w> = ArchetypeWorldFetch<'w, F, T>;
 
     fn spawn<E>(&mut self, entity: E) -> EntityId<E>
     where
@@ -225,7 +232,7 @@ impl<T: Columns> WorldData for Archetype<T> {
     where
         F: Fetch + 'w,
     {
-        ArchetypeWorldFetch(&self.indices, F::new(&self.ids, &self.columns))
+        ArchetypeWorldFetch(&self.indices, F::new(&self.ids, &self.columns), PhantomData)
     }
 }
 
