@@ -4,9 +4,46 @@ use crate::{entity::EntityVariant, world::WorldFetch, Entity, EntityId, Query, W
 
 use super::{borrow_checker::BorrowChecker, fetch::Fetch, iter::WorldFetchIter};
 
-pub struct NestQueryBorrow<'w, Q, J, S> {
-    pub(crate) data: &'w S,
+pub struct NestQueryBorrow<'w, Q, J, D> {
+    pub(crate) data: &'w D,
     pub(crate) _phantom: PhantomData<(Q, J)>,
+}
+
+impl<'w, Q, J, D> NestQueryBorrow<'w, Q, J, D>
+where
+    Q: Query,
+    J: Query,
+    D: WorldData,
+{
+    pub fn get_mut<'f, E>(
+        &mut self,
+        id: EntityId<E>,
+    ) -> Option<(<Q::Fetch<'f> as Fetch>::Item<'f>, Nest<'f, J::Fetch<'f>, D>)>
+    where
+        'w: 'f,
+        E: EntityVariant<D::Entity>,
+    {
+        let id = id.to_outer();
+
+        // TODO: Cache?
+
+        // Safety: Check that the query does not specify borrows that violate
+        // Rust's borrowing rules.
+        <Q::Fetch<'f> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        <J::Fetch<'f> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
+
+        let world_fetch = self.data.fetch::<Q::Fetch<'f>>();
+
+        // Safety: TODO
+        let item = unsafe { world_fetch.get(id.get()) }?;
+        let nest = Nest {
+            data: self.data,
+            ignore_id: id,
+            fetch: self.data.fetch::<J::Fetch<'f>>(),
+        };
+
+        Some((item, nest))
+    }
 }
 
 // TODO: Implement `get` for `NestQueryResult`.

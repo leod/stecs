@@ -191,7 +191,10 @@ where
         }
     }
 
-    pub fn get<'f, E>(&'f self, id: EntityId<E>) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
+    pub fn get_mut<'f, E>(
+        &'f mut self,
+        id: EntityId<E>,
+    ) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
     where
         'w: 'f,
         E: EntityVariant<D::Entity>,
@@ -209,11 +212,14 @@ where
         // Safety: TODO
         unsafe { world_fetch.get(id.get()) }
     }
+}
 
-    pub fn get_mut<'f, E>(
-        &'f mut self,
-        id: EntityId<E>,
-    ) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
+impl<'w, Q, D> QueryBorrow<'w, Q, D>
+where
+    Q: QueryShared,
+    D: WorldData,
+{
+    pub fn get<'f, E>(&'f self, id: EntityId<E>) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
     where
         'w: 'f,
         E: EntityVariant<D::Entity>,
