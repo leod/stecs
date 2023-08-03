@@ -12,8 +12,8 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
 
     let ident_columns = associated_ident(ident, "Columns");
     let ident_ref = associated_ident(ident, "Ref");
-    let ident_ref_fetch = associated_ident(ident, "RefFetch");
     let ident_ref_mut = associated_ident(ident, "RefMut");
+    let ident_ref_fetch = associated_ident(ident, "RefFetch");
     let ident_ref_mut_fetch = associated_ident(ident, "RefMutFetch");
 
     let (field_tys, field_members) = struct_fields(&data.fields);
@@ -51,14 +51,33 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
             type Id = ::stecs::archetype::EntityKey<Self>;
             type Ref<#lifetime> = #ident_ref #ty_generics_with_lifetime;
             type RefMut<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
+            type WorldData = ::stecs::archetype::Archetype<#ident_columns #ty_generics>;
             type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
             type FetchMut<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
             type FetchId<'__stecs__w> = ::stecs::query::fetch::EntityKeyFetch<#ident #ty_generics>;
-            type WorldData = ::stecs::archetype::Archetype<#ident_columns #ty_generics>;
 
             fn from_ref<'a>(entity: Self::Ref<'a>) -> Self {
                 #from_ref
             }
+        }
+
+        // EntityVariant
+
+        impl #impl_generics ::stecs::entity::EntityVariant<#ident #ty_generics>
+        for #ident #ty_generics #where_clause {
+            fn into_outer(self) -> Self {
+                self
+            }
+
+            fn id_to_outer(id: Self::Id) -> Self::Id {
+                id
+            }
+        }
+
+        // EntityStruct
+
+        impl #impl_generics ::stecs::entity::EntityStruct for #ident #ty_generics #where_clause {
+            type Columns = #ident_columns #ty_generics;
         }
 
         // Columns
@@ -156,6 +175,29 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
             }
         }
 
+        // Ref
+
+        // FIXME: This should be a tuple struct for tuple structs.
+        #[allow(unused, non_snake_case, non_camel_case_types)]
+        #[derive(::std::clone::Clone)]
+        #vis struct #ident_ref #impl_generics_with_lifetime #where_clause_with_lifetime {
+            #(
+                #vis #field_idents: &#lifetime #field_tys,
+            )*
+            __stecs__phantom: ::std::marker::PhantomData<&#lifetime ()>,
+        }
+
+        // RefMut
+
+        // FIXME: This should be a tuple struct for tuple structs.
+        #[allow(unused, non_snake_case, non_camel_case_types)]
+        #vis struct #ident_ref_mut #impl_generics_with_lifetime #where_clause_with_lifetime {
+            #(
+                #vis #field_idents: &#lifetime mut #field_tys,
+            )*
+            __stecs__phantom: ::std::marker::PhantomData<&#lifetime mut ()>,
+        }
+
         // RefFetch
 
         #[allow(unused, non_snake_case, non_camel_case_types)]
@@ -231,18 +273,6 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
         for #ident_ref #ty_generics_with_lifetime #where_clause {
         }
 
-        // Ref
-
-        // FIXME: This should be a tuple struct for tuple structs.
-        #[allow(unused, non_snake_case, non_camel_case_types)]
-        #[derive(::std::clone::Clone)]
-        #vis struct #ident_ref #impl_generics_with_lifetime #where_clause_with_lifetime {
-            #(
-                #vis #field_idents: &#lifetime #field_tys,
-            )*
-            __stecs__phantom: ::std::marker::PhantomData<&#lifetime ()>,
-        }
-
         // RefMutFetch
 
         #[allow(unused, non_snake_case, non_camel_case_types)]
@@ -312,36 +342,6 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
         impl #impl_generics_with_lifetime ::stecs::Query
         for #ident_ref_mut #ty_generics_with_lifetime #where_clause {
             type Fetch<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
-        }
-
-        // RefMut
-
-        // FIXME: This should be a tuple struct for tuple structs.
-        #[allow(unused, non_snake_case, non_camel_case_types)]
-        #vis struct #ident_ref_mut #impl_generics_with_lifetime #where_clause_with_lifetime {
-            #(
-                #vis #field_idents: &#lifetime mut #field_tys,
-            )*
-            __stecs__phantom: ::std::marker::PhantomData<&#lifetime mut ()>,
-        }
-
-        // EntityVariant
-
-        impl #impl_generics ::stecs::entity::EntityVariant<#ident #ty_generics>
-        for #ident #ty_generics #where_clause {
-            fn into_outer(self) -> Self {
-                self
-            }
-
-            fn id_to_outer(id: Self::Id) -> Self::Id {
-                id
-            }
-        }
-
-        // EntityStruct
-
-        impl #impl_generics ::stecs::entity::EntityStruct for #ident #ty_generics #where_clause {
-            type Columns = #ident_columns #ty_generics;
         }
     })
 }

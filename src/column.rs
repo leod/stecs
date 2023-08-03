@@ -23,9 +23,10 @@ impl<C> Column<C> {
         let ptr = self.0.get();
 
         // Safety: We use the `UnsafeCell` only internally. We do expose
-        // `ColumnRawParts`, which contains pointers to our data, but the rest
-        // of the library, specifically places that provide a `QueryBorrow`, and
-        // thereby a safe interface, ensure that no disallowed aliasing happens.
+        // `ColumnRawParts` and `ColumnRawPartsMut`, which contain pointers to
+        // our data, but the rest of the library, specifically places that
+        // provide a `QueryBorrow`, and thereby a safe interface, ensure that no
+        // disallowed aliasing happens.
         unsafe { &*ptr }
     }
 
@@ -75,6 +76,7 @@ impl<C> Column<C> {
         self.0.into_inner()
     }
 
+    // TODO: Make pub(crate)
     pub fn as_raw_parts(&self) -> ColumnRawParts<C> {
         ColumnRawParts {
             ptr: self.borrow().as_ptr(),
@@ -82,6 +84,7 @@ impl<C> Column<C> {
         }
     }
 
+    // TODO: Make pub(crate)
     pub fn as_raw_parts_mut(&self) -> ColumnRawPartsMut<C> {
         // Safety: See `borrow`.
         let inner = unsafe { &mut *self.0.get() };

@@ -108,6 +108,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         }
 
         // EntityVariant
+
         #(
             impl ::stecs::entity::EntityVariant<#ident> for #variant_tys {
                 fn into_outer(self) -> #ident {
