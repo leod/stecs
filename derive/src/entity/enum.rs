@@ -146,9 +146,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         )]
         #derive_serde
         #vis enum #ident_id {
-            #(
-                #variant_idents(<#variant_tys as ::stecs::Entity>::Id),
-            )*
+            #(#variant_idents(<#variant_tys as ::stecs::Entity>::Id),)*
         }
 
         // Ref
@@ -156,18 +154,14 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         #[allow(non_camel_case_types)]
         #[derive(::std::clone::Clone)]
         #vis enum #ident_ref<#lifetime> {
-            #(
-                #variant_idents(<#variant_tys as ::stecs::Entity>::Ref<#lifetime>),
-            )*
+            #(#variant_idents(<#variant_tys as ::stecs::Entity>::Ref<#lifetime>),)*
         }
 
         // RefMut
 
         #[allow(non_camel_case_types)]
         #vis enum #ident_ref_mut<#lifetime> {
-            #(
-                #variant_idents(<#variant_tys as ::stecs::Entity>::RefMut<#lifetime>),
-            )*
+            #(#variant_idents(<#variant_tys as ::stecs::Entity>::RefMut<#lifetime>),)*
         }
 
         // WorldData
@@ -177,14 +171,11 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         #[allow(non_snake_case, non_camel_case_types)]
         #[derive(::std::default::Default, ::std::clone::Clone)]
         #vis struct #ident_world_data {
-            #(
-                #variant_idents: <#variant_tys as ::stecs::Entity>::WorldData,
-            )*
+            #(#variant_idents: <#variant_tys as ::stecs::Entity>::WorldData,)*
         }
 
         impl ::stecs::WorldData for #ident_world_data {
             type Entity = #ident;
-
             type Fetch<'w, F: ::stecs::query::fetch::Fetch + 'w> = #ident_world_fetch<'w, F>;
 
             fn spawn<E>(&mut self, entity: E) -> ::stecs::EntityId<E>
@@ -232,9 +223,8 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 match id.to_outer().get() {
                     #(
                         #ident_id::#variant_idents(id) => {
-                            let id = ::stecs::EntityId::<#variant_tys>::new(id);
                             self.#variant_idents
-                                .despawn(id)
+                                .despawn(::stecs::EntityId::<#variant_tys>::new(id))
                                 .map(|entity| #ident::#variant_idents(entity))
                         }
                     )*
@@ -264,7 +254,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             where
                 F: ::stecs::query::fetch::Fetch + 'w,
             {
-                let mut fetch = #ident_world_fetch {
+                #ident_world_fetch {
                     #(
                         #variant_idents:
                             <
@@ -273,9 +263,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                             >
                             ::fetch::<F>(&self.#variant_idents),
                     )*
-                };
-
-                fetch
+                }
             }
         }
 
@@ -309,8 +297,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         for #ident_world_fetch<#lifetime, #type_param>
         where
             #type_param: ::stecs::query::fetch::Fetch + #lifetime,
-        {
-        }
+        {}
 
         impl<'w, F> ::stecs::world::WorldFetch<'w, F> for #ident_world_fetch<'w, F>
         where
@@ -353,9 +340,9 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             }
 
             fn len(&self) -> usize {
-                let len = 0;
+                let mut len = 0;
                 #(
-                    let len = len +
+                    len +=
                         <
                             ::stecs::world::EntityWorldFetch<'w, #variant_tys, F>
                             as ::stecs::world::WorldFetch<F>
@@ -376,9 +363,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             ::std::marker::Copy,
         )]
         #vis enum #ident_id_fetch<'w> {
-            #(
-                #variant_idents(<#variant_tys as ::stecs::entity::Entity>::FetchId<'w>),
-            )*
+            #(#variant_idents(<#variant_tys as ::stecs::entity::Entity>::FetchId<'w>),)*
         }
 
         unsafe impl<'w> ::stecs::query::fetch::Fetch for #ident_id_fetch<'w> {
@@ -388,21 +373,18 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &A,
             ) -> ::std::option::Option<Self> {
+                let mut result = None;
                 #(
-                    if let ::std::option::Option::Some(fetch) =
-                        ::stecs::query::fetch::Fetch::new(ids, columns) {
-                        return ::std::option::Option::Some(#ident_id_fetch::#variant_idents(fetch))
-                    }
+                    result = result.or_else(|| ::stecs::query::fetch::Fetch::new(ids, columns).map(
+                        #ident_id_fetch::#variant_idents,
+                    ));
                 )*
-
-                ::std::option::Option::None
+                result
             }
 
             fn len(&self) -> usize {
                 match self {
-                    #(
-                        #ident_id_fetch::#variant_idents(fetch) => fetch.len(),
-                    )*
+                    #(#ident_id_fetch::#variant_idents(fetch) => fetch.len(),)*
                 }
             }
 
@@ -434,9 +416,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             ::std::marker::Copy,
         )]
         #vis enum #ident_ref_fetch<'w> {
-            #(
-                #variant_idents(<#variant_tys as ::stecs::entity::Entity>::Fetch<'w>),
-            )*
+            #(#variant_idents(<#variant_tys as ::stecs::entity::Entity>::Fetch<'w>),)*
         }
 
         unsafe impl<'w> ::stecs::query::fetch::Fetch for #ident_ref_fetch<'w> {
@@ -446,21 +426,18 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &A,
             ) -> ::std::option::Option<Self> {
+                let mut result = None;
                 #(
-                    if let ::std::option::Option::Some(fetch) =
-                        ::stecs::query::fetch::Fetch::new(ids, columns) {
-                        return ::std::option::Option::Some(#ident_ref_fetch::#variant_idents(fetch));
-                    }
+                    result = result.or_else(|| ::stecs::query::fetch::Fetch::new(ids, columns).map(
+                        #ident_ref_fetch::#variant_idents,
+                    ));
                 )*
-
-                ::std::option::Option::None
+                result
             }
 
             fn len(&self) -> usize {
                 match self {
-                    #(
-                        #ident_ref_fetch::#variant_idents(fetch) => fetch.len(),
-                    )*
+                    #(#ident_ref_fetch::#variant_idents(fetch) => fetch.len(),)*
                 }
             }
 
@@ -511,14 +488,13 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &A,
             ) -> ::std::option::Option<Self> {
+                let mut result = None;
                 #(
-                    if let ::std::option::Option::Some(fetch) =
-                        ::stecs::query::fetch::Fetch::new(ids, columns) {
-                        return ::std::option::Option::Some(#ident_ref_mut_fetch::#variant_idents(fetch));
-                    }
+                    result = result.or_else(|| ::stecs::query::fetch::Fetch::new(ids, columns).map(
+                        #ident_ref_mut_fetch::#variant_idents,
+                    ));
                 )*
-
-                ::std::option::Option::None
+                result
             }
 
             fn len(&self) -> usize {
