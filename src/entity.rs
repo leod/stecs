@@ -36,15 +36,16 @@ pub trait Entity: Clone + 'static {
 
     type RefMut<'f>: Query;
 
+    type WorldData: WorldData<Entity = Self>;
+
+    #[doc(hidden)]
+    type FetchId<'w>: Fetch<Item<'w> = EntityId<Self>>;
+
     #[doc(hidden)]
     type Fetch<'w>: Fetch<Item<'w> = Self::Ref<'w>>;
 
     #[doc(hidden)]
     type FetchMut<'w>: Fetch<Item<'w> = Self::RefMut<'w>>;
-
-    type FetchId<'w>: Fetch<Item<'w> = EntityId<Self>>;
-
-    type WorldData: WorldData<Entity = Self>;
 
     fn from_ref<'f>(entity: Self::Ref<'f>) -> Self;
 }

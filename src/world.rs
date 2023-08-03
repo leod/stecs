@@ -22,6 +22,15 @@ pub trait WorldFetch<'w, F: Fetch>: Clone {
     fn len(&self) -> usize;
 }
 
+#[doc(hidden)]
+pub type EntityWorldData<E> = <E as Entity>::WorldData;
+
+#[doc(hidden)]
+pub type EntityWorldFetch<'w, E, F> = <EntityWorldData<E> as WorldData>::Fetch<'w, F>;
+
+#[doc(hidden)]
+pub type EntityWorldFetchIter<'w, E, F> = <EntityWorldFetch<'w, E, F> as WorldFetch<'w, F>>::Iter;
+
 pub trait WorldData: Send + Sync + Default + Clone + 'static {
     type Entity: EntityVariant<Self::Entity>;
 

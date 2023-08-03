@@ -4,7 +4,7 @@ use crate::{
     archetype::EntityKey,
     column::{Column, ColumnRawParts, ColumnRawPartsMut},
     entity::{Columns, EntityStruct},
-    Component, EntityId, WorldData,
+    Component, EntityId,
 };
 
 use super::{borrow_checker::BorrowChecker, Or};
@@ -42,11 +42,6 @@ pub unsafe trait Fetch: Copy {
 
     #[doc(hidden)]
     fn check_borrows(checker: &mut BorrowChecker);
-
-    // TODO: This is no longer needed, since we have decided to disallow having
-    // the same entity type multiple times via nesting.
-    #[doc(hidden)]
-    fn filter_by_outer<DOuter: WorldData>(_: &mut Option<Self>) {}
 }
 
 unsafe impl<C> Fetch for ColumnRawParts<C>
