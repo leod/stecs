@@ -69,8 +69,8 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
         #[derive(::std::clone::Clone)]
         #vis struct #ident_columns #impl_generics #where_clause {
             #(
-                #field_idents: ::std::cell::RefCell<::stecs::column::Column<#field_tys>>
-            ),*
+                #field_idents: ::stecs::column::Column<#field_tys>,
+            )*
         }
 
         impl #impl_generics ::std::default::Default
@@ -78,8 +78,8 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
             fn default() -> Self {
                 Self {
                     #(
-                        #field_idents: ::std::default::Default::default()
-                    ),*
+                        #field_idents: ::std::default::Default::default(),
+                    )*
                 }
             }
         }
@@ -91,7 +91,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
             fn column<__stecs__C: ::stecs::Component>(
                 &self,
             )
-            -> ::std::option::Option<&::std::cell::RefCell<::stecs::column::Column<__stecs__C>>>
+            -> ::std::option::Option<&::stecs::column::Column<__stecs__C>>
             {
                 #(
                     if ::std::any::TypeId::of::<__stecs__C>() ==
@@ -105,14 +105,14 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
 
             fn push(&mut self, entity: Self::Entity) {
                 #(
-                    self.#field_idents.borrow_mut().push(entity.#field_members)
+                    self.#field_idents.push(entity.#field_members)
                 );*
             }
 
             fn remove(&mut self, index: usize) -> Self::Entity {
                 #ident {
                     #(
-                        #field_members: self.#field_idents.borrow_mut().remove(index)
+                        #field_members: self.#field_idents.remove(index)
                     ),*
                 }
             }
@@ -125,13 +125,13 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
                 '__stecs__w: #lifetime,
             {
                 #(
-                    ::std::debug_assert_eq!(len, self.#field_idents.borrow().len());
+                    ::std::debug_assert_eq!(len, self.#field_idents.len());
                 )*
 
                 #ident_ref_fetch {
                     __stecs__len: len,
                     #(
-                        #field_idents: self.#field_idents.borrow().as_raw_parts(),
+                        #field_idents: self.#field_idents.as_raw_parts(),
                     )*
                 }
             }
@@ -144,13 +144,13 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
                 '__stecs__w: #lifetime,
             {
                 #(
-                    ::std::debug_assert_eq!(len, self.#field_idents.borrow().len());
+                    ::std::debug_assert_eq!(len, self.#field_idents.len());
                 )*
 
                 #ident_ref_mut_fetch {
                     __stecs__len: len,
                     #(
-                        #field_idents: self.#field_idents.borrow_mut().as_raw_parts_mut(),
+                        #field_idents: self.#field_idents.as_raw_parts_mut(),
                     )*
                 }
             }

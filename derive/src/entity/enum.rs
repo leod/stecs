@@ -278,14 +278,6 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             }
         }
 
-        // Safety: TODO. This is needed because `T` can contain `RefCell`.
-        // However, this is thread-safe, because `WorldData` only allows
-        // mutation with `&mut self`. FIXME: It is not that simple! The
-        // component types could have interior mutability, which would break
-        // `Sync`. FIXME!
-        unsafe impl ::std::marker::Send for #ident_world_data {}
-        unsafe impl ::std::marker::Sync for #ident_world_data {}
-
         // WorldFetch
 
         #[allow(non_snake_case, non_camel_case_types)]

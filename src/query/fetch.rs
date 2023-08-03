@@ -51,9 +51,7 @@ where
     type Item<'a> = &'a C where Self: 'a;
 
     fn new<T: Columns>(_: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
-        columns
-            .column::<C>()
-            .map(|column| column.borrow().as_raw_parts())
+        columns.column::<C>().map(|column| column.as_raw_parts())
     }
 
     fn len(&self) -> usize {
@@ -83,7 +81,7 @@ where
     fn new<T: Columns>(_: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
         columns
             .column::<C>()
-            .map(|column| column.borrow_mut().as_raw_parts_mut())
+            .map(|column| column.as_raw_parts_mut())
     }
 
     fn len(&self) -> usize {

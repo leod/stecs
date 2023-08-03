@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fmt::Debug, hash::Hash};
+use std::{fmt::Debug, hash::Hash};
 
 use derivative::Derivative;
 
@@ -10,7 +10,7 @@ use crate::{
 pub trait Columns: Default + Clone + 'static {
     type Entity: Entity<Id = EntityKey<Self::Entity>> + EntityVariant<Self::Entity>;
 
-    fn column<C: Component>(&self) -> Option<&RefCell<Column<C>>>;
+    fn column<C: Component>(&self) -> Option<&Column<C>>;
 
     fn push(&mut self, entity: Self::Entity);
 
