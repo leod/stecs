@@ -17,24 +17,24 @@ pub trait Columns: Default + Clone + 'static {
     fn remove(&mut self, index: usize) -> Self::Entity;
 
     // FIXME: I really don't know about these lifetimes.
-    fn new_fetch<'w, 'f>(&'w self, len: usize) -> <Self::Entity as Entity>::Fetch<'f>
+    fn new_fetch<'w, 'a>(&'w self, len: usize) -> <Self::Entity as Entity>::Fetch<'a>
     where
-        'w: 'f;
+        'w: 'a;
 
     // FIXME: I really don't know about these lifetimes.
-    fn new_fetch_mut<'w, 'f>(&'w self, len: usize) -> <Self::Entity as Entity>::FetchMut<'f>
+    fn new_fetch_mut<'w, 'a>(&'w self, len: usize) -> <Self::Entity as Entity>::FetchMut<'a>
     where
-        'w: 'f;
+        'w: 'a;
 }
 
 pub trait Entity: Clone + 'static {
     type Id: Copy + Debug + Eq + Ord + Hash + 'static;
 
-    type Ref<'f>: QueryShared + Clone;
+    type Ref<'a>: QueryShared + Clone;
     /*where
     for<'w> <Self::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = Self::Ref<'w>>;*/
 
-    type RefMut<'f>: Query;
+    type RefMut<'a>: Query;
 
     type WorldData: WorldData<Entity = Self>;
 
@@ -47,7 +47,7 @@ pub trait Entity: Clone + 'static {
     #[doc(hidden)]
     type FetchMut<'w>: Fetch<Item<'w> = Self::RefMut<'w>>;
 
-    fn from_ref<'f>(entity: Self::Ref<'f>) -> Self;
+    fn from_ref<'a>(entity: Self::Ref<'a>) -> Self;
 }
 
 pub trait EntityStruct: Entity {
@@ -60,9 +60,9 @@ pub trait EntityVariant<EOuter: Entity>: Entity {
     fn id_to_outer(id: Self::Id) -> EOuter::Id;
 }
 
-pub type EntityRef<'f, E> = <E as Entity>::Ref<'f>;
+pub type EntityRef<'a, E> = <E as Entity>::Ref<'a>;
 
-pub type EntityRefMut<'f, E> = <E as Entity>::RefMut<'f>;
+pub type EntityRefMut<'a, E> = <E as Entity>::RefMut<'a>;
 
 #[derive(Derivative)]
 #[derivative(

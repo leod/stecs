@@ -152,7 +152,7 @@ where
 
     type Iter = option::IntoIter<F>;
 
-    unsafe fn get<'f>(&self, id: EntityKey<T::Entity>) -> Option<F::Item<'f>> {
+    unsafe fn get<'a>(&self, id: EntityKey<T::Entity>) -> Option<F::Item<'a>> {
         self.1
             .and_then(|fetch| self.0.get(id.0).map(|&index| fetch.get(index)))
     }

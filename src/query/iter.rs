@@ -54,15 +54,15 @@ where
 // the query does not specify borrows that violate Rust's borrowing rules. Also,
 // do not allow constructing references to the entity at which the `FetchIter`
 // currently points that would violate Rust's borrowing rules.
-pub(crate) struct FetchIter<'f, F> {
+pub(crate) struct FetchIter<'a, F> {
     i: usize,
     fetch: F,
-    _phantom: PhantomData<&'f ()>,
+    _phantom: PhantomData<&'a ()>,
 }
 
-impl<'f, F> FetchIter<'f, F>
+impl<'a, F> FetchIter<'a, F>
 where
-    F: Fetch + 'f,
+    F: Fetch + 'a,
 {
     pub fn new(fetch: F) -> Self {
         Self {
@@ -79,11 +79,11 @@ where
     }
 }
 
-impl<'f, F> Iterator for FetchIter<'f, F>
+impl<'a, F> Iterator for FetchIter<'a, F>
 where
-    F: Fetch + 'f,
+    F: Fetch + 'a,
 {
-    type Item = F::Item<'f>;
+    type Item = F::Item<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.i == self.fetch.len() {

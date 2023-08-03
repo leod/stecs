@@ -94,7 +94,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             type FetchMut<#lifetime> = #ident_ref_mut_fetch<#lifetime>;
             type FetchId<#lifetime> = #ident_id_fetch<#lifetime>;
 
-            fn from_ref<'f>(entity: Self::Ref<'f>) -> Self {
+            fn from_ref<'a>(entity: Self::Ref<'a>) -> Self {
                 match entity {
                     #(
                         #ident_ref::#variant_idents(entity) => {
@@ -326,7 +326,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             type Data = #ident_world_data;
             type Iter = #world_fetch_iter;
 
-            unsafe fn get<'f>(&self, id: #ident_id) -> ::std::option::Option<F::Item<'f>> {
+            unsafe fn get<'a>(&self, id: #ident_id) -> ::std::option::Option<F::Item<'a>> {
                 match id {
                     #(
                         #ident_id::#variant_idents(id) => {
@@ -389,7 +389,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         }
 
         unsafe impl<'w> ::stecs::query::fetch::Fetch for #ident_id_fetch<'w> {
-            type Item<'f> = ::stecs::EntityId<#ident> where Self: 'f;
+            type Item<'a> = ::stecs::EntityId<#ident> where Self: 'a;
 
             fn new<A: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
@@ -413,9 +413,9 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 }
             }
 
-            unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+            unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
             where
-                Self: 'f,
+                Self: 'a,
             {
                 ::stecs::EntityId::new(match self {
                     #(
@@ -447,7 +447,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         }
 
         unsafe impl<'w> ::stecs::query::fetch::Fetch for #ident_ref_fetch<'w> {
-            type Item<'f> = #ident_ref<'f> where Self: 'f;
+            type Item<'a> = #ident_ref<'a> where Self: 'a;
 
             fn new<A: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
@@ -471,9 +471,9 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 }
             }
 
-            unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+            unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
             where
-                Self: 'f,
+                Self: 'a,
             {
                 match self {
                     #(
@@ -512,7 +512,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         }
 
         unsafe impl<'w> ::stecs::query::fetch::Fetch for #ident_ref_mut_fetch<'w> {
-            type Item<'f> = #ident_ref_mut<'f> where Self: 'f;
+            type Item<'a> = #ident_ref_mut<'a> where Self: 'a;
 
             fn new<A: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
@@ -536,9 +536,9 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 }
             }
 
-            unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+            unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
             where
-                Self: 'f,
+                Self: 'a,
             {
                 match self {
                     #(

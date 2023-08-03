@@ -12,10 +12,10 @@ pub trait WorldFetch<'w, F: Fetch>: Clone {
     type Data: WorldData;
     type Iter: Iterator<Item = F>;
 
-    unsafe fn get<'f>(
+    unsafe fn get<'a>(
         &self,
         id: <<Self::Data as WorldData>::Entity as Entity>::Id,
-    ) -> Option<F::Item<'f>>;
+    ) -> Option<F::Item<'a>>;
 
     fn iter(&mut self) -> Self::Iter;
 

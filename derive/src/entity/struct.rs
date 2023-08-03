@@ -56,7 +56,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
             type FetchId<'__stecs__w> = ::stecs::query::fetch::EntityKeyFetch<#ident #ty_generics>;
             type WorldData = ::stecs::archetype::Archetype<#ident_columns #ty_generics>;
 
-            fn from_ref<'f>(entity: Self::Ref<'f>) -> Self {
+            fn from_ref<'a>(entity: Self::Ref<'a>) -> Self {
                 #from_ref
             }
         }
