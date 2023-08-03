@@ -1,4 +1,9 @@
-use std::cell::UnsafeCell;
+use std::{
+    any::{Any, TypeId},
+    cell::UnsafeCell,
+};
+
+use crate::Component;
 
 #[derive(Debug)]
 pub struct Column<C>(UnsafeCell<Vec<C>>);
@@ -121,3 +126,9 @@ impl<C> Clone for ColumnRawPartsMut<C> {
 }
 
 impl<C> Copy for ColumnRawPartsMut<C> {}
+
+// For proc macros.
+#[doc(hidden)]
+pub fn downcast_ref<C: Component, D: Component>(column: &Column<C>) -> Option<&Column<D>> {
+    (column as &dyn Any).downcast_ref()
+}

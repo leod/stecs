@@ -39,13 +39,13 @@ pub trait Entity: Clone + 'static {
     type WorldData: WorldData<Entity = Self>;
 
     #[doc(hidden)]
-    type FetchId<'w>: Fetch<Item<'w> = EntityId<Self>>;
+    type FetchId<'w>: Fetch<Item<'w> = EntityId<Self>> + 'w;
 
     #[doc(hidden)]
-    type Fetch<'w>: Fetch<Item<'w> = Self::Ref<'w>>;
+    type Fetch<'w>: Fetch<Item<'w> = Self::Ref<'w>> + 'w;
 
     #[doc(hidden)]
-    type FetchMut<'w>: Fetch<Item<'w> = Self::RefMut<'w>>;
+    type FetchMut<'w>: Fetch<Item<'w> = Self::RefMut<'w>> + 'w;
 
     fn from_ref<'a>(entity: Self::Ref<'a>) -> Self;
 }

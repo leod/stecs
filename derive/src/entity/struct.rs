@@ -22,23 +22,19 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let lifetime: syn::Lifetime = syn::parse_str("'__stecs__f").unwrap();
-    let generics_with_lifetime = generics_with_new_lifetime(&input.generics, &lifetime);
-    let (impl_generics_with_lifetime, ty_generics_with_lifetime, where_clause_with_lifetime) =
-        generics_with_lifetime.split_for_impl();
+    let generics_lifetime = generics_with_new_lifetime(&input.generics, &lifetime);
+    let (impl_generics_lifetime, ty_generics_lifetime, where_clause_lifetime) =
+        generics_lifetime.split_for_impl();
 
     let from_ref = match &data.fields {
         syn::Fields::Named(_) => quote! {
             Self {
-                #(
-                    #field_members: ::std::clone::Clone::clone(entity.#field_idents),
-                )*
+                #(#field_members: ::std::clone::Clone::clone(entity.#field_idents),)*
             }
         },
         syn::Fields::Unnamed(_) => quote! {
             Self(
-                #(
-                    ::std::clone::Clone::clone(entity.#field_idents),
-                )*
+                #(::std::clone::Clone::clone(entity.#field_idents),)*
             )
         },
         syn::Fields::Unit => quote! {Self},
@@ -49,8 +45,8 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
 
         impl #impl_generics ::stecs::Entity for #ident #ty_generics #where_clause {
             type Id = ::stecs::archetype::EntityKey<Self>;
-            type Ref<#lifetime> = #ident_ref #ty_generics_with_lifetime;
-            type RefMut<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
+            type Ref<#lifetime> = #ident_ref #ty_generics_lifetime;
+            type RefMut<#lifetime> = #ident_ref_mut #ty_generics_lifetime;
             type WorldData = ::stecs::archetype::Archetype<#ident_columns #ty_generics>;
             type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
             type FetchMut<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
@@ -87,18 +83,14 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
         #[allow(unused, non_camel_case_types)]
         #[derive(::std::clone::Clone)]
         #vis struct #ident_columns #impl_generics #where_clause {
-            #(
-                #field_idents: ::stecs::column::Column<#field_tys>,
-            )*
+            #(#field_idents: ::stecs::column::Column<#field_tys>,)*
         }
 
         impl #impl_generics ::std::default::Default
         for #ident_columns #ty_generics #where_clause {
             fn default() -> Self {
                 Self {
-                    #(
-                        #field_idents: ::std::default::Default::default(),
-                    )*
+                    #(#field_idents: ::std::default::Default::default(),)*
                 }
             }
         }
@@ -112,27 +104,19 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
             )
             -> ::std::option::Option<&::stecs::column::Column<__stecs__C>>
             {
-                #(
-                    if ::std::any::TypeId::of::<__stecs__C>() ==
-                           ::std::any::TypeId::of::<#field_tys>() {
-                        return (&self.#field_idents as &dyn ::std::any::Any).downcast_ref();
-                    }
-                )*
+                let mut result = ::std::option::Option::None;
+                #(result = result.or_else(|| ::stecs::column::downcast_ref(&self.#field_idents));)*
 
-                ::std::option::Option::None
+                result
             }
 
             fn push(&mut self, entity: Self::Entity) {
-                #(
-                    self.#field_idents.push(entity.#field_members)
-                );*
+                #(self.#field_idents.push(entity.#field_members));*
             }
 
             fn remove(&mut self, index: usize) -> Self::Entity {
                 #ident {
-                    #(
-                        #field_members: self.#field_idents.remove(index)
-                    ),*
+                    #(#field_members: self.#field_idents.remove(index)),*
                 }
             }
 
@@ -143,15 +127,11 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
             where
                 '__stecs__w: #lifetime,
             {
-                #(
-                    ::std::debug_assert_eq!(len, self.#field_idents.len());
-                )*
+                #(::std::debug_assert_eq!(len, self.#field_idents.len());)*
 
                 #ident_ref_fetch {
+                    #(#field_idents: self.#field_idents.as_raw_parts(),)*
                     __stecs__len: len,
-                    #(
-                        #field_idents: self.#field_idents.as_raw_parts(),
-                    )*
                 }
             }
 
@@ -162,15 +142,11 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
             where
                 '__stecs__w: #lifetime,
             {
-                #(
-                    ::std::debug_assert_eq!(len, self.#field_idents.len());
-                )*
+                #(::std::debug_assert_eq!(len, self.#field_idents.len());)*
 
                 #ident_ref_mut_fetch {
+                    #(#field_idents: self.#field_idents.as_raw_parts_mut(),)*
                     __stecs__len: len,
-                    #(
-                        #field_idents: self.#field_idents.as_raw_parts_mut(),
-                    )*
                 }
             }
         }
@@ -180,10 +156,8 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
         // FIXME: This should be a tuple struct for tuple structs.
         #[allow(unused, non_snake_case, non_camel_case_types)]
         #[derive(::std::clone::Clone)]
-        #vis struct #ident_ref #impl_generics_with_lifetime #where_clause_with_lifetime {
-            #(
-                #vis #field_idents: &#lifetime #field_tys,
-            )*
+        #vis struct #ident_ref #impl_generics_lifetime #where_clause_lifetime {
+            #(#vis #field_idents: &#lifetime #field_tys,)*
             __stecs__phantom: ::std::marker::PhantomData<&#lifetime ()>,
         }
 
@@ -191,10 +165,8 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
 
         // FIXME: This should be a tuple struct for tuple structs.
         #[allow(unused, non_snake_case, non_camel_case_types)]
-        #vis struct #ident_ref_mut #impl_generics_with_lifetime #where_clause_with_lifetime {
-            #(
-                #vis #field_idents: &#lifetime mut #field_tys,
-            )*
+        #vis struct #ident_ref_mut #impl_generics_lifetime #where_clause_lifetime {
+            #(#vis #field_idents: &#lifetime mut #field_tys,)*
             __stecs__phantom: ::std::marker::PhantomData<&#lifetime mut ()>,
         }
 
@@ -202,10 +174,8 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
 
         #[allow(unused, non_snake_case, non_camel_case_types)]
         #vis struct #ident_ref_fetch #impl_generics #where_clause {
+            #(#field_idents: ::stecs::column::ColumnRawParts<#field_tys>,)*
             __stecs__len: usize,
-            #(
-                #field_idents: ::stecs::column::ColumnRawParts<#field_tys>
-            ),*
         }
 
         impl #impl_generics ::std::clone::Clone
@@ -221,7 +191,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
 
         unsafe impl #impl_generics ::stecs::query::fetch::Fetch
         for #ident_ref_fetch #ty_generics #where_clause {
-            type Item<#lifetime> = #ident_ref #ty_generics_with_lifetime;
+            type Item<#lifetime> = #ident_ref #ty_generics_lifetime;
 
             fn new<__stecs__A: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
@@ -250,27 +220,23 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
                 ::std::assert!(index < self.len());
 
                 #ident_ref {
-                    #(
-                        #field_idents: &*self.#field_idents.ptr.add(index),
-                    )*
+                    #(#field_idents: &*self.#field_idents.ptr.add(index),)*
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
             }
 
             fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
-                #(
-                    checker.borrow::<#field_tys>();
-                )*
+                #(checker.borrow::<#field_tys>();)*
             }
         }
 
-        impl #impl_generics_with_lifetime ::stecs::Query
-        for #ident_ref #ty_generics_with_lifetime #where_clause {
+        impl #impl_generics_lifetime ::stecs::Query
+        for #ident_ref #ty_generics_lifetime #where_clause {
             type Fetch<'__stecs__w> = #ident_ref_fetch #ty_generics;
         }
 
-        impl #impl_generics_with_lifetime ::stecs::QueryShared
-        for #ident_ref #ty_generics_with_lifetime #where_clause {
+        impl #impl_generics_lifetime ::stecs::QueryShared
+        for #ident_ref #ty_generics_lifetime #where_clause {
         }
 
         // RefMutFetch
@@ -278,9 +244,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
         #[allow(unused, non_snake_case, non_camel_case_types)]
         #vis struct #ident_ref_mut_fetch #impl_generics #where_clause {
             __stecs__len: usize,
-            #(
-                #field_idents: ::stecs::column::ColumnRawPartsMut<#field_tys>
-            ),*
+            #(#field_idents: ::stecs::column::ColumnRawPartsMut<#field_tys>,)*
         }
 
         impl #impl_generics ::std::clone::Clone
@@ -296,7 +260,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
 
         unsafe impl #impl_generics ::stecs::query::fetch::Fetch
         for #ident_ref_mut_fetch #ty_generics #where_clause {
-            type Item<#lifetime> = #ident_ref_mut #ty_generics_with_lifetime;
+            type Item<#lifetime> = #ident_ref_mut #ty_generics_lifetime;
 
             fn new<__stecs__A: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
@@ -325,22 +289,18 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
                 ::std::assert!(index < self.len());
 
                 #ident_ref_mut {
-                    #(
-                        #field_idents: &mut *self.#field_idents.ptr.add(index),
-                    )*
+                    #(#field_idents: &mut *self.#field_idents.ptr.add(index),)*
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
             }
 
             fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
-                #(
-                    checker.borrow_mut::<#field_tys>();
-                )*
+                #(checker.borrow_mut::<#field_tys>();)*
             }
         }
 
-        impl #impl_generics_with_lifetime ::stecs::Query
-        for #ident_ref_mut #ty_generics_with_lifetime #where_clause {
+        impl #impl_generics_lifetime ::stecs::Query
+        for #ident_ref_mut #ty_generics_lifetime #where_clause {
             type Fetch<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
         }
     })
