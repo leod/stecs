@@ -169,15 +169,9 @@ macro_rules! tuple_impl {
 
             #[allow(non_snake_case, unused)]
             fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
-                let len = None;
-                $(
-                    let $name = $name::new(ids, columns)?;
-
-                    if let Some(len) = len {
-                        assert_eq!($name.len(), len);
-                    }
-                    let len = Some($name.len());
-                )*
+                let len = ids.len();
+                $(let $name = $name::new(ids, columns)?;)*
+                $(assert_eq!($name.len(), len);)*
 
                 Some(($($name,)*))
             }

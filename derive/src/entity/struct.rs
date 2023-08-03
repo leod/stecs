@@ -37,7 +37,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
                 #(::std::clone::Clone::clone(entity.#field_idents),)*
             )
         },
-        syn::Fields::Unit => quote! {Self},
+        syn::Fields::Unit => quote! { Self },
     };
 
     Ok(quote! {
@@ -101,9 +101,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
 
             fn column<__stecs__C: ::stecs::Component>(
                 &self,
-            )
-            -> ::std::option::Option<&::stecs::column::Column<__stecs__C>>
-            {
+            ) -> ::std::option::Option<&::stecs::column::Column<__stecs__C>> {
                 let mut result = ::std::option::Option::None;
                 #(result = result.or_else(|| ::stecs::column::downcast_ref(&self.#field_idents));)*
 
@@ -111,12 +109,12 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
             }
 
             fn push(&mut self, entity: Self::Entity) {
-                #(self.#field_idents.push(entity.#field_members));*
+                #(self.#field_idents.push(entity.#field_members);)*
             }
 
             fn remove(&mut self, index: usize) -> Self::Entity {
                 #ident {
-                    #(#field_members: self.#field_idents.remove(index)),*
+                    #(#field_members: self.#field_idents.remove(index),)*
                 }
             }
 
@@ -127,7 +125,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
             where
                 '__stecs__w: #lifetime,
             {
-                #(::std::debug_assert_eq!(len, self.#field_idents.len());)*
+                #(::std::assert_eq!(len, self.#field_idents.len());)*
 
                 #ident_ref_fetch {
                     #(#field_idents: self.#field_idents.as_raw_parts(),)*
@@ -142,7 +140,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
             where
                 '__stecs__w: #lifetime,
             {
-                #(::std::debug_assert_eq!(len, self.#field_idents.len());)*
+                #(::std::assert_eq!(len, self.#field_idents.len());)*
 
                 #ident_ref_mut_fetch {
                     #(#field_idents: self.#field_idents.as_raw_parts_mut(),)*
@@ -186,30 +184,20 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
         }
 
         impl #impl_generics ::std::marker::Copy
-        for #ident_ref_fetch #ty_generics #where_clause {
-        }
+        for #ident_ref_fetch #ty_generics #where_clause {}
 
         unsafe impl #impl_generics ::stecs::query::fetch::Fetch
         for #ident_ref_fetch #ty_generics #where_clause {
             type Item<#lifetime> = #ident_ref #ty_generics_lifetime;
 
-            fn new<__stecs__A: ::stecs::entity::Columns>(
+            fn new<__stecs__T: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
-                columns: &__stecs__A,
-            ) -> ::std::option::Option<Self>
-            {
-                if ::std::any::TypeId::of::<__stecs__A>() ==
-                       ::std::any::TypeId::of::<#ident_columns #ty_generics>() {
-                    let columns: &#ident_columns #ty_generics =
-                        (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
-
-                    ::std::option::Option::Some(
-                        <#ident_columns #ty_generics as ::stecs::entity::Columns>
-                            ::new_fetch(columns, ids.len()),
-                    )
-                } else {
-                    ::std::option::Option::None
-                }
+                columns: &__stecs__T,
+            ) -> ::std::option::Option<Self> {
+                ::stecs::entity::downcast_columns_ref(columns).map(|columns|
+                    <#ident_columns #ty_generics as ::stecs::entity::Columns>
+                    ::new_fetch(columns, ids.len())
+                )
             }
 
             fn len(&self) -> usize {
@@ -236,15 +224,14 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
         }
 
         impl #impl_generics_lifetime ::stecs::QueryShared
-        for #ident_ref #ty_generics_lifetime #where_clause {
-        }
+        for #ident_ref #ty_generics_lifetime #where_clause {}
 
         // RefMutFetch
 
         #[allow(unused, non_snake_case, non_camel_case_types)]
         #vis struct #ident_ref_mut_fetch #impl_generics #where_clause {
-            __stecs__len: usize,
             #(#field_idents: ::stecs::column::ColumnRawPartsMut<#field_tys>,)*
+            __stecs__len: usize,
         }
 
         impl #impl_generics ::std::clone::Clone
@@ -255,30 +242,20 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
         }
 
         impl #impl_generics ::std::marker::Copy
-        for #ident_ref_mut_fetch #ty_generics #where_clause {
-        }
+        for #ident_ref_mut_fetch #ty_generics #where_clause {}
 
         unsafe impl #impl_generics ::stecs::query::fetch::Fetch
         for #ident_ref_mut_fetch #ty_generics #where_clause {
             type Item<#lifetime> = #ident_ref_mut #ty_generics_lifetime;
 
-            fn new<__stecs__A: ::stecs::entity::Columns>(
+            fn new<__stecs__T: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
-                columns: &__stecs__A,
-            ) -> ::std::option::Option<Self>
-            {
-                if ::std::any::TypeId::of::<__stecs__A>() ==
-                       ::std::any::TypeId::of::<#ident_columns #ty_generics>() {
-                    let columns: &#ident_columns #ty_generics =
-                        (columns as &dyn ::std::any::Any).downcast_ref().unwrap();
-
-                    ::std::option::Option::Some(
-                        <#ident_columns #ty_generics as ::stecs::entity::Columns>
-                            ::new_fetch_mut(columns, ids.len()),
-                    )
-                } else {
-                    ::std::option::Option::None
-                }
+                columns: &__stecs__T,
+            ) -> ::std::option::Option<Self> {
+                ::stecs::entity::downcast_columns_ref(columns).map(|columns|
+                    <#ident_columns #ty_generics as ::stecs::entity::Columns>
+                    ::new_fetch_mut(columns, ids.len())
+                )
             }
 
             fn len(&self) -> usize {

@@ -22,15 +22,6 @@ pub trait WorldFetch<'w, F: Fetch>: Clone {
     fn len(&self) -> usize;
 }
 
-#[doc(hidden)]
-pub type EntityWorldData<E> = <E as Entity>::WorldData;
-
-#[doc(hidden)]
-pub type EntityWorldFetch<'w, E, F> = <EntityWorldData<E> as WorldData>::Fetch<'w, F>;
-
-#[doc(hidden)]
-pub type EntityWorldFetchIter<'w, E, F> = <EntityWorldFetch<'w, E, F> as WorldFetch<'w, F>>::Iter;
-
 pub trait WorldData: Send + Sync + Default + Clone + 'static {
     type Entity: EntityVariant<Self::Entity>;
 
@@ -129,6 +120,7 @@ pub type World<E> = <E as Entity>::WorldData;
 
 pub trait MultiQuery {
     type QueryBorrows<'w, D: WorldData>;
+
     unsafe fn new<D: WorldData>(world: &D) -> Self::QueryBorrows<'_, D>;
 }
 
@@ -156,3 +148,15 @@ macro_rules! tuple_impl {
 smaller_tuples_too!(
     tuple_impl, F0, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15
 );
+
+// For proc macros.
+#[doc(hidden)]
+pub type EntityWorldData<E> = <E as Entity>::WorldData;
+
+// For proc macros.
+#[doc(hidden)]
+pub type EntityWorldFetch<'w, E, F> = <EntityWorldData<E> as WorldData>::Fetch<'w, F>;
+
+// For proc macros.
+#[doc(hidden)]
+pub type EntityWorldFetchIter<'w, E, F> = <EntityWorldFetch<'w, E, F> as WorldFetch<'w, F>>::Iter;

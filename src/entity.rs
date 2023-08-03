@@ -1,4 +1,4 @@
-use std::{fmt::Debug, hash::Hash};
+use std::{any::Any, fmt::Debug, hash::Hash};
 
 use derivative::Derivative;
 
@@ -98,4 +98,10 @@ impl<E: Entity> EntityId<E> {
     {
         EntityId(E::id_to_outer(self.0))
     }
+}
+
+// For proc macros.
+#[doc(hidden)]
+pub fn downcast_columns_ref<T: Columns, U: Columns>(column: &T) -> Option<&U> {
+    (column as &dyn Any).downcast_ref()
 }
