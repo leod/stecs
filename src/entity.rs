@@ -16,15 +16,11 @@ pub trait Columns: Default + Clone + 'static {
 
     fn remove(&mut self, index: usize) -> Self::Entity;
 
-    // FIXME: I really don't know about these lifetimes.
-    fn new_fetch<'w, 'a>(&'w self, len: usize) -> <Self::Entity as Entity>::Fetch<'a>
-    where
-        'w: 'a;
+    #[doc(hidden)]
+    fn new_fetch(&self, len: usize) -> <Self::Entity as Entity>::Fetch<'_>;
 
-    // FIXME: I really don't know about these lifetimes.
-    fn new_fetch_mut<'w, 'a>(&'w self, len: usize) -> <Self::Entity as Entity>::FetchMut<'a>
-    where
-        'w: 'a;
+    #[doc(hidden)]
+    fn new_fetch_mut(&self, len: usize) -> <Self::Entity as Entity>::FetchMut<'_>;
 }
 
 pub trait Entity: Clone + 'static {

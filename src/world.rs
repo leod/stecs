@@ -6,8 +6,6 @@ use crate::{
     Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
 
-// TODO: This should probably be generic in `Fetch` rather than `WorldData`, but
-// this works for now.
 pub trait WorldFetch<'w, F: Fetch>: Clone {
     type Data: WorldData;
     type Iter: Iterator<Item = F>;

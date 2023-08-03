@@ -118,13 +118,10 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
                 }
             }
 
-            fn new_fetch<'__stecs__w, #lifetime>(
-                &'__stecs__w self,
+            fn new_fetch(
+                &self,
                 len: usize,
-            ) -> <Self::Entity as ::stecs::entity::Entity>::Fetch<'__stecs__w>
-            where
-                '__stecs__w: #lifetime,
-            {
+            ) -> <Self::Entity as ::stecs::entity::Entity>::Fetch<'_> {
                 #(::std::assert_eq!(len, self.#field_idents.len());)*
 
                 #ident_ref_fetch {
@@ -133,13 +130,10 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
                 }
             }
 
-            fn new_fetch_mut<'__stecs__w, #lifetime>(
-                &'__stecs__w self,
+            fn new_fetch_mut(
+                &self,
                 len: usize,
-            ) -> <Self::Entity as ::stecs::entity::Entity>::FetchMut<'__stecs__w>
-            where
-                '__stecs__w: #lifetime,
-            {
+            ) -> <Self::Entity as ::stecs::entity::Entity>::FetchMut<'_> {
                 #(::std::assert_eq!(len, self.#field_idents.len());)*
 
                 #ident_ref_mut_fetch {
