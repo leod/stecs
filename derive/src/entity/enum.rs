@@ -266,7 +266,10 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 let mut fetch = #ident_world_fetch {
                     #(
                         #variant_idents:
-                            <<#variant_tys as ::stecs::Entity>::WorldData as ::stecs::world::WorldData>
+                            <
+                                ::stecs::world::EntityWorldData<#variant_tys>
+                                as ::stecs::world::WorldData
+                            >
                             ::fetch::<F>(&self.#variant_idents),
                     )*
                 };
@@ -291,14 +294,11 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             #type_param: ::stecs::query::fetch::Fetch + #lifetime,
         {
             #(
-                #variant_idents:
-                    <
-                        <
-                            #variant_tys
-                            as ::stecs::Entity
-                        >::WorldData
-                        as ::stecs::world::WorldData
-                    >::Fetch<#lifetime, #type_param>,
+                #variant_idents: ::stecs::world::EntityWorldFetch<
+                    #lifetime,
+                    #variant_tys,
+                    #type_param,
+                >,
             )*
         }
 
@@ -324,19 +324,16 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             F: ::stecs::query::fetch::Fetch,
         {
             type Data = #ident_world_data;
-
             type Iter = #world_fetch_iter;
 
             unsafe fn get<'f>(&self, id: #ident_id) -> ::std::option::Option<F::Item<'f>> {
                 match id {
                     #(
                         #ident_id::#variant_idents(id) => {
-                            type WorldData = <#variant_tys as ::stecs::Entity>::WorldData;
-
                             // Safety: TODO
                             unsafe {
                                 <
-                                    <WorldData as ::stecs::world::WorldData>::Fetch<'w, F>
+                                    ::stecs::world::EntityWorldFetch<'w, #variant_tys, F>
                                     as ::stecs::world::WorldFetch<F>
                                 >
                                 ::get(&self.#variant_idents, id)
@@ -351,20 +348,11 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 #(
                     let iter = ::std::iter::Iterator::chain(
                         iter,
-
-                        // FIXME: These type names are needlessly complex and
-                        // copy-pasted.
                         <
-                            <
-                                <
-                                    #variant_tys
-                                    as ::stecs::Entity
-                                >::WorldData
-                                as ::stecs::world::WorldData
-                            >::Fetch<'w, F>
+                            ::stecs::world::EntityWorldFetch<'w, #variant_tys, F>
                             as ::stecs::world::WorldFetch<F>
                         >
-                        ::iter(&mut self.#variant_idents)
+                        ::iter(&mut self.#variant_idents),
                     );
                 )*
 
@@ -376,13 +364,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 #(
                     let len = len +
                         <
-                            <
-                                <
-                                    #variant_tys
-                                    as ::stecs::Entity
-                                >::WorldData
-                                as ::stecs::world::WorldData
-                            >::Fetch<'w, F>
+                            ::stecs::world::EntityWorldFetch<'w, #variant_tys, F>
                             as ::stecs::world::WorldFetch<F>
                         >
                         ::len(&self.#variant_idents);
