@@ -4,16 +4,17 @@ use crate::{
     archetype::EntityKey,
     column::{Column, ColumnRawParts, ColumnRawPartsMut},
     entity::{Columns, EntityStruct},
-    Component, EntityId, WorldData,
+    Component, EntityId,
 };
 
 use super::{borrow_checker::BorrowChecker, Or};
 
-// TODO: unsafe maybe not needed.
+// This is unsafe because `check_borrows` must check borrows matching what `get`
+// actually borrows.
 pub unsafe trait Fetch: Copy {
-    type Item<'f>
+    type Item<'a>
     where
-        Self: 'f;
+        Self: 'a;
 
     fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self>;
 
@@ -36,38 +37,31 @@ pub unsafe trait Fetch: Copy {
     /// rules to the caller. In particular, the caller has to ensure that this
     /// method is not called on an `index` whose components are already borrowed
     /// elsewhere (be it through `self` or not through `self`).
-    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+    unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
-        Self: 'f;
+        Self: 'a;
 
     #[doc(hidden)]
     fn check_borrows(checker: &mut BorrowChecker);
-
-    // TODO: This is no longer needed, since we have decided to disallow having
-    // the same entity type multiple times via nesting.
-    #[doc(hidden)]
-    fn filter_by_outer<DOuter: WorldData>(_: &mut Option<Self>) {}
 }
 
 unsafe impl<C> Fetch for ColumnRawParts<C>
 where
     C: Component,
 {
-    type Item<'f> = &'f C where Self: 'f;
+    type Item<'a> = &'a C where Self: 'a;
 
     fn new<T: Columns>(_: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
-        columns
-            .column::<C>()
-            .map(|column| column.borrow().as_raw_parts())
+        columns.column::<C>().map(|column| column.as_raw_parts())
     }
 
     fn len(&self) -> usize {
         self.len
     }
 
-    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+    unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
-        Self: 'f,
+        Self: 'a,
     {
         assert!(index < <Self as Fetch>::len(self));
 
@@ -83,21 +77,21 @@ unsafe impl<C> Fetch for ColumnRawPartsMut<C>
 where
     C: Component,
 {
-    type Item<'f> = &'f mut C where Self: 'f;
+    type Item<'a> = &'a mut C where Self: 'a;
 
     fn new<T: Columns>(_: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
         columns
             .column::<C>()
-            .map(|column| column.borrow_mut().as_raw_parts_mut())
+            .map(|column| column.as_raw_parts_mut())
     }
 
     fn len(&self) -> usize {
         self.len
     }
 
-    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+    unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
-        Self: 'f,
+        Self: 'a,
     {
         assert!(index < <Self as Fetch>::len(self));
 
@@ -123,7 +117,7 @@ unsafe impl<E> Fetch for EntityKeyFetch<E>
 where
     E: EntityStruct<Id = EntityKey<E>>,
 {
-    type Item<'f> = EntityId<E>;
+    type Item<'a> = EntityId<E>;
 
     fn new<T: Columns>(ids: &Column<thunderdome::Index>, _: &T) -> Option<Self> {
         if TypeId::of::<T::Entity>() == TypeId::of::<E>() {
@@ -137,9 +131,9 @@ where
         self.0.len()
     }
 
-    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+    unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
-        Self: 'f,
+        Self: 'a,
     {
         EntityId::new(EntityKey::new_unchecked(*Fetch::get(&self.0, index)))
     }
@@ -153,7 +147,7 @@ macro_rules! tuple_impl {
         pub struct UnitFetch(usize);
 
         unsafe impl Fetch for UnitFetch {
-            type Item<'f> = ();
+            type Item<'a> = ();
 
             fn new<T: Columns>(ids: &Column<thunderdome::Index>, _: &T) -> Option<Self> {
                 Some(Self(ids.len()))
@@ -163,7 +157,7 @@ macro_rules! tuple_impl {
                 self.0
             }
 
-            unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f> {
+            unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a> {
                 assert!(index < self.len());
             }
 
@@ -172,19 +166,13 @@ macro_rules! tuple_impl {
     };
     ($($name: ident),*) => {
         unsafe impl<$($name: Fetch,)*> Fetch for ($($name,)*) {
-            type Item<'f> = ($($name::Item<'f>,)*) where Self: 'f;
+            type Item<'a> = ($($name::Item<'a>,)*) where Self: 'a;
 
             #[allow(non_snake_case, unused)]
             fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
-                let len = None;
-                $(
-                    let $name = $name::new(ids, columns)?;
-
-                    if let Some(len) = len {
-                        assert_eq!($name.len(), len);
-                    }
-                    let len = Some($name.len());
-                )*
+                let len = ids.len();
+                $(let $name = $name::new(ids, columns)?;)*
+                $(assert_eq!($name.len(), len);)*
 
                 Some(($($name,)*))
             }
@@ -193,9 +181,9 @@ macro_rules! tuple_impl {
                 self.0.len()
             }
 
-            unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+            unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
             where
-                Self: 'f,
+                Self: 'a,
             {
                 #[allow(non_snake_case)]
                 let ($($name,)*) = self;
@@ -225,7 +213,7 @@ where
     F: Fetch,
     R: Fetch,
 {
-    type Item<'f> = F::Item<'f> where Self: 'f;
+    type Item<'a> = F::Item<'a> where Self: 'a;
 
     fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
         let fetch = F::new(ids, columns)?;
@@ -242,9 +230,9 @@ where
         self.fetch.len()
     }
 
-    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+    unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
-        Self: 'f,
+        Self: 'a,
     {
         self.fetch.get(index)
     }
@@ -265,7 +253,7 @@ where
     F: Fetch,
     R: Fetch,
 {
-    type Item<'f> = F::Item<'f> where Self: 'f;
+    type Item<'a> = F::Item<'a> where Self: 'a;
 
     fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
         let fetch = F::new(ids, columns)?;
@@ -284,9 +272,9 @@ where
         self.fetch.len()
     }
 
-    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+    unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
-        Self: 'f,
+        Self: 'a,
     {
         self.fetch.get(index)
     }
@@ -301,7 +289,7 @@ where
     L: Fetch,
     R: Fetch,
 {
-    type Item<'f> = Or<L::Item<'f>, R::Item<'f>> where Self: 'f;
+    type Item<'a> = Or<L::Item<'a>, R::Item<'a>> where Self: 'a;
 
     fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
         match (L::new(ids, columns), R::new(ids, columns)) {
@@ -320,9 +308,9 @@ where
         }
     }
 
-    unsafe fn get<'f>(&self, index: usize) -> Self::Item<'f>
+    unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
-        Self: 'f,
+        Self: 'a,
     {
         match self {
             Or::Left(left) => Or::Left(left.get(index)),

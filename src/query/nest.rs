@@ -15,12 +15,12 @@ where
     J: Query,
     D: WorldData,
 {
-    pub fn get_mut<'f, E>(
+    pub fn get_mut<'a, E>(
         &mut self,
         id: EntityId<E>,
-    ) -> Option<(<Q::Fetch<'f> as Fetch>::Item<'f>, Nest<'f, J::Fetch<'f>, D>)>
+    ) -> Option<(<Q::Fetch<'a> as Fetch>::Item<'a>, Nest<'a, J::Fetch<'a>, D>)>
     where
-        'w: 'f,
+        'w: 'a,
         E: EntityVariant<D::Entity>,
     {
         let id = id.to_outer();
@@ -29,17 +29,17 @@ where
 
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'f> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
-        <J::Fetch<'f> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
+        <Q::Fetch<'a> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        <J::Fetch<'a> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
 
-        let world_fetch = self.data.fetch::<Q::Fetch<'f>>();
+        let world_fetch = self.data.fetch::<Q::Fetch<'a>>();
 
         // Safety: TODO
         let item = unsafe { world_fetch.get(id.get()) }?;
         let nest = Nest {
             data: self.data,
             ignore_id: id,
-            fetch: self.data.fetch::<J::Fetch<'f>>(),
+            fetch: self.data.fetch::<J::Fetch<'a>>(),
         };
 
         Some((item, nest))
@@ -124,9 +124,9 @@ where
     // This has to take an exclusive `self` reference to prevent violating
     // Rust's borrowing rules if `J` contains an exclusive borrow, since `get()`
     // could be called multiple times with the same `id`.
-    pub fn get_mut<'f, E>(&'f mut self, id: EntityId<E>) -> Option<J::Item<'f>>
+    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<J::Item<'a>>
     where
-        'w: 'f,
+        'w: 'a,
         E: EntityVariant<D::Entity>,
     {
         let id = id.to_outer();

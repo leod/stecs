@@ -3,18 +3,18 @@ use crate::{query::borrow_checker::BorrowChecker, Component, Entity, EntityId, S
 use super::column::SecondaryColumn;
 
 pub trait SecondaryFetch<'w, E: Entity>: Copy + 'w {
-    type Item<'f>
+    type Item<'a>
     where
-        Self: 'f;
+        Self: 'a;
 
     fn new(world: &'w SecondaryWorld<E>) -> Option<Self>;
 
     /// # Safety
     ///
     /// TODO
-    unsafe fn get<'f>(&self, id: EntityId<E>) -> Option<Self::Item<'f>>
+    unsafe fn get<'a>(&self, id: EntityId<E>) -> Option<Self::Item<'a>>
     where
-        Self: 'f;
+        Self: 'a;
 
     #[doc(hidden)]
     fn check_borrows(checker: &mut BorrowChecker);
@@ -37,17 +37,17 @@ impl<'w, E: Entity, C> Clone for ComponentFetch<'w, E, C> {
 impl<'w, E: Entity, C> Copy for ComponentFetch<'w, E, C> {}
 
 impl<'w, E: Entity, C: Component> SecondaryFetch<'w, E> for ComponentFetch<'w, E, C> {
-    type Item<'f> = &'f C
+    type Item<'a> = &'a C
     where
-        Self: 'f;
+        Self: 'a;
 
     fn new(world: &'w SecondaryWorld<E>) -> Option<Self> {
         world.column::<C>().map(ComponentFetch)
     }
 
-    unsafe fn get<'f>(&self, id: EntityId<E>) -> Option<Self::Item<'f>>
+    unsafe fn get<'a>(&self, id: EntityId<E>) -> Option<Self::Item<'a>>
     where
-        Self: 'f,
+        Self: 'a,
     {
         self.0.get(id).map(|cell| unsafe {
             let ptr = cell.get();
@@ -78,17 +78,17 @@ impl<'w, E: Entity, C> Clone for ComponentMutFetch<'w, E, C> {
 impl<'w, E: Entity, C> Copy for ComponentMutFetch<'w, E, C> {}
 
 impl<'w, E: Entity, C: Component> SecondaryFetch<'w, E> for ComponentMutFetch<'w, E, C> {
-    type Item<'f> = &'f mut C
+    type Item<'a> = &'a mut C
     where
-        Self: 'f;
+        Self: 'a;
 
     fn new(world: &'w SecondaryWorld<E>) -> Option<Self> {
         world.column::<C>().map(ComponentMutFetch)
     }
 
-    unsafe fn get<'f>(&self, id: EntityId<E>) -> Option<Self::Item<'f>>
+    unsafe fn get<'a>(&self, id: EntityId<E>) -> Option<Self::Item<'a>>
     where
-        Self: 'f,
+        Self: 'a,
     {
         self.0.get(id).map(|cell| unsafe {
             let ptr = cell.get();
@@ -112,9 +112,9 @@ macro_rules! tuple_impl {
     ($($name: ident),*) => {
         impl<'w, E: Entity, $($name: SecondaryFetch<'w, E>,)*> SecondaryFetch<'w, E>
         for ($($name,)*) {
-            type Item<'f> = ($($name::Item<'f>,)*)
+            type Item<'a> = ($($name::Item<'a>,)*)
             where
-                Self: 'f;
+                Self: 'a;
 
             #[allow(unused)]
             fn new(world: &'w SecondaryWorld<E>) -> Option<Self> {
@@ -125,9 +125,9 @@ macro_rules! tuple_impl {
             ///
             /// TODO
             #[allow(unused)]
-            unsafe fn get<'f>(&self, id: EntityId<E>) -> Option<Self::Item<'f>>
+            unsafe fn get<'a>(&self, id: EntityId<E>) -> Option<Self::Item<'a>>
             where
-                Self: 'f,
+                Self: 'a,
             {
                 #[allow(non_snake_case)]
                 let ($($name,)*) = self;

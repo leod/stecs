@@ -6,26 +6,24 @@ use crate::{
     Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
 
-// TODO: This should probably be generic in `Fetch` rather than `WorldData`, but
-// this works for now.
-pub trait WorldFetch<'w, D: WorldData>: Clone {
-    type Fetch: Fetch;
-    type Iter: Iterator<Item = Self::Fetch>;
+pub trait WorldFetch<'w, F: Fetch>: Clone {
+    type Data: WorldData;
+    type Iter: Iterator<Item = F>;
 
-    unsafe fn get<'f>(
+    unsafe fn get<'a>(
         &self,
-        id: <D::Entity as Entity>::Id,
-    ) -> Option<<Self::Fetch as Fetch>::Item<'f>>;
+        id: <<Self::Data as WorldData>::Entity as Entity>::Id,
+    ) -> Option<F::Item<'a>>;
 
     fn iter(&mut self) -> Self::Iter;
 
     fn len(&self) -> usize;
 }
 
-pub trait WorldData: Send + Sync + Default + Clone + 'static {
+pub trait WorldData: Default + Clone + 'static {
     type Entity: EntityVariant<Self::Entity>;
 
-    type Fetch<'w, F: Fetch + 'w>: WorldFetch<'w, Self, Fetch = F>;
+    type Fetch<'w, F: Fetch + 'w>: WorldFetch<'w, F, Data = Self>;
 
     fn new() -> Self {
         // TODO: Panic if there is a duplicate entity type anywhere.
@@ -79,12 +77,9 @@ pub trait WorldData: Send + Sync + Default + Clone + 'static {
     fn entity<'w, E>(&'w self, id: EntityId<E>) -> Option<EntityRef<'w, E>>
     where
         E: EntityVariant<Self::Entity>,
-
-        // TODO: Can we put the bound below on `Entity` somehow?
-        <E::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRef<'w, E>>,
     {
         let id = id.to_outer();
-        let fetch = self.fetch::<<E::Ref<'w> as Query>::Fetch<'w>>();
+        let fetch = self.fetch::<E::Fetch<'w>>();
 
         // Safety: TODO
         unsafe { fetch.get(id.get()) }
@@ -93,12 +88,9 @@ pub trait WorldData: Send + Sync + Default + Clone + 'static {
     fn entity_mut<'w, E>(&'w mut self, id: EntityId<E>) -> Option<EntityRefMut<'w, E>>
     where
         E: EntityVariant<Self::Entity>,
-
-        // TODO: Can we put the bound below on `Entity` somehow?
-        <E::RefMut<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRefMut<'w, E>>,
     {
         let id = id.to_outer();
-        let fetch = self.fetch::<<E::RefMut<'w> as Query>::Fetch<'w>>();
+        let fetch = self.fetch::<E::FetchMut<'w>>();
 
         // Safety: TODO
         unsafe { fetch.get(id.get()) }
@@ -120,6 +112,7 @@ pub type World<E> = <E as Entity>::WorldData;
 
 pub trait MultiQuery {
     type QueryBorrows<'w, D: WorldData>;
+
     unsafe fn new<D: WorldData>(world: &D) -> Self::QueryBorrows<'_, D>;
 }
 
@@ -130,6 +123,7 @@ macro_rules! tuple_impl {
         #[allow(unused)]
         impl<$($name: Query,)*> MultiQuery for ($($name,)*) {
             type QueryBorrows<'w, D: WorldData> = ($(QueryBorrow<'w, $name, D>,)*);
+
             unsafe fn new<'w, D: WorldData>(world: &'w D) -> Self::QueryBorrows<'w, D> {
                 let mut checker = BorrowChecker::new(type_name::<Self>());
 
@@ -140,6 +134,7 @@ macro_rules! tuple_impl {
                 ($(QueryBorrow::<$name, _>::new(world),)*)
             }
         }
+
         impl<$($name: QueryShared,)*> MultiQueryShared for ($($name,)*) {}
     };
 }
@@ -147,3 +142,15 @@ macro_rules! tuple_impl {
 smaller_tuples_too!(
     tuple_impl, F0, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15
 );
+
+// For proc macros.
+#[doc(hidden)]
+pub type EntityWorldData<E> = <E as Entity>::WorldData;
+
+// For proc macros.
+#[doc(hidden)]
+pub type EntityWorldFetch<'w, E, F> = <EntityWorldData<E> as WorldData>::Fetch<'w, F>;
+
+// For proc macros.
+#[doc(hidden)]
+pub type EntityWorldFetchIter<'w, E, F> = <EntityWorldFetch<'w, E, F> as WorldFetch<'w, F>>::Iter;

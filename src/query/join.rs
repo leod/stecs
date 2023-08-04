@@ -15,6 +15,8 @@ where
     pub(crate) _phantom: PhantomData<(Q, J)>,
 }
 
+// TODO: `get` and `get_mut` for JoinQueryBorrow
+
 impl<'w, Q, J, D> IntoIterator for JoinQueryBorrow<'w, Q, J, D>
 where
     Q: Query,

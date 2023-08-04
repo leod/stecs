@@ -21,10 +21,6 @@ use self::{
 };
 
 pub trait Query {
-    // TODO: Strongly consider getting rid of the 'w lifetime. It makes traits
-    // much more complex. Also, `Fetch` is not directly used by users, and its
-    // main method `get` already is `unsafe`, i.e. we can ensure within the
-    // library that the borrowed world data still lives.
     type Fetch<'w>: Fetch + 'w;
 }
 
@@ -191,12 +187,12 @@ where
         }
     }
 
-    pub fn get_mut<'f, E>(
-        &'f mut self,
+    pub fn get_mut<'a, E>(
+        &'a mut self,
         id: EntityId<E>,
-    ) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
+    ) -> Option<<Q::Fetch<'a> as Fetch>::Item<'a>>
     where
-        'w: 'f,
+        'w: 'a,
         E: EntityVariant<D::Entity>,
     {
         let id = id.to_outer();
@@ -205,9 +201,9 @@ where
 
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'f> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        <Q::Fetch<'a> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
 
-        let world_fetch = self.data.fetch::<Q::Fetch<'f>>();
+        let world_fetch = self.data.fetch::<Q::Fetch<'a>>();
 
         // Safety: TODO
         unsafe { world_fetch.get(id.get()) }
@@ -219,9 +215,9 @@ where
     Q: QueryShared,
     D: WorldData,
 {
-    pub fn get<'f, E>(&'f self, id: EntityId<E>) -> Option<<Q::Fetch<'f> as Fetch>::Item<'f>>
+    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<<Q::Fetch<'a> as Fetch>::Item<'a>>
     where
-        'w: 'f,
+        'w: 'a,
         E: EntityVariant<D::Entity>,
     {
         let id = id.to_outer();
@@ -230,9 +226,9 @@ where
 
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'f> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        <Q::Fetch<'a> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
 
-        let world_fetch = self.data.fetch::<Q::Fetch<'f>>();
+        let world_fetch = self.data.fetch::<Q::Fetch<'a>>();
 
         // Safety: TODO
         unsafe { world_fetch.get(id.get()) }
