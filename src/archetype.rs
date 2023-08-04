@@ -170,31 +170,6 @@ where
     }
 }
 
-// FIXME: This is a bad hack. There might be a cleaner way with traits.
-pub fn adopt_entity_id_unchecked<ESrc, EDst>(id: EntityId<ESrc>) -> EntityId<EDst>
-where
-    ESrc: Entity,
-    EDst: Entity,
-{
-    // This holds because `Columns::Entity` types are leaf entities, i.e.
-    // they do not contain inner entities (other than themselves,
-    // trivially).
-    assert_eq!(TypeId::of::<ESrc>(), TypeId::of::<EDst>());
-
-    // This is a consequence of the assertion above.
-    assert_eq!(TypeId::of::<ESrc::Id>(), TypeId::of::<EDst::Id>());
-
-    // Safety: FIXME and TODO. By the assertion above, we know that the
-    // source and destination types are equivalent. Also, `Entity::Id` is
-    // `Copy`, so it cannot be `Drop`, and it cannot contain exclusive
-    // references. However, it is unclear if these assumptions are strong
-    // enough for the call below to be safe.
-    let id = id.get();
-    let id = unsafe { transmute_copy::<ESrc::Id, EDst::Id>(&id) };
-
-    EntityId::new(id)
-}
-
 impl<T: Columns> WorldData for Archetype<T> {
     type Entity = T::Entity;
 
@@ -206,7 +181,10 @@ impl<T: Columns> WorldData for Archetype<T> {
     {
         let id = self.spawn_impl(entity.into_outer());
 
-        adopt_entity_id_unchecked(id)
+        id.try_to_inner().expect(
+            "This should not fail since, for struct entities E, only E should \
+             implement EntityVariant<E>",
+        )
     }
 
     fn despawn<E>(&mut self, id: EntityId<E>) -> Option<Self::Entity>

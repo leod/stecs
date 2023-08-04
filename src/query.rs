@@ -21,10 +21,6 @@ use self::{
 };
 
 pub trait Query {
-    // TODO: Strongly consider getting rid of the 'w lifetime. It makes traits
-    // much more complex. Also, `Fetch` is not directly used by users, and its
-    // main method `get` already is `unsafe`, i.e. we can ensure within the
-    // library that the borrowed world data still lives.
     type Fetch<'w>: Fetch + 'w;
 }
 

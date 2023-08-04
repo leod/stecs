@@ -52,7 +52,7 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
             type FetchMut<'__stecs__w> = #ident_ref_mut_fetch #ty_generics;
             type FetchId<'__stecs__w> = ::stecs::query::fetch::EntityKeyFetch<#ident #ty_generics>;
 
-            fn from_ref<'a>(entity: Self::Ref<'a>) -> Self {
+            fn from_ref(entity: Self::Ref<'_>) -> Self {
                 #from_ref
             }
         }
@@ -65,8 +65,16 @@ pub fn derive(input: &DeriveInput, data: &DataStruct) -> Result<TokenStream2> {
                 self
             }
 
+            fn spawn(self, data: &mut Self::WorldData) -> ::stecs::EntityId<Self> {
+                data.spawn(self)
+            }
+
             fn id_to_outer(id: Self::Id) -> Self::Id {
                 id
+            }
+
+            fn try_id_from_outer(id: Self::Id) -> ::std::option::Option<Self::Id> {
+                Some(id)
             }
         }
 

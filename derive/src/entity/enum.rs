@@ -115,8 +115,20 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                     #ident::#variant_idents(self)
                 }
 
+                fn spawn(self, data: &mut #ident_world_data) -> ::stecs::EntityId<Self> {
+                    data.#variant_idents.spawn(self)
+                }
+
                 fn id_to_outer(id: Self::Id) -> #ident_id {
                     #ident_id::#variant_idents(id)
+                }
+
+                fn try_id_from_outer(id: #ident_id) -> ::std::option::Option<Self::Id> {
+                    if let #ident_id::#variant_idents(id) = id {
+                        Some(id)
+                    } else {
+                        None
+                    }
                 }
             }
         )*
@@ -126,8 +138,23 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 self
             }
 
+            fn spawn(self, data: &mut #ident_world_data) -> ::stecs::EntityId<Self> {
+                //data.spawn(self)
+
+                match self {
+                    #(
+                        #ident::#variant_idents(entity) =>
+                            data.#variant_idents.spawn(entity).to_outer(),
+                    )*
+                }
+            }
+
             fn id_to_outer(id: Self::Id) -> Self::Id {
                 id
+            }
+
+            fn try_id_from_outer(id: Self::Id) -> ::std::option::Option<Self::Id> {
+                Some(id)
             }
         }
 
@@ -182,35 +209,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             where
                 E: ::stecs::entity::EntityVariant<#ident>,
             {
-                // FIXME: Ok, this is too crazy. All of this "just" so we can
-                // return `EntityId<E>` rather than the outer `Id`.
-                // TODO: Use a trait method for the id downcast.
-
-                #(
-                    if ::std::any::TypeId::of::<E>() == ::std::any::TypeId::of::<#variant_tys>() {
-                        let #ident::#variant_idents(entity) =
-                            <E as ::stecs::entity::EntityVariant<#ident>>::into_outer(entity)
-                            else { panic!("bug in stecs") };
-
-                        let id = ::stecs::WorldData::spawn(&mut self.#variant_idents, entity);
-                        return ::stecs::archetype::adopt_entity_id_unchecked(id);
-                    }
-                )*
-
-                assert_eq!(::std::any::TypeId::of::<E>(), ::std::any::TypeId::of::<#ident>());
-
-                let id: #ident_id =
-                    match <E as ::stecs::entity::EntityVariant<#ident>>::into_outer(entity) {
-                        #(
-                            #ident::#variant_idents(entity) => {
-                                #ident_id::#variant_idents(self.#variant_idents.spawn(entity).get())
-                            }
-                        )*
-                    };
-
-                let id = ::stecs::EntityId::<#ident>::new(id);
-
-                ::stecs::archetype::adopt_entity_id_unchecked(id)
+                E::spawn(entity, self)
             }
 
             fn despawn<E>(

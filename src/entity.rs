@@ -53,7 +53,15 @@ pub trait EntityStruct: Entity {
 pub trait EntityVariant<EOuter: Entity>: Entity {
     fn into_outer(self) -> EOuter;
 
-    fn id_to_outer(id: Self::Id) -> EOuter::Id;
+    fn spawn(self, data: &mut EOuter::WorldData) -> EntityId<Self>;
+
+    fn id_to_outer(id: Self::Id) -> EOuter::Id
+    where
+        Self: Sized;
+
+    fn try_id_from_outer(id: EOuter::Id) -> Option<Self::Id>
+    where
+        Self: Sized;
 }
 
 pub type EntityRef<'a, E> = <E as Entity>::Ref<'a>;
@@ -93,6 +101,13 @@ impl<E: Entity> EntityId<E> {
         E: EntityVariant<EOuter>,
     {
         EntityId(E::id_to_outer(self.0))
+    }
+
+    pub fn try_to_inner<EInner>(self) -> Option<EntityId<EInner>>
+    where
+        EInner: EntityVariant<E>,
+    {
+        EInner::try_id_from_outer(self.0).map(EntityId::new)
     }
 }
 
