@@ -62,7 +62,7 @@ enum InnerEntity {
 }
 
 #[derive(stecs::Entity, Clone)]
-#[stecs(serde)]
+//#[stecs(serde)]
 enum Entity {
     Inner(InnerEntity),
     Player(Player),
@@ -79,11 +79,13 @@ pub struct PhysicsObject<'a> {
 
 type World = stecs::World<Entity>;
 
+/*
 #[derive(Serialize, Deserialize)]
 pub struct SerDeThing {
     id: EntityId<Player>,
     id2: EntityId<Entity>,
 }
+*/
 
 fn send_me<W: Send>(world: &W) {}
 

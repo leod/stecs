@@ -41,7 +41,7 @@ pub trait Entity: Clone + 'static {
     #[doc(hidden)]
     type FetchMut<'w>: Fetch<Item<'w> = Self::RefMut<'w>> + 'w;
 
-    fn from_ref<'a>(entity: Self::Ref<'a>) -> Self;
+    fn from_ref(entity: Self::Ref<'_>) -> Self;
 }
 
 pub trait EntityStruct: Entity {
