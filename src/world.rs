@@ -20,7 +20,7 @@ pub trait WorldFetch<'w, F: Fetch>: Clone {
     fn len(&self) -> usize;
 }
 
-pub trait WorldData: Send + Sync + Default + Clone + 'static {
+pub trait WorldData: Default + Clone + 'static {
     type Entity: EntityVariant<Self::Entity>;
 
     type Fetch<'w, F: Fetch + 'w>: WorldFetch<'w, F, Data = Self>;
