@@ -27,8 +27,6 @@ pub trait Entity: Clone + 'static {
     type Id: Copy + Debug + Eq + Ord + Hash + 'static;
 
     type Ref<'a>: QueryShared + Clone;
-    /*where
-    for<'w> <Self::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = Self::Ref<'w>>;*/
 
     type RefMut<'a>: Query;
 

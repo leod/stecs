@@ -77,12 +77,9 @@ pub trait WorldData: Default + Clone + 'static {
     fn entity<'w, E>(&'w self, id: EntityId<E>) -> Option<EntityRef<'w, E>>
     where
         E: EntityVariant<Self::Entity>,
-
-        // TODO: Can we put the bound below on `Entity` somehow?
-        <E::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRef<'w, E>>,
     {
         let id = id.to_outer();
-        let fetch = self.fetch::<<E::Ref<'w> as Query>::Fetch<'w>>();
+        let fetch = self.fetch::<E::Fetch<'w>>();
 
         // Safety: TODO
         unsafe { fetch.get(id.get()) }
@@ -91,12 +88,9 @@ pub trait WorldData: Default + Clone + 'static {
     fn entity_mut<'w, E>(&'w mut self, id: EntityId<E>) -> Option<EntityRefMut<'w, E>>
     where
         E: EntityVariant<Self::Entity>,
-
-        // TODO: Can we put the bound below on `Entity` somehow?
-        <E::RefMut<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRefMut<'w, E>>,
     {
         let id = id.to_outer();
-        let fetch = self.fetch::<<E::RefMut<'w> as Query>::Fetch<'w>>();
+        let fetch = self.fetch::<E::FetchMut<'w>>();
 
         // Safety: TODO
         unsafe { fetch.get(id.get()) }
@@ -129,6 +123,7 @@ macro_rules! tuple_impl {
         #[allow(unused)]
         impl<$($name: Query,)*> MultiQuery for ($($name,)*) {
             type QueryBorrows<'w, D: WorldData> = ($(QueryBorrow<'w, $name, D>,)*);
+
             unsafe fn new<'w, D: WorldData>(world: &'w D) -> Self::QueryBorrows<'w, D> {
                 let mut checker = BorrowChecker::new(type_name::<Self>());
 
@@ -139,6 +134,7 @@ macro_rules! tuple_impl {
                 ($(QueryBorrow::<$name, _>::new(world),)*)
             }
         }
+
         impl<$($name: QueryShared,)*> MultiQueryShared for ($($name,)*) {}
     };
 }
