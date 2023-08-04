@@ -139,8 +139,6 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             }
 
             fn spawn(self, data: &mut #ident_world_data) -> ::stecs::EntityId<Self> {
-                //data.spawn(self)
-
                 match self {
                     #(
                         #ident::#variant_idents(entity) =>
@@ -238,11 +236,9 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 match (id.get(), entity) {
                     #(
                         (#ident_id::#variant_idents(id), #ident::#variant_idents(entity)) => {
-                            self.#variant_idents.spawn_at(
-                                ::stecs::EntityId::new(id),
-                                entity,
-                            )
-                            .map(#ident::#variant_idents)
+                            self.#variant_idents
+                                .spawn_at(::stecs::EntityId::new(id), entity)
+                                .map(#ident::#variant_idents)
                         }
                     )*
                     _ => panic!("Incompatible EntityId and Entity variants in `spawn_at`"),
@@ -254,14 +250,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 F: ::stecs::query::fetch::Fetch + 'w,
             {
                 #ident_world_fetch {
-                    #(
-                        #variant_idents:
-                            <
-                                ::stecs::world::EntityWorldData<#variant_tys>
-                                as ::stecs::world::WorldData
-                            >
-                            ::fetch::<F>(&self.#variant_idents),
-                    )*
+                    #(#variant_idents: self.#variant_idents.fetch::<F>(),)*
                 }
             }
         }
@@ -306,48 +295,22 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             type Iter = #world_fetch_iter;
 
             unsafe fn get<'a>(&self, id: #ident_id) -> ::std::option::Option<F::Item<'a>> {
+                // Safety: TODO
                 match id {
-                    #(
-                        #ident_id::#variant_idents(id) => {
-                            // Safety: TODO
-                            unsafe {
-                                <
-                                    ::stecs::world::EntityWorldFetch<'w, #variant_tys, F>
-                                    as ::stecs::world::WorldFetch<F>
-                                >
-                                ::get(&self.#variant_idents, id)
-                            }
-                        }
-                    )*
+                    #(#ident_id::#variant_idents(id) => unsafe { self.#variant_idents.get(id) },)*
                 }
             }
 
             fn iter(&mut self) -> Self::Iter {
                 let iter = ::std::iter::empty();
-                #(
-                    let iter = ::std::iter::Iterator::chain(
-                        iter,
-                        <
-                            ::stecs::world::EntityWorldFetch<'w, #variant_tys, F>
-                            as ::stecs::world::WorldFetch<F>
-                        >
-                        ::iter(&mut self.#variant_idents),
-                    );
-                )*
+                #(let iter = ::std::iter::Iterator::chain(iter, self.#variant_idents.iter());)*
 
                 iter
             }
 
             fn len(&self) -> usize {
                 let mut len = 0;
-                #(
-                    len +=
-                        <
-                            ::stecs::world::EntityWorldFetch<'w, #variant_tys, F>
-                            as ::stecs::world::WorldFetch<F>
-                        >
-                        ::len(&self.#variant_idents);
-                )*
+                #(len += self.#variant_idents.len();)*
 
                 len
             }
@@ -357,10 +320,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         // IdFetch
 
         #[allow(non_camel_case_types)]
-        #[derive(
-            ::std::clone::Clone,
-            ::std::marker::Copy,
-        )]
+        #[derive(::std::clone::Clone, ::std::marker::Copy)]
         #vis enum #ident_id_fetch<'w> {
             #(#variant_idents(<#variant_tys as ::stecs::entity::Entity>::FetchId<'w>),)*
         }
@@ -378,6 +338,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                         #ident_id_fetch::#variant_idents,
                     ));
                 )*
+
                 result
             }
 
@@ -393,9 +354,8 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             {
                 ::stecs::EntityId::new(match self {
                     #(
-                        #ident_id_fetch::#variant_idents(fetch) => {
-                            #ident_id::#variant_idents(fetch.get(index).get())
-                        }
+                        #ident_id_fetch::#variant_idents(fetch) =>
+                            #ident_id::#variant_idents(fetch.get(index).get()),
                     )*
                 })
             }
@@ -410,10 +370,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         // RefFetch
 
         #[allow(non_camel_case_types)]
-        #[derive(
-            ::std::clone::Clone,
-            ::std::marker::Copy,
-        )]
+        #[derive(::std::clone::Clone, ::std::marker::Copy)]
         #vis enum #ident_ref_fetch<'w> {
             #(#variant_idents(<#variant_tys as ::stecs::entity::Entity>::Fetch<'w>),)*
         }
@@ -431,6 +388,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                         #ident_ref_fetch::#variant_idents,
                     ));
                 )*
+
                 result
             }
 
@@ -464,16 +422,12 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             type Fetch<'w> = #ident_ref_fetch<'w>;
         }
 
-        impl<'q> ::stecs::QueryShared for #ident_ref<'q> {
-        }
+        impl<'q> ::stecs::QueryShared for #ident_ref<'q> {}
 
         // RefMutFetch
 
         #[allow(non_camel_case_types)]
-        #[derive(
-            ::std::clone::Clone,
-            ::std::marker::Copy,
-        )]
+        #[derive(::std::clone::Clone, ::std::marker::Copy)]
         #vis enum #ident_ref_mut_fetch<'w> {
             #(
                 #variant_idents(<#variant_tys as ::stecs::entity::Entity>::FetchMut<'w>),
@@ -493,14 +447,13 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                         #ident_ref_mut_fetch::#variant_idents,
                     ));
                 )*
+
                 result
             }
 
             fn len(&self) -> usize {
                 match self {
-                    #(
-                        #ident_ref_mut_fetch::#variant_idents(fetch) => fetch.len(),
-                    )*
+                    #(#ident_ref_mut_fetch::#variant_idents(fetch) => fetch.len(),)*
                 }
             }
 
@@ -510,9 +463,8 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             {
                 match self {
                     #(
-                        #ident_ref_mut_fetch::#variant_idents(fetch) => {
-                            #ident_ref_mut::#variant_idents(fetch.get(index))
-                        }
+                        #ident_ref_mut_fetch::#variant_idents(fetch) =>
+                            #ident_ref_mut::#variant_idents(fetch.get(index)),
                     )*
                 }
             }
