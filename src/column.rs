@@ -1,7 +1,4 @@
-use std::{
-    any::{Any, TypeId},
-    cell::UnsafeCell,
-};
+use std::{any::Any, cell::UnsafeCell};
 
 use crate::Component;
 

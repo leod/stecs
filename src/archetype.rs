@@ -1,8 +1,7 @@
 use std::{
-    any::{type_name, TypeId},
+    any::type_name,
     fmt::{self, Debug},
     marker::PhantomData,
-    mem::transmute_copy,
     option,
 };
 
@@ -14,7 +13,7 @@ use crate::{
     entity::{Columns, EntityVariant},
     query::fetch::Fetch,
     world::WorldFetch,
-    Entity, EntityId, EntityRef, WorldData,
+    EntityId, EntityRef, WorldData,
 };
 
 #[derive(Derivative)]

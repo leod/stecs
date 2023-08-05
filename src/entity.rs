@@ -17,10 +17,10 @@ pub trait Columns: Default + Clone + 'static {
     fn remove(&mut self, index: usize) -> Self::Entity;
 
     #[doc(hidden)]
-    fn new_fetch(&self, len: usize) -> <Self::Entity as Entity>::Fetch<'_>;
+    fn new_fetch<'a>(&self, len: usize) -> <Self::Entity as Entity>::Fetch<'a>;
 
     #[doc(hidden)]
-    fn new_fetch_mut(&self, len: usize) -> <Self::Entity as Entity>::FetchMut<'_>;
+    fn new_fetch_mut<'a>(&self, len: usize) -> <Self::Entity as Entity>::FetchMut<'a>;
 }
 
 pub trait Entity: Clone + 'static {
@@ -65,6 +65,9 @@ pub trait EntityVariant<EOuter: Entity>: Entity {
 pub type EntityRef<'a, E> = <E as Entity>::Ref<'a>;
 
 pub type EntityRefMut<'a, E> = <E as Entity>::RefMut<'a>;
+
+#[doc(hidden)]
+pub type EntityColumns<E> = <E as EntityStruct>::Columns;
 
 #[derive(Derivative)]
 #[derivative(
