@@ -1,12 +1,14 @@
 use stecs::EntityId;
 
 #[derive(stecs::Entity, Clone)]
+#[stecs(derive_columns(Clone))]
 struct Projectile {
     position: f32,
     velocity: i32,
 }
 
 #[derive(stecs::Entity, Clone)]
+#[stecs(derive_columns(Clone))]
 struct Bullet {
     #[stecs(flat)]
     projectile: Projectile,

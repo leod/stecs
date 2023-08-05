@@ -24,9 +24,6 @@ pub mod world;
 
 pub use thunderdome;
 
-#[cfg(feature = "serde")]
-pub use serde;
-
 pub use stecs_derive::{Entity, Query};
 
 #[doc(inline)]
@@ -37,7 +34,6 @@ pub use self::{
     world::{World, WorldData},
 };
 
-// TODO: Making this `Clone` is probably controversial.
-pub trait Component: Clone + 'static {}
+pub trait Component: 'static {}
 
-impl<T> Component for T where T: Clone + 'static {}
+impl<T> Component for T where T: 'static {}

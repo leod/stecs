@@ -2,15 +2,11 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{DataEnum, DeriveInput, Error, Result};
 
-use crate::utils::associated_ident;
+use crate::utils::{associated_ident, get_attr_derives, Derives};
 
 // FIXME: Use `__stecs__` prefix for generic parameters consistently.
 
-pub fn derive(
-    input: &DeriveInput,
-    data: &DataEnum,
-    attr_names: Vec<String>,
-) -> Result<TokenStream2> {
+pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     let ident = &input.ident;
     let vis = &input.vis;
 
@@ -23,6 +19,12 @@ pub fn derive(
     let ident_ref_fetch = associated_ident(ident, "RefFetch");
     let ident_ref_mut_fetch = associated_ident(ident, "RefMutFetch");
     let ident_world_fetch = associated_ident(ident, "WorldFetch");
+
+    let Derives {
+        id_derives,
+        world_data_derives,
+        ..
+    } = get_attr_derives(&input.attrs)?;
 
     // As an example, our input looks like this:
     // ```
@@ -76,15 +78,6 @@ pub fn derive(
             "derive(Entity) for enums must not have any generics",
         ));
     }
-
-    let derive_serde = if attr_names.iter().any(|a| a == "serde") {
-        quote! {
-            #[derive(::stecs::serde::Serialize, ::stecs::serde::Deserialize)]
-            #[serde(crate = "::stecs::serde")]
-        }
-    } else {
-        quote! {}
-    };
 
     Ok(quote! {
         // Entity
@@ -177,7 +170,7 @@ pub fn derive(
             ::std::cmp::Ord,
             ::std::hash::Hash,
         )]
-        #derive_serde
+        #id_derives
         #vis enum #ident_id {
             #(#variant_idents(<#variant_tys as ::stecs::Entity>::Id),)*
         }
@@ -202,7 +195,8 @@ pub fn derive(
         // TODO: Consider exposing the `WorldData` struct. In this case, convert
         // field names to snake case first.
         #[allow(non_snake_case, non_camel_case_types)]
-        #[derive(::std::default::Default, ::std::clone::Clone)]
+        #[derive(::std::default::Default)]
+        #world_data_derives
         #vis struct #ident_world_data {
             #(#variant_idents: <#variant_tys as ::stecs::Entity>::WorldData,)*
         }

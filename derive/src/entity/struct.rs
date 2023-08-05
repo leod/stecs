@@ -2,7 +2,9 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{DeriveInput, Result};
 
-use crate::utils::{associated_ident, generics_with_new_lifetime, parse_attr_names};
+use crate::utils::{
+    associated_ident, generics_with_new_lifetime, get_attr_derives, parse_attr_names, Derives,
+};
 
 #[derive(Default)]
 struct Fields<'a> {
@@ -55,6 +57,10 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
     let ident_ref_fetch = associated_ident(ident, "RefFetch");
     let ident_ref_mut_fetch = associated_ident(ident, "RefMutFetch");
 
+    let Derives {
+        columns_derives, ..
+    } = get_attr_derives(&input.attrs)?;
+
     let (
         Fields {
             idents: field_comp_idents,
@@ -97,12 +103,14 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
                 #(for<'__stecs__a> #field_comp_tys: ::std::clone::Clone,)*
                 #(for<'__stecs__a> #field_flat_tys: ::std::clone::Clone,)**/
             {
-                Self {
+                /*Self {
                     #(#field_comp_idents: ::std::clone::Clone::clone(entity.#field_comp_idents),)*
                     #(#field_flat_idents:
                         <#field_flat_tys as ::stecs::Entity>::from_ref(entity.#field_flat_idents),
                     )*
-                }
+                }*/
+
+                todo!()
             }
         }
 
@@ -137,10 +145,8 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
 
         // Columns
 
-        // TODO: Provide a way to derive traits for the column struct.
-        // Otherwise, we lose the ability to derive things for our World.
         #[allow(unused, non_camel_case_types)]
-        #[derive(::std::clone::Clone)]
+        #columns_derives
         #vis struct #ident_columns #impl_generics #where_clause {
             #(#field_comp_idents: ::stecs::column::Column<#field_comp_tys>,)*
             #(#field_flat_idents: ::stecs::entity::EntityColumns<#field_flat_tys>,)*
@@ -222,11 +228,22 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
         // Ref
 
         #[allow(unused, non_snake_case, non_camel_case_types)]
-        #[derive(::std::clone::Clone)]
         #vis struct #ident_ref #impl_generics_lifetime #where_clause_lifetime {
             #(#vis #field_comp_idents: &#lifetime #field_comp_tys,)*
             #(#vis #field_flat_idents: ::stecs::EntityRef<#lifetime, #field_flat_tys>,)*
             __stecs__phantom: ::std::marker::PhantomData<&#lifetime ()>,
+        }
+
+        impl #impl_generics_lifetime ::std::clone::Clone for #ident_ref #ty_generics_lifetime
+        #where_clause_lifetime
+        {
+            fn clone(&self) -> Self {
+                Self {
+                    #(#field_comp_idents: self.#field_comp_idents,)*
+                    #(#field_flat_idents: self.#field_flat_idents.clone(),)*
+                    __stecs__phantom: ::std::marker::PhantomData,
+                }
+            }
         }
 
         // RefMut
