@@ -1,7 +1,7 @@
 use std::iter::ExactSizeIterator;
 
 use serde::{Deserialize, Serialize};
-use stecs::{entity::EntityVariant, Component, EntityId, EntityRef, EntityRefMut, WorldData};
+use stecs::{entity::EntityVariant, Component, EntityId, EntityRef, EntityRefMut};
 
 #[derive(Clone)]
 struct Position(f32);

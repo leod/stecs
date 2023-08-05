@@ -4,7 +4,7 @@ use hashbrown::{HashMap, HashSet};
 
 use crate::{
     entity::EntityVariant, query::fetch::Fetch, Component, Entity, EntityId, EntityRef, Query,
-    WorldData,
+    World,
 };
 
 use super::column::{AnySecondaryColumn, SecondaryColumn};
@@ -71,7 +71,7 @@ impl<E: Entity> SecondaryWorld<E> {
 
     pub fn synchronize<'w>(
         &'w mut self,
-        world: &'w E::WorldData,
+        world: &'w World<E>,
         new_entity: impl Fn(&mut Self, EntityId<E>, E::Ref<'_>),
     ) where
         // TODO: Can we put the bound below on `Entity` somehow?

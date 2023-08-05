@@ -1,4 +1,4 @@
-use stecs::{EntityId, WorldData};
+use stecs::EntityId;
 
 #[derive(stecs::Entity, Clone)]
 struct Projectile {
