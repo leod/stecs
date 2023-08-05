@@ -99,7 +99,9 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             {
                 Self {
                     #(#field_comp_idents: ::std::clone::Clone::clone(entity.#field_comp_idents),)*
-                    #(#field_flat_idents: ::std::clone::Clone::clone(entity.#field_flat_idents),)*
+                    #(#field_flat_idents:
+                        <#field_flat_tys as ::stecs::Entity>::from_ref(entity.#field_flat_idents),
+                    )*
                 }
             }
         }
@@ -196,7 +198,7 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
 
                 #ident_ref_fetch {
                     #(#field_comp_idents: self.#field_comp_idents.as_raw_parts(),)*
-                    #(#field_flat_idents: self.#field_flat_idents.new_fetch::<#lifetime>(len),)*
+                    #(#field_flat_idents: self.#field_flat_idents.new_fetch(len),)*
                     __stecs__len: len,
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
@@ -210,7 +212,7 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
 
                 #ident_ref_mut_fetch {
                     #(#field_comp_idents: self.#field_comp_idents.as_raw_parts_mut(),)*
-                    #(#field_flat_idents: self.#field_flat_idents.new_fetch_mut::<#lifetime>(len),)*
+                    #(#field_flat_idents: self.#field_flat_idents.new_fetch_mut(len),)*
                     __stecs__len: len,
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
@@ -219,7 +221,6 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
 
         // Ref
 
-        // FIXME: This should be a tuple struct for tuple structs.
         #[allow(unused, non_snake_case, non_camel_case_types)]
         #[derive(::std::clone::Clone)]
         #vis struct #ident_ref #impl_generics_lifetime #where_clause_lifetime {
@@ -230,7 +231,6 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
 
         // RefMut
 
-        // FIXME: This should be a tuple struct for tuple structs.
         #[allow(unused, non_snake_case, non_camel_case_types)]
         #vis struct #ident_ref_mut #impl_generics_lifetime #where_clause_lifetime {
             #(#vis #field_comp_idents: &#lifetime mut #field_comp_tys,)*
@@ -284,16 +284,18 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
 
                 #ident_ref {
                     #(#field_comp_idents: &*self.#field_comp_idents.ptr.add(index),)*
-                    #(#field_flat_idents: self.#field_flat_idents.get::<#lifetime2>(index),)*
+                    #(#field_flat_idents: self.#field_flat_idents.get(index),)*
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
             }
 
             fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
                 #(checker.borrow::<#field_comp_tys>();)*
+
                 #(
                     {
-                        type Fetch = <#field_flat_tys as ::stecs::Entity>::Fetch<#lifetime>;
+                        type Fetch<#lifetime2> =
+                            <#field_flat_tys as ::stecs::Entity>::Fetch<#lifetime2>;
                         <Fetch as ::stecs::query::fetch::Fetch>::check_borrows(checker);
                     }
                 )*
@@ -354,16 +356,18 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
 
                 #ident_ref_mut {
                     #(#field_comp_idents: &mut *self.#field_comp_idents.ptr.add(index),)*
-                    #(#field_flat_idents: self.#field_flat_idents.get::<#lifetime2>(index),)*
+                    #(#field_flat_idents: self.#field_flat_idents.get(index),)*
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
             }
 
             fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
                 #(checker.borrow::<#field_comp_tys>();)*
+
                 #(
                     {
-                        type Fetch = <#field_flat_tys as ::stecs::Entity>::FetchMut<#lifetime>;
+                        type Fetch<#lifetime2> =
+                            <#field_flat_tys as ::stecs::Entity>::FetchMut<#lifetime2>;
                         <Fetch as ::stecs::query::fetch::Fetch>::check_borrows(checker);
                     }
                 )*
