@@ -27,12 +27,6 @@ struct Boier<T: Component, S: Component> {
     col: Color,
 }
 
-#[derive(stecs::Entity, Clone)]
-struct Blob;
-
-#[derive(stecs::Entity, Clone)]
-struct Blub(u32);
-
 #[derive(Clone, Debug)]
 struct Target(EntityId<Entity>);
 
@@ -58,7 +52,7 @@ struct InnerEnemy {
 #[stecs(serde)]
 enum InnerEntity {
     Enemy(InnerEnemy),
-    Boier(Boier<Position, Blub>),
+    Boier(Boier<Position, f32>),
 }
 
 #[derive(stecs::Entity, Clone)]

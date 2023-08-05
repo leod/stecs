@@ -113,6 +113,8 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             }
 
             fn spawn(self, data: &mut Self::WorldData) -> ::stecs::EntityId<Self> {
+                use ::stecs::WorldData;
+
                 data.spawn(self)
             }
 

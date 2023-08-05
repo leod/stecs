@@ -120,6 +120,8 @@ pub fn derive(
                 }
 
                 fn spawn(self, data: &mut #ident_world_data) -> ::stecs::EntityId<Self> {
+                    use ::stecs::WorldData;
+
                     data.#variant_idents.spawn(self)
                 }
 
@@ -143,6 +145,8 @@ pub fn derive(
             }
 
             fn spawn(self, data: &mut #ident_world_data) -> ::stecs::EntityId<Self> {
+                use ::stecs::WorldData;
+
                 match self {
                     #(
                         #ident::#variant_idents(entity) =>
