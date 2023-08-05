@@ -40,7 +40,9 @@ pub trait Entity: Sized + 'static {
 
     #[doc(hidden)]
     type FetchMut<'w>: Fetch<Item<'w> = Self::RefMut<'w>> + 'w;
+}
 
+pub trait EntityFromRef: Entity {
     fn from_ref(entity: Self::Ref<'_>) -> Self;
 }
 

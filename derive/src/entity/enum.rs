@@ -90,13 +90,22 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             type Fetch<#lifetime> = #ident_ref_fetch<#lifetime>;
             type FetchMut<#lifetime> = #ident_ref_mut_fetch<#lifetime>;
             type FetchId<#lifetime> = #ident_id_fetch<#lifetime>;
+        }
 
-            fn from_ref(entity: Self::Ref<'_>) -> Self {
+        // EntityFromRef
+
+        impl ::stecs::EntityFromRef for #ident
+        where
+            // https://github.com/rust-lang/rust/issues/48214#issuecomment-1150463333
+            #(for<'__stecs__a> #variant_tys: ::stecs::EntityFromRef,)*
+        {
+            fn from_ref(entity: Self::Ref<'_>) -> Self
+            {
                 match entity {
                     #(
                         #ident_ref::#variant_idents(entity) => {
                             #ident::#variant_idents(
-                                <#variant_tys as ::stecs::Entity>::from_ref(entity),
+                                <#variant_tys as ::stecs::EntityFromRef>::from_ref(entity),
                             )
                         }
                     )*

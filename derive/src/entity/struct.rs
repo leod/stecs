@@ -95,22 +95,26 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             type Fetch<#lifetime> = #ident_ref_fetch #ty_generics_lifetime;
             type FetchMut<#lifetime> = #ident_ref_mut_fetch #ty_generics_lifetime;
             type FetchId<'__stecs__w> = ::stecs::query::fetch::EntityKeyFetch<#ident #ty_generics>;
+        }
 
+        // EntityFromRef
+
+        impl #impl_generics ::stecs::EntityFromRef for #ident #ty_generics #where_clause
+        where
+            // https://github.com/rust-lang/rust/issues/48214#issuecomment-1150463333
+            #(for<'__stecs__a> #field_comp_tys: ::std::clone::Clone,)*
+            #(for<'__stecs__a> #field_flat_tys: ::stecs::EntityFromRef,)*
+        {
             fn from_ref(entity: Self::Ref<'_>) -> Self
-            // TODO
-            /*where
-                // https://github.com/rust-lang/rust/issues/48214#issuecomment-1150463333
-                #(for<'__stecs__a> #field_comp_tys: ::std::clone::Clone,)*
-                #(for<'__stecs__a> #field_flat_tys: ::std::clone::Clone,)**/
             {
-                /*Self {
+                Self {
                     #(#field_comp_idents: ::std::clone::Clone::clone(entity.#field_comp_idents),)*
                     #(#field_flat_idents:
-                        <#field_flat_tys as ::stecs::Entity>::from_ref(entity.#field_flat_idents),
+                        <#field_flat_tys as ::stecs::EntityFromRef>::from_ref(
+                            entity.#field_flat_idents,
+                        ),
                     )*
-                }*/
-
-                todo!()
+                }
             }
         }
 
