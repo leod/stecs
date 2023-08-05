@@ -1,4 +1,4 @@
-use stecs::{EntityId, EntityRef, EntityRefMut, WorldData};
+use stecs::{EntityId, EntityRef, EntityRefMut};
 
 // Components
 

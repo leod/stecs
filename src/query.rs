@@ -24,6 +24,8 @@ pub trait Query {
     type Fetch<'w>: Fetch + 'w;
 }
 
+pub type QueryItem<'w, Q> = <<Q as Query>::Fetch<'w> as Fetch>::Item<'w>;
+
 pub trait QueryShared: Query {}
 
 impl<'q, C: Component> Query for &'q C {
