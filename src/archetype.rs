@@ -32,8 +32,9 @@ pub struct EntityKey<E>(
     PhantomData<E>,
 );
 
-// FIXME: Figure out the serialization story. By itself,
-// serializing/deserializing a `thunderdome::Index` is not meaningful.
+// FIXME: Figure out the serialization story. By itself, serializing or
+// deserializing a `thunderdome::Index` is not meaningful. Users can use it to
+// perform `spawn_at` manually, but this does not seem like great design.
 #[cfg(feature = "serde")]
 mod serde_index {
     use serde::{self, Deserialize, Deserializer, Serializer};

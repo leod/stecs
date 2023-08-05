@@ -1,25 +1,15 @@
 use std::borrow::Cow;
 
 use proc_macro2::Span;
-use syn::Result;
+use proc_macro2::TokenStream as TokenStream2;
+use quote::quote;
+use syn::{spanned::Spanned, Result};
 
 pub fn associated_ident(ident: &syn::Ident, ty: &str) -> syn::Ident {
     syn::Ident::new(&format!("__stecs__{ident}{ty}"), ident.span())
 }
 
 pub fn parse_attr_names(attrs: &[syn::Attribute]) -> Result<Vec<String>> {
-    struct AttrNames {
-        names: syn::punctuated::Punctuated<syn::Ident, syn::Token![,]>,
-    }
-
-    impl syn::parse::Parse for AttrNames {
-        fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-            let names = input.parse_terminated(syn::Ident::parse, syn::Token![,])?;
-
-            Ok(Self { names })
-        }
-    }
-
     let mut names = Vec::new();
 
     for attr in attrs {
@@ -27,11 +17,63 @@ pub fn parse_attr_names(attrs: &[syn::Attribute]) -> Result<Vec<String>> {
             continue;
         }
 
-        let attr_names: AttrNames = attr.parse_args()?;
-        names.extend(attr_names.names.into_iter().map(|ident| ident.to_string()));
+        attr.parse_nested_meta(|meta| {
+            if let Some(ident) = meta.path.get_ident() {
+                names.push(ident.to_string());
+            }
+
+            Ok(())
+        })?;
     }
 
     Ok(names)
+}
+
+pub struct Derives {
+    pub id_derives: TokenStream2,
+    pub world_data_derives: TokenStream2,
+    pub columns_derives: TokenStream2,
+}
+
+pub fn get_attr_derives(attrs: &[syn::Attribute]) -> Result<Derives> {
+    let mut id_paths = Vec::new();
+    let mut world_data_paths = Vec::new();
+    let mut columns_paths = Vec::new();
+
+    for attr in attrs {
+        if !attr.path().is_ident("stecs") {
+            continue;
+        }
+
+        attr.parse_nested_meta(|meta| {
+            let paths = if meta.path.is_ident("derive_id") {
+                &mut id_paths
+            } else if meta.path.is_ident("derive_world_data") {
+                &mut world_data_paths
+            } else if meta.path.is_ident("derive_columns") {
+                &mut columns_paths
+            } else {
+                return Err(syn::Error::new(attr.span(), "Unknown attribute"));
+            };
+
+            let content;
+            syn::parenthesized!(content in meta.input);
+
+            paths.extend(
+                syn::punctuated::Punctuated::<syn::Path, syn::Token![,]>::parse_terminated(
+                    &content,
+                )?,
+            );
+
+            Ok(())
+        })?;
+    }
+
+    Ok(Derives {
+        id_derives: quote! { #[derive(#(#id_paths,)*)] },
+        world_data_derives: quote! { #[derive(#(#world_data_paths,)*)] },
+        columns_derives: quote! { #[derive(#(#columns_paths,)*)] },
+    })
 }
 
 // Copied from `hecs`.

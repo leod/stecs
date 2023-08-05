@@ -7,7 +7,7 @@ use crate::{
     WorldData,
 };
 
-pub trait Columns: Default + Clone + 'static {
+pub trait Columns: Default + 'static {
     type Entity: Entity<Id = EntityKey<Self::Entity>> + EntityVariant<Self::Entity>;
 
     fn column<C: Component>(&self) -> Option<&Column<C>>;
@@ -23,7 +23,7 @@ pub trait Columns: Default + Clone + 'static {
     fn new_fetch_mut<'a>(&self, len: usize) -> <Self::Entity as Entity>::FetchMut<'a>;
 }
 
-pub trait Entity: Clone + 'static {
+pub trait Entity: Sized + 'static {
     type Id: Copy + Debug + Eq + Ord + Hash + 'static;
 
     type Ref<'a>: QueryShared + Clone;
@@ -40,7 +40,9 @@ pub trait Entity: Clone + 'static {
 
     #[doc(hidden)]
     type FetchMut<'w>: Fetch<Item<'w> = Self::RefMut<'w>> + 'w;
+}
 
+pub trait EntityFromRef: Entity {
     fn from_ref(entity: Self::Ref<'_>) -> Self;
 }
 

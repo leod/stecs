@@ -3,16 +3,16 @@ use std::iter::ExactSizeIterator;
 use serde::{Deserialize, Serialize};
 use stecs::{entity::EntityVariant, Component, EntityId, EntityRef, EntityRefMut};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 struct Position(f32);
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 struct Velocity(f32);
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 struct Color(f32);
 
-#[derive(stecs::Entity, Clone)]
+#[derive(stecs::Entity, Clone, Serialize, Deserialize)]
 struct Player {
     pos: Position,
     vel: Velocity,
@@ -20,43 +20,43 @@ struct Player {
     col: Color,
 }
 
-#[derive(stecs::Entity, Clone)]
+#[derive(stecs::Entity, Clone, Serialize, Deserialize)]
 struct Boier<T: Component, S: Component> {
     pos: T,
     vel: S,
     col: Color,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct Target(EntityId<Entity>);
 
-#[derive(stecs::Entity, Clone)]
+#[derive(stecs::Entity, Clone, Serialize, Deserialize)]
 struct Enemy {
     pos: Position,
     target: Target,
 }
 
-#[derive(stecs::Entity, Clone)]
+#[derive(stecs::Entity, Clone, Serialize, Deserialize)]
 struct Enemy2 {
     pos: Position,
     targets: Vec<EntityId<Entity>>,
 }
 
-#[derive(stecs::Entity, Clone)]
+#[derive(stecs::Entity, Clone, Serialize, Deserialize)]
 struct InnerEnemy {
     pos: Position,
     targets: Vec<EntityId<Entity>>,
 }
 
-#[derive(stecs::Entity, Clone)]
-#[stecs(serde)]
+#[derive(stecs::Entity, Clone, Serialize, Deserialize)]
+#[stecs(derive_id(Serialize, Deserialize))]
 enum InnerEntity {
     Enemy(InnerEnemy),
     Boier(Boier<Position, f32>),
 }
 
-#[derive(stecs::Entity, Clone)]
-//#[stecs(serde)]
+#[derive(stecs::Entity, Clone, Serialize, Deserialize)]
+#[stecs(derive_id(Serialize, Deserialize))]
 enum Entity {
     Inner(InnerEntity),
     Player(Player),
