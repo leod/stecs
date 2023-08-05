@@ -6,7 +6,11 @@ use crate::utils::associated_ident;
 
 // FIXME: Use `__stecs__` prefix for generic parameters consistently.
 
-pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Result<TokenStream2> {
+pub fn derive(
+    input: &DeriveInput,
+    data: &DataEnum,
+    attr_names: Vec<String>,
+) -> Result<TokenStream2> {
     let ident = &input.ident;
     let vis = &input.vis;
 
@@ -73,7 +77,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
         ));
     }
 
-    let derive_serde = if attrs.iter().any(|a| a == "serde") {
+    let derive_serde = if attr_names.iter().any(|a| a == "serde") {
         quote! {
             #[derive(::stecs::serde::Serialize, ::stecs::serde::Deserialize)]
             #[serde(crate = "::stecs::serde")]
@@ -94,7 +98,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             type FetchMut<#lifetime> = #ident_ref_mut_fetch<#lifetime>;
             type FetchId<#lifetime> = #ident_id_fetch<#lifetime>;
 
-            fn from_ref<'a>(entity: Self::Ref<'a>) -> Self {
+            fn from_ref(entity: Self::Ref<'_>) -> Self {
                 match entity {
                     #(
                         #ident_ref::#variant_idents(entity) => {
@@ -116,6 +120,8 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
                 }
 
                 fn spawn(self, data: &mut #ident_world_data) -> ::stecs::EntityId<Self> {
+                    use ::stecs::WorldData;
+
                     data.#variant_idents.spawn(self)
                 }
 
@@ -139,6 +145,8 @@ pub fn derive(input: &DeriveInput, data: &DataEnum, attrs: Vec<String>) -> Resul
             }
 
             fn spawn(self, data: &mut #ident_world_data) -> ::stecs::EntityId<Self> {
+                use ::stecs::WorldData;
+
                 match self {
                     #(
                         #ident::#variant_idents(entity) =>

@@ -1,9 +1,37 @@
 use std::borrow::Cow;
 
 use proc_macro2::Span;
+use syn::Result;
 
 pub fn associated_ident(ident: &syn::Ident, ty: &str) -> syn::Ident {
     syn::Ident::new(&format!("__stecs__{ident}{ty}"), ident.span())
+}
+
+pub fn parse_attr_names(attrs: &[syn::Attribute]) -> Result<Vec<String>> {
+    struct AttrNames {
+        names: syn::punctuated::Punctuated<syn::Ident, syn::Token![,]>,
+    }
+
+    impl syn::parse::Parse for AttrNames {
+        fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+            let names = input.parse_terminated(syn::Ident::parse, syn::Token![,])?;
+
+            Ok(Self { names })
+        }
+    }
+
+    let mut names = Vec::new();
+
+    for attr in attrs {
+        if !attr.path().is_ident("stecs") {
+            continue;
+        }
+
+        let attr_names: AttrNames = attr.parse_args()?;
+        names.extend(attr_names.names.into_iter().map(|ident| ident.to_string()));
+    }
+
+    Ok(names)
 }
 
 // Copied from `hecs`.

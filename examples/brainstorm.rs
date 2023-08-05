@@ -27,12 +27,6 @@ struct Boier<T: Component, S: Component> {
     col: Color,
 }
 
-#[derive(stecs::Entity, Clone)]
-struct Blob;
-
-#[derive(stecs::Entity, Clone)]
-struct Blub(u32);
-
 #[derive(Clone, Debug)]
 struct Target(EntityId<Entity>);
 
@@ -58,11 +52,11 @@ struct InnerEnemy {
 #[stecs(serde)]
 enum InnerEntity {
     Enemy(InnerEnemy),
-    Boier(Boier<Position, Blub>),
+    Boier(Boier<Position, f32>),
 }
 
 #[derive(stecs::Entity, Clone)]
-#[stecs(serde)]
+//#[stecs(serde)]
 enum Entity {
     Inner(InnerEntity),
     Player(Player),
@@ -79,11 +73,13 @@ pub struct PhysicsObject<'a> {
 
 type World = stecs::World<Entity>;
 
+/*
 #[derive(Serialize, Deserialize)]
 pub struct SerDeThing {
     id: EntityId<Player>,
     id2: EntityId<Entity>,
 }
+*/
 
 fn send_me<W: Send>(world: &W) {}
 
