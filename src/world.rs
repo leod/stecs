@@ -4,7 +4,7 @@ use derivative::Derivative;
 
 use crate::{
     entity::EntityVariant,
-    query::{borrow_checker::BorrowChecker, fetch::Fetch, QueryBorrow, QueryShared},
+    query::{borrow_checker::BorrowChecker, fetch::Fetch, QueryBorrow, QueryItem, QueryShared},
     Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
 
@@ -91,43 +91,37 @@ impl<E: Entity> World<E> {
         unsafe { Q::new(&self.0) }
     }
 
-    pub fn get<Q: QueryShared>(
-        &self,
-        id: EntityId<E>,
-    ) -> Option<<Q::Fetch<'_> as Fetch>::Item<'_>> {
+    pub fn get<Q: QueryShared>(&self, id: EntityId<E>) -> Option<QueryItem<Q>> {
         let fetch = self.0.fetch::<<Q as Query>::Fetch<'_>>();
 
         // Safety: TODO
         unsafe { fetch.get(id.get()) }
     }
 
-    pub fn get_mut<Q: Query>(
-        &mut self,
-        id: EntityId<E>,
-    ) -> Option<<Q::Fetch<'_> as Fetch>::Item<'_>> {
+    pub fn get_mut<Q: Query>(&mut self, id: EntityId<E>) -> Option<QueryItem<Q>> {
         let fetch = self.0.fetch::<<Q as Query>::Fetch<'_>>();
 
         // Safety: TODO
         unsafe { fetch.get(id.get()) }
     }
 
-    pub fn entity<'w, F>(&'w self, id: EntityId<F>) -> Option<EntityRef<'w, F>>
+    pub fn entity<F>(&self, id: EntityId<F>) -> Option<EntityRef<F>>
     where
         F: EntityVariant<E>,
     {
         let id = id.to_outer();
-        let fetch = self.0.fetch::<F::Fetch<'w>>();
+        let fetch = self.0.fetch::<F::Fetch<'_>>();
 
         // Safety: TODO
         unsafe { fetch.get(id.get()) }
     }
 
-    pub fn entity_mut<'w, F>(&'w mut self, id: EntityId<F>) -> Option<EntityRefMut<'w, F>>
+    pub fn entity_mut<F>(&mut self, id: EntityId<F>) -> Option<EntityRefMut<F>>
     where
         F: EntityVariant<E>,
     {
         let id = id.to_outer();
-        let fetch = self.0.fetch::<F::FetchMut<'w>>();
+        let fetch = self.0.fetch::<F::FetchMut<'_>>();
 
         // Safety: TODO
         unsafe { fetch.get(id.get()) }
@@ -152,6 +146,7 @@ macro_rules! tuple_impl {
         impl<$($name: Query,)*> MultiQuery for ($($name,)*) {
             type QueryBorrows<'w, D: WorldData> = ($(QueryBorrow<'w, $name, D>,)*);
 
+            #[allow(clippy::needless_lifetimes, clippy::unused_unit)]
             unsafe fn new<'w, D: WorldData>(world: &'w D) -> Self::QueryBorrows<'w, D> {
                 let mut checker = BorrowChecker::new(type_name::<Self>());
 

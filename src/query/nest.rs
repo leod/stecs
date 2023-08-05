@@ -2,7 +2,7 @@ use std::{any::type_name, marker::PhantomData};
 
 use crate::{entity::EntityVariant, world::WorldFetch, Entity, EntityId, Query, WorldData};
 
-use super::{borrow_checker::BorrowChecker, fetch::Fetch, iter::WorldFetchIter};
+use super::{borrow_checker::BorrowChecker, fetch::Fetch, iter::WorldFetchIter, QueryItem};
 
 pub struct NestQueryBorrow<'w, Q, J, D> {
     pub(crate) data: &'w D,
@@ -16,9 +16,9 @@ where
     D: WorldData,
 {
     pub fn get_mut<'a, E>(
-        &mut self,
+        &'a mut self,
         id: EntityId<E>,
-    ) -> Option<(<Q::Fetch<'a> as Fetch>::Item<'a>, Nest<'a, J::Fetch<'a>, D>)>
+    ) -> Option<(QueryItem<'a, Q>, Nest<'a, J::Fetch<'a>, D>)>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
