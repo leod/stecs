@@ -324,3 +324,38 @@ where
         R::check_borrows(checker);
     }
 }
+
+#[derive(Clone, Copy)]
+pub struct OptionFetch<F> {
+    fetch: Option<F>,
+    len: usize,
+}
+
+unsafe impl<F> Fetch for OptionFetch<F>
+where
+    F: Fetch,
+{
+    type Item<'a> = Option<F::Item<'a>> where Self: 'a;
+
+    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
+        Some(OptionFetch {
+            fetch: F::new(ids, columns),
+            len: ids.len(),
+        })
+    }
+
+    fn len(&self) -> usize {
+        self.len
+    }
+
+    unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
+    where
+        Self: 'a,
+    {
+        self.fetch.map_or(None, |fetch| Some(fetch.get(index)))
+    }
+
+    fn check_borrows(checker: &mut BorrowChecker) {
+        F::check_borrows(checker);
+    }
+}
