@@ -15,7 +15,7 @@ use crate::{
 
 use self::{
     borrow_checker::BorrowChecker,
-    fetch::{Fetch, UnitFetch, WithFetch, WithoutFetch},
+    fetch::{Fetch, OptionFetch, UnitFetch, WithFetch, WithoutFetch},
     join::JoinQueryBorrow,
     nest::NestQueryBorrow,
 };
@@ -119,6 +119,15 @@ where
     R: QueryShared,
 {
 }
+
+impl<Q> Query for Option<Q>
+where
+    Q: Query,
+{
+    type Fetch<'w> = OptionFetch<Q::Fetch<'w>>;
+}
+
+impl<Q> QueryShared for Option<Q> where Q: QueryShared {}
 
 pub struct QueryBorrow<'w, Q, D> {
     data: &'w D,
