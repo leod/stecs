@@ -3,6 +3,7 @@ pub mod fetch;
 pub mod iter;
 pub mod join;
 pub mod nest;
+pub mod nest2;
 
 use std::{any::type_name, marker::PhantomData};
 
@@ -262,10 +263,7 @@ where
     where
         R: Query,
     {
-        NestQueryBorrow {
-            data: self.0.data,
-            _phantom: PhantomData,
-        }
+        NestQueryBorrow::new(self.0.data)
     }
 
     pub fn join<J>(
