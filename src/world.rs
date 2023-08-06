@@ -58,6 +58,7 @@ pub struct World<E: Entity>(E::WorldData);
 impl<E: Entity> World<E> {
     pub fn new() -> Self {
         // TODO: Panic if there is a duplicate entity type anywhere.
+        // TODO: Panic if there is a duplicate component type anywhere.
         Self::default()
     }
 
