@@ -2,11 +2,32 @@ use std::{any::type_name, marker::PhantomData};
 
 use crate::{entity::EntityVariant, world::WorldFetch, Entity, EntityId, Query, WorldData};
 
-use super::{borrow_checker::BorrowChecker, fetch::Fetch, iter::WorldFetchIter, QueryItem};
+use super::{
+    borrow_checker::BorrowChecker, fetch::Fetch, iter::WorldFetchIter, nest2::Nest2QueryBorrow,
+    QueryItem,
+};
 
 pub struct NestQueryBorrow<'w, Q, J, D> {
-    pub(crate) data: &'w D,
-    pub(crate) _phantom: PhantomData<(Q, J)>,
+    data: &'w D,
+    _phantom: PhantomData<(Q, J)>,
+}
+
+impl<'w, Q, J, D> NestQueryBorrow<'w, Q, J, D>
+where
+    Q: Query,
+    J: Query,
+{
+    pub(crate) fn new(data: &'w D) -> Self {
+        // Safety: Check that the query does not specify borrows that violate
+        // Rust's borrowing rules.
+        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        <J::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
+
+        Self {
+            data,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 impl<'w, Q, J, D> NestQueryBorrow<'w, Q, J, D>
@@ -23,19 +44,12 @@ where
         'w: 'a,
         E: EntityVariant<D::Entity>,
     {
-        let id = id.to_outer();
-
-        // TODO: Cache?
-
-        // Safety: Check that the query does not specify borrows that violate
-        // Rust's borrowing rules.
-        <Q::Fetch<'a> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
-        <J::Fetch<'a> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
-
         let world_fetch = self.data.fetch::<Q::Fetch<'a>>();
+        let id = id.to_outer();
 
         // Safety: TODO
         let item = unsafe { world_fetch.get(id.get()) }?;
+
         let nest = Nest {
             data: self.data,
             ignore_id: id,
@@ -44,9 +58,21 @@ where
 
         Some((item, nest))
     }
-}
 
-// TODO: Implement `get` for `NestQueryResult`.
+    pub fn nest<J1>(self) -> Nest2QueryBorrow<'w, Q, J, J1, D>
+    where
+        J1: Query,
+    {
+        // Safety: Check that the query does not specify borrows that violate
+        // Rust's borrowing rules.
+        <J1::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
+
+        Nest2QueryBorrow {
+            data: self.data,
+            _phantom: PhantomData,
+        }
+    }
+}
 
 impl<'w, Q, J, D> IntoIterator for NestQueryBorrow<'w, Q, J, D>
 where
@@ -59,11 +85,6 @@ where
     type IntoIter = NestDataFetchIter<'w, Q::Fetch<'w>, J::Fetch<'w>, D>;
 
     fn into_iter(self) -> Self::IntoIter {
-        // Safety: Check that the query does not specify borrows that violate
-        // Rust's borrowing rules.
-        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
-        <J::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
-
         // Safety: TODO
         let query_iter = unsafe { WorldFetchIter::new(self.data) };
         let nest_fetch = self.data.fetch();
@@ -75,6 +96,7 @@ where
         }
     }
 }
+
 pub struct Nest<'w, J, D>
 where
     J: Fetch + 'w,
