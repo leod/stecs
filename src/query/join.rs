@@ -4,7 +4,7 @@ use crate::{
     secondary::query::SecondaryFetch, Entity, Query, SecondaryQuery, SecondaryWorld, WorldData,
 };
 
-use super::{borrow_checker::BorrowChecker, fetch::Fetch, iter::WorldFetchIter};
+use super::{borrow_checker::BorrowChecker, fetch::Fetch, iter::WorldFetchIter, QueryItem};
 
 pub struct JoinQueryBorrow<'w, Q, J, D>
 where
@@ -24,7 +24,7 @@ where
     D: WorldData,
 {
     type Item = (
-        <Q::Fetch<'w> as Fetch>::Item<'w>,
+        QueryItem<'w, Q>,
         <J::Fetch<'w> as SecondaryFetch<'w, D::Entity>>::Item<'w>,
     );
 

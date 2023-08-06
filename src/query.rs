@@ -188,10 +188,7 @@ where
         }
     }
 
-    pub fn get_mut<'a, E>(
-        &'a mut self,
-        id: EntityId<E>,
-    ) -> Option<<Q::Fetch<'a> as Fetch>::Item<'a>>
+    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
@@ -216,7 +213,7 @@ where
     Q: QueryShared,
     D: WorldData,
 {
-    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<<Q::Fetch<'a> as Fetch>::Item<'a>>
+    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
@@ -291,10 +288,7 @@ where
         self.0.join_mut(secondary_world)
     }
 
-    pub fn get_mut<'a, E>(
-        &'a mut self,
-        id: EntityId<E>,
-    ) -> Option<<Q::Fetch<'a> as Fetch>::Item<'a>>
+    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
@@ -308,7 +302,7 @@ where
     Q: QueryShared,
     D: WorldData,
 {
-    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<<Q::Fetch<'a> as Fetch>::Item<'a>>
+    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
