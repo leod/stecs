@@ -4,7 +4,10 @@ use derivative::Derivative;
 
 use crate::{
     entity::EntityVariant,
-    query::{borrow_checker::BorrowChecker, fetch::Fetch, QueryBorrow, QueryItem, QueryShared},
+    query::{
+        borrow_checker::BorrowChecker, fetch::Fetch, ExclusiveQueryBorrow, QueryBorrow, QueryItem,
+        QueryShared,
+    },
     Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
 
@@ -80,8 +83,8 @@ impl<E: Entity> World<E> {
         QueryBorrow::new(&self.0)
     }
 
-    pub fn query_mut<Q: Query>(&mut self) -> QueryBorrow<Q, E::WorldData> {
-        QueryBorrow::new(&self.0)
+    pub fn query_mut<Q: Query>(&mut self) -> ExclusiveQueryBorrow<Q, E::WorldData> {
+        ExclusiveQueryBorrow::new(&mut self.0)
     }
 
     pub fn queries<Q: MultiQueryShared>(&self) -> Q::QueryBorrows<'_, E::WorldData> {
