@@ -2,7 +2,9 @@ use std::{any::type_name, marker::PhantomData};
 
 use crate::{world::WorldFetch, QueryShared, WorldData};
 
-use super::{borrow_checker::BorrowChecker, fetch::Fetch, Query, QueryBorrow};
+use super::{
+    borrow_checker::BorrowChecker, fetch::Fetch, ExclusiveQueryBorrow, Query, QueryBorrow,
+};
 
 impl<'w, Q, D> IntoIterator for QueryBorrow<'w, Q, D>
 where
@@ -18,11 +20,7 @@ where
         // Rust's borrowing rules.
         <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
 
-        // Safety: A `QueryResult` exclusively borrows the `data: &'w mut D`.
-        // Also, `into_iter` consumes the `QueryResult` while maintaining the
-        // lifetime `'w`. Thus, it is not possible to construct references to
-        // entities in `data` outside of the returned iterator, thereby
-        // satisfying the requirement of `FetchIter`.
+        // Safety: TODO
         unsafe { WorldFetchIter::new(self.data) }
     }
 }
@@ -41,12 +39,27 @@ where
         // Rust's borrowing rules.
         <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
 
-        // Safety: A `QueryResult` exclusively borrows the `data: &'w mut D`.
-        // Also, `into_iter` consumes the `QueryResult` while maintaining the
-        // lifetime `'w`. Thus, it is not possible to construct references to
-        // entities in `data` outside of the returned iterator, thereby
-        // satisfying the requirement of `FetchIter`.
+        // Safety: TODO
         unsafe { WorldFetchIter::new(self.data) }
+    }
+}
+
+impl<'w, Q, D> IntoIterator for ExclusiveQueryBorrow<'w, Q, D>
+where
+    Q: Query,
+    D: WorldData,
+{
+    type Item = <Q::Fetch<'w> as Fetch>::Item<'w>;
+
+    type IntoIter = WorldFetchIter<'w, Q::Fetch<'w>, D>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        // Safety: Check that the query does not specify borrows that violate
+        // Rust's borrowing rules.
+        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+
+        // Safety: TODO
+        unsafe { WorldFetchIter::new(self.0.data) }
     }
 }
 

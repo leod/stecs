@@ -160,16 +160,6 @@ where
         QueryBorrow::new(self.data)
     }
 
-    pub fn nest<R>(self) -> NestQueryBorrow<'w, Q, R, D>
-    where
-        R: Query,
-    {
-        NestQueryBorrow {
-            data: self.data,
-            _phantom: PhantomData,
-        }
-    }
-
     pub fn join<J>(
         self,
         secondary_world: &'w SecondaryWorld<D::Entity>,
@@ -243,5 +233,86 @@ where
 
         // Safety: TODO
         unsafe { world_fetch.get(id.get()) }
+    }
+}
+
+pub struct ExclusiveQueryBorrow<'w, Q, D>(QueryBorrow<'w, Q, D>);
+
+impl<'w, Q, D> ExclusiveQueryBorrow<'w, Q, D>
+where
+    Q: Query,
+    D: WorldData,
+{
+    pub(crate) fn new(data: &'w mut D) -> Self {
+        Self(QueryBorrow::new(data))
+    }
+
+    pub fn with<R>(self) -> ExclusiveQueryBorrow<'w, With<Q, R>, D>
+    where
+        R: Query,
+    {
+        ExclusiveQueryBorrow(self.0.with::<R>())
+    }
+
+    pub fn without<R>(self) -> ExclusiveQueryBorrow<'w, Without<Q, R>, D>
+    where
+        R: Query,
+    {
+        ExclusiveQueryBorrow(self.0.without::<R>())
+    }
+
+    pub fn nest<R>(self) -> NestQueryBorrow<'w, Q, R, D>
+    where
+        R: Query,
+    {
+        NestQueryBorrow {
+            data: self.0.data,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn join<J>(
+        self,
+        secondary_world: &'w SecondaryWorld<D::Entity>,
+    ) -> JoinQueryBorrow<'w, Q, J, D>
+    where
+        J: SecondaryQueryShared<D::Entity>,
+    {
+        self.0.join(secondary_world)
+    }
+
+    pub fn join_mut<J>(
+        self,
+        secondary_world: &'w mut SecondaryWorld<D::Entity>,
+    ) -> JoinQueryBorrow<'w, Q, J, D>
+    where
+        J: SecondaryQuery<D::Entity>,
+    {
+        self.0.join_mut(secondary_world)
+    }
+
+    pub fn get_mut<'a, E>(
+        &'a mut self,
+        id: EntityId<E>,
+    ) -> Option<<Q::Fetch<'a> as Fetch>::Item<'a>>
+    where
+        'w: 'a,
+        E: EntityVariant<D::Entity>,
+    {
+        self.0.get_mut(id)
+    }
+}
+
+impl<'w, Q, D> ExclusiveQueryBorrow<'w, Q, D>
+where
+    Q: QueryShared,
+    D: WorldData,
+{
+    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<<Q::Fetch<'a> as Fetch>::Item<'a>>
+    where
+        'w: 'a,
+        E: EntityVariant<D::Entity>,
+    {
+        self.0.get(id)
     }
 }
