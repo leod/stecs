@@ -99,11 +99,87 @@ where
 {
 }
 
+// Inspired by `hecs`.
 #[derive(Debug, Clone, Copy)]
 pub enum Or<L, R> {
     Left(L),
     Right(R),
     Both(L, R),
+}
+
+impl<L, R> Or<L, R> {
+    pub fn new(left: Option<L>, right: Option<R>) -> Option<Self> {
+        match (left, right) {
+            (None, None) => None,
+            (Some(left), None) => Some(Or::Left(left)),
+            (None, Some(right)) => Some(Or::Right(right)),
+            (Some(left), Some(right)) => Some(Or::Both(left, right)),
+        }
+    }
+
+    pub fn split(self) -> (Option<L>, Option<R>) {
+        use Or::*;
+
+        match self {
+            Left(left) => (Some(left), None),
+            Right(right) => (None, Some(right)),
+            Both(left, right) => (Some(left), Some(right)),
+        }
+    }
+
+    pub fn left(self) -> Option<L> {
+        use Or::*;
+
+        match self {
+            Left(left) => Some(left),
+            Right(_) => None,
+            Both(left, _) => Some(left),
+        }
+    }
+
+    pub fn right(self) -> Option<R> {
+        use Or::*;
+
+        match self {
+            Left(_) => None,
+            Right(right) => Some(right),
+            Both(_, right) => Some(right),
+        }
+    }
+
+    pub fn map<L1, R1, F, G>(self, f: F, g: G) -> Or<L1, R1>
+    where
+        F: FnOnce(L) -> L1,
+        G: FnOnce(R) -> R1,
+    {
+        use Or::*;
+
+        match self {
+            Left(left) => Left(f(left)),
+            Right(right) => Right(g(right)),
+            Both(left, right) => Both(f(left), g(right)),
+        }
+    }
+
+    pub fn as_ref(&self) -> Or<&L, &R> {
+        use Or::*;
+
+        match self {
+            Left(left) => Left(left),
+            Right(right) => Right(right),
+            Both(left, right) => Both(left, right),
+        }
+    }
+
+    pub fn as_mut(&mut self) -> Or<&mut L, &mut R> {
+        use Or::*;
+
+        match self {
+            Left(left) => Left(left),
+            Right(right) => Right(right),
+            Both(left, right) => Both(left, right),
+        }
+    }
 }
 
 impl<L, R> Query for Or<L, R>
