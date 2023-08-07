@@ -23,6 +23,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     let Derives {
         id_derives,
         world_data_derives,
+        ref_derives,
         ..
     } = get_attr_derives(&input.attrs)?;
 
@@ -188,6 +189,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
         #[allow(non_camel_case_types)]
         #[derive(::std::clone::Clone)]
+        #ref_derives
         #vis enum #ident_ref<#lifetime> {
             #(#variant_idents(<#variant_tys as ::stecs::Entity>::Ref<#lifetime>),)*
         }
