@@ -292,12 +292,7 @@ where
     type Item<'a> = Or<L::Item<'a>, R::Item<'a>> where Self: 'a;
 
     fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
-        match (L::new(ids, columns), R::new(ids, columns)) {
-            (None, None) => None,
-            (Some(left), None) => Some(Or::Left(left)),
-            (None, Some(right)) => Some(Or::Right(right)),
-            (Some(left), Some(right)) => Some(Or::Both(left, right)),
-        }
+        Or::new(L::new(ids, columns), R::new(ids, columns))
     }
 
     fn len(&self) -> usize {
