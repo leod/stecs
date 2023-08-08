@@ -1,10 +1,9 @@
-use std::{any::type_name, marker::PhantomData};
+use std::marker::PhantomData;
 
 use crate::{entity::EntityVariant, world::WorldFetch, Entity, EntityId, Query, WorldData};
 
 use super::{
-    borrow_checker::BorrowChecker, fetch::Fetch, iter::WorldFetchIter, nest2::Nest2QueryBorrow,
-    QueryItem,
+    assert_borrow, fetch::Fetch, iter::WorldFetchIter, nest2::Nest2QueryBorrow, QueryItem,
 };
 
 pub struct NestQueryBorrow<'w, Q, J, D> {
@@ -20,8 +19,8 @@ where
     pub(crate) fn new(data: &'w D) -> Self {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
-        <J::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
+        assert_borrow::<Q>();
+        assert_borrow::<J>();
 
         Self {
             data,
@@ -65,7 +64,7 @@ where
     {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <J1::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<J>()));
+        assert_borrow::<J1>();
 
         Nest2QueryBorrow {
             data: self.data,

@@ -1,12 +1,11 @@
-use std::{any::type_name, fmt::Debug};
+use std::fmt::Debug;
 
 use derivative::Derivative;
 
 use crate::{
     entity::EntityVariant,
     query::{
-        borrow_checker::BorrowChecker, fetch::Fetch, ExclusiveQueryBorrow, QueryBorrow, QueryItem,
-        QueryShared,
+        assert_borrow, fetch::Fetch, ExclusiveQueryBorrow, QueryBorrow, QueryItem, QueryShared,
     },
     Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
@@ -152,11 +151,9 @@ macro_rules! tuple_impl {
 
             #[allow(clippy::needless_lifetimes, clippy::unused_unit)]
             unsafe fn new<'w, D: WorldData>(world: &'w D) -> Self::QueryBorrows<'w, D> {
-                let mut checker = BorrowChecker::new(type_name::<Self>());
-
                 // Safety: Check that the query does not specify borrows that violate
                 // Rust's borrowing rules.
-                $(<$name::Fetch<'w> as Fetch>::check_borrows(&mut checker);)*
+                $(assert_borrow::<$name>();)*
 
                 ($(QueryBorrow::<$name, _>::new(world),)*)
             }

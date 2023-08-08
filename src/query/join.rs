@@ -1,10 +1,10 @@
-use std::{any::type_name, marker::PhantomData};
+use std::marker::PhantomData;
 
 use crate::{
     secondary::query::SecondaryFetch, Entity, Query, SecondaryQuery, SecondaryWorld, WorldData,
 };
 
-use super::{borrow_checker::BorrowChecker, fetch::Fetch, iter::WorldFetchIter, QueryItem};
+use super::{fetch::Fetch, iter::WorldFetchIter, QueryItem};
 
 pub struct JoinQueryBorrow<'w, Q, J, D>
 where
@@ -33,10 +33,8 @@ where
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
-        <J::Fetch<'w> as SecondaryFetch<'w, D::Entity>>::check_borrows(&mut BorrowChecker::new(
-            type_name::<J>(),
-        ));
+        super::assert_borrow::<Q>();
+        crate::secondary::query::assert_borrow::<D::Entity, J>();
 
         // Safety: TODO
         let query_iter = unsafe { WorldFetchIter::new(self.data) };
