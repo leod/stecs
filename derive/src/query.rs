@@ -97,7 +97,7 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
 
         // Query
 
-        impl<#lifetime> ::stecs::Query for #ident<#lifetime> {
+        unsafe impl<#lifetime> ::stecs::Query for #ident<#lifetime> {
             type Fetch<'__stecs__w> = #ident_fetch<'__stecs__w>;
 
             fn for_each_borrow(mut f: impl FnMut(::std::any::TypeId, bool)) {

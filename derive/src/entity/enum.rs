@@ -419,7 +419,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             }
         }
 
-        impl<'q> ::stecs::Query for #ident_ref<'q> {
+        unsafe impl<'q> ::stecs::Query for #ident_ref<'q> {
             type Fetch<'w> = #ident_ref_fetch<'w>;
 
             fn for_each_borrow(mut f: impl FnMut(::std::any::TypeId, bool)) {
@@ -427,7 +427,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             }
         }
 
-        impl<'q> ::stecs::QueryShared for #ident_ref<'q> {}
+        unsafe impl<'q> ::stecs::QueryShared for #ident_ref<'q> {}
 
         // RefMutFetch
 
@@ -475,7 +475,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             }
         }
 
-        impl<'q> ::stecs::Query for #ident_ref_mut<'q> {
+        unsafe impl<'q> ::stecs::Query for #ident_ref_mut<'q> {
             type Fetch<'w> = #ident_ref_mut_fetch<'w>;
 
             fn for_each_borrow(mut f: impl FnMut(::std::any::TypeId, bool)) {

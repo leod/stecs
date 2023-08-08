@@ -314,7 +314,7 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             }
         }
 
-        impl #impl_generics_lifetime ::stecs::Query
+        unsafe impl #impl_generics_lifetime ::stecs::Query
         for #ident_ref #ty_generics_lifetime #where_clause {
             type Fetch<#lifetime2> = #ident_ref_fetch #ty_generics_lifetime2;
 
@@ -324,7 +324,7 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             }
         }
 
-        impl #impl_generics_lifetime ::stecs::QueryShared
+        unsafe impl #impl_generics_lifetime ::stecs::QueryShared
         for #ident_ref #ty_generics_lifetime #where_clause {}
 
         // RefMutFetch
@@ -379,7 +379,7 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             }
         }
 
-        impl #impl_generics_lifetime ::stecs::Query
+        unsafe impl #impl_generics_lifetime ::stecs::Query
         for #ident_ref_mut #ty_generics_lifetime #where_clause {
             type Fetch<#lifetime2> = #ident_ref_mut_fetch #ty_generics_lifetime2;
 

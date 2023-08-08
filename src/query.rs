@@ -19,7 +19,8 @@ use self::{
     nest::NestQueryBorrow,
 };
 
-pub trait Query {
+// This is unafe because `for_each_borrow` must match `Fetch`.
+pub unsafe trait Query {
     type Fetch<'w>: Fetch + 'w;
 
     fn for_each_borrow(f: impl FnMut(TypeId, bool));
@@ -27,9 +28,10 @@ pub trait Query {
 
 pub type QueryItem<'w, Q> = <<Q as Query>::Fetch<'w> as Fetch>::Item<'w>;
 
-pub trait QueryShared: Query {}
+// This is unsafe because it must not have any exclusive borrows.
+pub unsafe trait QueryShared: Query {}
 
-impl<'q, C: Component> Query for &'q C {
+unsafe impl<'q, C: Component> Query for &'q C {
     type Fetch<'w> = ColumnRawParts<C>;
 
     fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
@@ -37,9 +39,9 @@ impl<'q, C: Component> Query for &'q C {
     }
 }
 
-impl<'q, C: Component> QueryShared for &'q C {}
+unsafe impl<'q, C: Component> QueryShared for &'q C {}
 
-impl<'q, C: Component> Query for &'q mut C {
+unsafe impl<'q, C: Component> Query for &'q mut C {
     type Fetch<'w> = ColumnRawPartsMut<C>;
 
     fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
@@ -47,24 +49,24 @@ impl<'q, C: Component> Query for &'q mut C {
     }
 }
 
-impl<E: Entity> Query for EntityId<E> {
+unsafe impl<E: Entity> Query for EntityId<E> {
     type Fetch<'w> = E::FetchId<'w>;
 
     fn for_each_borrow(_: impl FnMut(TypeId, bool)) {}
 }
 
-impl<E: Entity> QueryShared for EntityId<E> {}
+unsafe impl<E: Entity> QueryShared for EntityId<E> {}
 
 macro_rules! tuple_impl {
     () => {
-        impl Query for () {
+        unsafe impl Query for () {
             type Fetch<'w> = UnitFetch;
 
             fn for_each_borrow(_: impl FnMut(TypeId, bool)) {}
         }
     };
     ($($name: ident),*) => {
-        impl<$($name: Query,)*> Query for ($($name,)*) {
+        unsafe impl<$($name: Query,)*> Query for ($($name,)*) {
             type Fetch<'w> = ($($name::Fetch<'w>,)*);
 
             #[allow(unused_mut)]
@@ -73,7 +75,7 @@ macro_rules! tuple_impl {
             }
         }
 
-        impl<$($name: QueryShared,)*> QueryShared for ($($name,)*) {
+        unsafe impl<$($name: QueryShared,)*> QueryShared for ($($name,)*) {
         }
     };
 }
@@ -84,7 +86,7 @@ smaller_tuples_too!(
 
 pub struct With<Q, R>(PhantomData<(Q, R)>);
 
-impl<Q, R> Query for With<Q, R>
+unsafe impl<Q, R> Query for With<Q, R>
 where
     Q: Query,
     R: Query,
@@ -96,7 +98,7 @@ where
     }
 }
 
-impl<Q, R> QueryShared for With<Q, R>
+unsafe impl<Q, R> QueryShared for With<Q, R>
 where
     Q: QueryShared,
     R: Query,
@@ -105,7 +107,7 @@ where
 
 pub struct Without<Q, R>(PhantomData<(Q, R)>);
 
-impl<Q, R> Query for Without<Q, R>
+unsafe impl<Q, R> Query for Without<Q, R>
 where
     Q: Query,
     R: Query,
@@ -117,7 +119,7 @@ where
     }
 }
 
-impl<Q, R> QueryShared for Without<Q, R>
+unsafe impl<Q, R> QueryShared for Without<Q, R>
 where
     Q: QueryShared,
     R: Query,
@@ -207,7 +209,7 @@ impl<L, R> Or<L, R> {
     }
 }
 
-impl<L, R> Query for Or<L, R>
+unsafe impl<L, R> Query for Or<L, R>
 where
     L: Query,
     R: Query,
@@ -220,14 +222,14 @@ where
     }
 }
 
-impl<L, R> QueryShared for Or<L, R>
+unsafe impl<L, R> QueryShared for Or<L, R>
 where
     L: QueryShared,
     R: QueryShared,
 {
 }
 
-impl<Q> Query for Option<Q>
+unsafe impl<Q> Query for Option<Q>
 where
     Q: Query,
 {
@@ -238,7 +240,7 @@ where
     }
 }
 
-impl<Q> QueryShared for Option<Q> where Q: QueryShared {}
+unsafe impl<Q> QueryShared for Option<Q> where Q: QueryShared {}
 
 pub struct QueryBorrow<'w, Q, D> {
     data: &'w D,

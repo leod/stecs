@@ -9,8 +9,8 @@ use crate::{
 
 use super::Or;
 
-// This is unsafe because `check_borrows` must check borrows matching what `get`
-// actually borrows.
+// TODO: Now that borrow checking is in Query, maybe this no longer needs to be
+// unsafe.
 pub unsafe trait Fetch: Copy {
     type Item<'a>
     where

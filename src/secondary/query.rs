@@ -19,7 +19,8 @@ pub trait SecondaryFetch<'w, E: Entity>: Copy + 'w {
         Self: 'a;
 }
 
-pub trait SecondaryQuery<E: Entity> {
+// This is unafe because `for_each_borrow` must match `Fetch`.
+pub unsafe trait SecondaryQuery<E: Entity> {
     type Fetch<'w>: SecondaryFetch<'w, E>;
 
     fn for_each_borrow(f: impl FnMut(TypeId, bool));
@@ -58,7 +59,7 @@ impl<'w, E: Entity, C: Component> SecondaryFetch<'w, E> for ComponentFetch<'w, E
     }
 }
 
-impl<'q, E: Entity, C: Component> SecondaryQuery<E> for &'q C {
+unsafe impl<'q, E: Entity, C: Component> SecondaryQuery<E> for &'q C {
     type Fetch<'w> = ComponentFetch<'w, E, C>;
 
     fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
@@ -99,7 +100,7 @@ impl<'w, E: Entity, C: Component> SecondaryFetch<'w, E> for ComponentMutFetch<'w
     }
 }
 
-impl<'q, E: Entity, C: Component> SecondaryQuery<E> for &'q mut C {
+unsafe impl<'q, E: Entity, C: Component> SecondaryQuery<E> for &'q mut C {
     type Fetch<'w> = ComponentMutFetch<'w, E, C>;
 
     fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
@@ -137,7 +138,7 @@ macro_rules! tuple_impl {
             }
         }
 
-        impl<E: Entity, $($name: SecondaryQuery<E>,)*> SecondaryQuery<E> for ($($name,)*) {
+        unsafe impl<E: Entity, $($name: SecondaryQuery<E>,)*> SecondaryQuery<E> for ($($name,)*) {
             type Fetch<'w> = ($($name::Fetch<'w>,)*);
 
             #[allow(unused)]
