@@ -312,23 +312,16 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
             }
-
-            fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
-                #(checker.borrow::<#field_comp_tys>();)*
-
-                #(
-                    {
-                        type Fetch<#lifetime2> =
-                            <#field_flat_tys as ::stecs::Entity>::Fetch<#lifetime2>;
-                        <Fetch as ::stecs::query::fetch::Fetch>::check_borrows(checker);
-                    }
-                )*
-            }
         }
 
         impl #impl_generics_lifetime ::stecs::Query
         for #ident_ref #ty_generics_lifetime #where_clause {
             type Fetch<#lifetime2> = #ident_ref_fetch #ty_generics_lifetime2;
+
+            fn for_each_borrow(mut f: impl FnMut(::std::any::TypeId, bool)) {
+                #(f(::std::any::TypeId::of::<#field_comp_tys>(), false);)*
+                #(<#field_flat_tys as ::stecs::Entity>::Ref::<#lifetime>::for_each_borrow(&mut f);)*
+            }
         }
 
         impl #impl_generics_lifetime ::stecs::QueryShared
@@ -384,23 +377,20 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
             }
-
-            fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
-                #(checker.borrow::<#field_comp_tys>();)*
-
-                #(
-                    {
-                        type Fetch<#lifetime2> =
-                            <#field_flat_tys as ::stecs::Entity>::FetchMut<#lifetime2>;
-                        <Fetch as ::stecs::query::fetch::Fetch>::check_borrows(checker);
-                    }
-                )*
-            }
         }
 
         impl #impl_generics_lifetime ::stecs::Query
         for #ident_ref_mut #ty_generics_lifetime #where_clause {
             type Fetch<#lifetime2> = #ident_ref_mut_fetch #ty_generics_lifetime2;
+
+            fn for_each_borrow(mut f: impl FnMut(::std::any::TypeId, bool)) {
+                #(f(::std::any::TypeId::of::<#field_comp_tys>(), true);)*
+                #(
+                    <#field_flat_tys as ::stecs::Entity>::RefMut::<#lifetime>::for_each_borrow(
+                        &mut f,
+                    );
+                )*
+            }
       }
     })
 }

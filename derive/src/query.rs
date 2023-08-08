@@ -93,18 +93,16 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
                     )*
                 }
             }
-
-            fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
-                #(
-                    <#field_tys as ::stecs::Query>::Fetch::<#lifetime>::check_borrows(checker);
-                )*
-            }
         }
 
         // Query
 
-        impl<'__stecs__q> ::stecs::Query for #ident<'__stecs__q> {
-            type Fetch<#lifetime> = #ident_fetch<#lifetime>;
+        impl<#lifetime> ::stecs::Query for #ident<#lifetime> {
+            type Fetch<'__stecs__w> = #ident_fetch<'__stecs__w>;
+
+            fn for_each_borrow(mut f: impl FnMut(::std::any::TypeId, bool)) {
+                #(<#field_tys as ::stecs::Query>::for_each_borrow(&mut f);)*
+            }
         }
     })
 }

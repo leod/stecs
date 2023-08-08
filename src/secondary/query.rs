@@ -1,4 +1,6 @@
-use crate::{query::borrow_checker::BorrowChecker, Component, Entity, EntityId, SecondaryWorld};
+use std::any::TypeId;
+
+use crate::{Component, Entity, EntityId, SecondaryWorld};
 
 use super::column::SecondaryColumn;
 
@@ -15,13 +17,12 @@ pub trait SecondaryFetch<'w, E: Entity>: Copy + 'w {
     unsafe fn get<'a>(&self, id: EntityId<E>) -> Option<Self::Item<'a>>
     where
         Self: 'a;
-
-    #[doc(hidden)]
-    fn check_borrows(checker: &mut BorrowChecker);
 }
 
 pub trait SecondaryQuery<E: Entity> {
     type Fetch<'w>: SecondaryFetch<'w, E>;
+
+    fn for_each_borrow(f: impl FnMut(TypeId, bool));
 }
 
 pub trait SecondaryQueryShared<E: Entity>: SecondaryQuery<E> {}
@@ -55,14 +56,14 @@ impl<'w, E: Entity, C: Component> SecondaryFetch<'w, E> for ComponentFetch<'w, E
             &*ptr
         })
     }
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        checker.borrow::<C>();
-    }
 }
 
 impl<'q, E: Entity, C: Component> SecondaryQuery<E> for &'q C {
     type Fetch<'w> = ComponentFetch<'w, E, C>;
+
+    fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+        f(TypeId::of::<C>(), false);
+    }
 }
 
 impl<'q, E: Entity, C: Component> SecondaryQueryShared<E> for &'q C {}
@@ -96,14 +97,14 @@ impl<'w, E: Entity, C: Component> SecondaryFetch<'w, E> for ComponentMutFetch<'w
             &mut *ptr
         })
     }
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        checker.borrow_mut::<C>();
-    }
 }
 
 impl<'q, E: Entity, C: Component> SecondaryQuery<E> for &'q mut C {
     type Fetch<'w> = ComponentMutFetch<'w, E, C>;
+
+    fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+        f(TypeId::of::<C>(), true);
+    }
 }
 
 impl<'q, E: Entity, C: Component> SecondaryQueryShared<E> for &'q mut C {}
@@ -134,15 +135,15 @@ macro_rules! tuple_impl {
 
                 Some(($($name.get(id)?,)*))
             }
-
-            #[allow(unused)]
-            fn check_borrows(checker: &mut BorrowChecker) {
-                $($name::check_borrows(checker);)*
-            }
         }
 
         impl<E: Entity, $($name: SecondaryQuery<E>,)*> SecondaryQuery<E> for ($($name,)*) {
             type Fetch<'w> = ($($name::Fetch<'w>,)*);
+
+            #[allow(unused)]
+            fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+                $($name::for_each_borrow(&mut f);)*
+            }
         }
 
         impl<E: Entity, $($name: SecondaryQueryShared<E>,)*> SecondaryQueryShared<E>
@@ -156,3 +157,22 @@ smaller_tuples_too!(
 );
 
 // TODO: With/Without
+
+// Adapted from hecs (https://github.com/Ralith/hecs).
+pub(crate) fn assert_borrow<E: Entity, Q: SecondaryQuery<E>>() {
+    // This looks like an ugly O(n^2) loop, but everything's constant after inlining, so in
+    // practice LLVM optimizes it out entirely.
+    let mut i = 0;
+    Q::for_each_borrow(|a, unique| {
+        if unique {
+            let mut j = 0;
+            Q::for_each_borrow(|b, _| {
+                if i != j {
+                    core::assert!(a != b, "query violates a unique borrow");
+                }
+                j += 1;
+            })
+        }
+        i += 1;
+    });
+}

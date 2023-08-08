@@ -1,10 +1,8 @@
-use std::{any::type_name, marker::PhantomData};
+use std::marker::PhantomData;
 
 use crate::{world::WorldFetch, QueryShared, WorldData};
 
-use super::{
-    borrow_checker::BorrowChecker, fetch::Fetch, ExclusiveQueryBorrow, Query, QueryBorrow,
-};
+use super::{assert_borrow, fetch::Fetch, ExclusiveQueryBorrow, Query, QueryBorrow};
 
 impl<'w, Q, D> IntoIterator for QueryBorrow<'w, Q, D>
 where
@@ -18,7 +16,7 @@ where
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        assert_borrow::<Q>();
 
         // Safety: TODO
         unsafe { WorldFetchIter::new(self.data) }
@@ -37,7 +35,7 @@ where
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        assert_borrow::<Q>();
 
         // Safety: TODO
         unsafe { WorldFetchIter::new(self.data) }
@@ -56,7 +54,7 @@ where
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        assert_borrow::<Q>();
 
         // Safety: TODO
         unsafe { WorldFetchIter::new(self.0.data) }

@@ -1,11 +1,10 @@
-pub mod borrow_checker;
 pub mod fetch;
 pub mod iter;
 pub mod join;
 pub mod nest;
 pub mod nest2;
 
-use std::{any::type_name, marker::PhantomData};
+use std::{any::TypeId, marker::PhantomData};
 
 use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
@@ -15,7 +14,6 @@ use crate::{
 };
 
 use self::{
-    borrow_checker::BorrowChecker,
     fetch::{Fetch, OptionFetch, UnitFetch, WithFetch, WithoutFetch},
     join::JoinQueryBorrow,
     nest::NestQueryBorrow,
@@ -23,6 +21,8 @@ use self::{
 
 pub trait Query {
     type Fetch<'w>: Fetch + 'w;
+
+    fn for_each_borrow(f: impl FnMut(TypeId, bool));
 }
 
 pub type QueryItem<'w, Q> = <<Q as Query>::Fetch<'w> as Fetch>::Item<'w>;
@@ -31,16 +31,26 @@ pub trait QueryShared: Query {}
 
 impl<'q, C: Component> Query for &'q C {
     type Fetch<'w> = ColumnRawParts<C>;
+
+    fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+        f(TypeId::of::<C>(), false);
+    }
 }
 
 impl<'q, C: Component> QueryShared for &'q C {}
 
 impl<'q, C: Component> Query for &'q mut C {
     type Fetch<'w> = ColumnRawPartsMut<C>;
+
+    fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+        f(TypeId::of::<C>(), true);
+    }
 }
 
 impl<E: Entity> Query for EntityId<E> {
     type Fetch<'w> = E::FetchId<'w>;
+
+    fn for_each_borrow(_: impl FnMut(TypeId, bool)) {}
 }
 
 impl<E: Entity> QueryShared for EntityId<E> {}
@@ -49,11 +59,18 @@ macro_rules! tuple_impl {
     () => {
         impl Query for () {
             type Fetch<'w> = UnitFetch;
+
+            fn for_each_borrow(_: impl FnMut(TypeId, bool)) {}
         }
     };
     ($($name: ident),*) => {
         impl<$($name: Query,)*> Query for ($($name,)*) {
             type Fetch<'w> = ($($name::Fetch<'w>,)*);
+
+            #[allow(unused_mut)]
+            fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+                $($name::for_each_borrow(&mut f);)*
+            }
         }
 
         impl<$($name: QueryShared,)*> QueryShared for ($($name,)*) {
@@ -73,6 +90,10 @@ where
     R: Query,
 {
     type Fetch<'w> = WithFetch<Q::Fetch<'w>, R::Fetch<'w>>;
+
+    fn for_each_borrow(f: impl FnMut(TypeId, bool)) {
+        Q::for_each_borrow(f);
+    }
 }
 
 impl<Q, R> QueryShared for With<Q, R>
@@ -90,6 +111,10 @@ where
     R: Query,
 {
     type Fetch<'w> = WithoutFetch<Q::Fetch<'w>, R::Fetch<'w>>;
+
+    fn for_each_borrow(f: impl FnMut(TypeId, bool)) {
+        Q::for_each_borrow(f);
+    }
 }
 
 impl<Q, R> QueryShared for Without<Q, R>
@@ -188,6 +213,11 @@ where
     R: Query,
 {
     type Fetch<'w> = Or<L::Fetch<'w>, R::Fetch<'w>>;
+
+    fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+        L::for_each_borrow(&mut f);
+        R::for_each_borrow(&mut f);
+    }
 }
 
 impl<L, R> QueryShared for Or<L, R>
@@ -202,6 +232,10 @@ where
     Q: Query,
 {
     type Fetch<'w> = OptionFetch<Q::Fetch<'w>>;
+
+    fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+        Q::for_each_borrow(&mut f);
+    }
 }
 
 impl<Q> QueryShared for Option<Q> where Q: QueryShared {}
@@ -276,7 +310,7 @@ where
 
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'a> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        assert_borrow::<Q>();
 
         let world_fetch = self.data.fetch::<Q::Fetch<'a>>();
 
@@ -301,7 +335,7 @@ where
 
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'a> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        assert_borrow::<Q>();
 
         let world_fetch = self.data.fetch::<Q::Fetch<'a>>();
 
@@ -383,4 +417,23 @@ where
     {
         self.0.get(id)
     }
+}
+
+// Adapted from hecs (https://github.com/Ralith/hecs).
+pub(crate) fn assert_borrow<Q: Query>() {
+    // This looks like an ugly O(n^2) loop, but everything's constant after inlining, so in
+    // practice LLVM optimizes it out entirely.
+    let mut i = 0;
+    Q::for_each_borrow(|a, unique| {
+        if unique {
+            let mut j = 0;
+            Q::for_each_borrow(|b, _| {
+                if i != j {
+                    core::assert!(a != b, "query violates a unique borrow");
+                }
+                j += 1;
+            })
+        }
+        i += 1;
+    });
 }
