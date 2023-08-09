@@ -346,9 +346,9 @@ where
     }
 }
 
-pub struct ExclusiveQueryBorrow<'w, Q, D>(QueryBorrow<'w, Q, D>);
+pub struct QueryMut<'w, Q, D>(QueryBorrow<'w, Q, D>);
 
-impl<'w, Q, D> ExclusiveQueryBorrow<'w, Q, D>
+impl<'w, Q, D> QueryMut<'w, Q, D>
 where
     Q: Query,
     D: WorldData,
@@ -357,18 +357,18 @@ where
         Self(QueryBorrow::new(data))
     }
 
-    pub fn with<R>(self) -> ExclusiveQueryBorrow<'w, With<Q, R>, D>
+    pub fn with<R>(self) -> QueryMut<'w, With<Q, R>, D>
     where
         R: Query,
     {
-        ExclusiveQueryBorrow(self.0.with::<R>())
+        QueryMut(self.0.with::<R>())
     }
 
-    pub fn without<R>(self) -> ExclusiveQueryBorrow<'w, Without<Q, R>, D>
+    pub fn without<R>(self) -> QueryMut<'w, Without<Q, R>, D>
     where
         R: Query,
     {
-        ExclusiveQueryBorrow(self.0.without::<R>())
+        QueryMut(self.0.without::<R>())
     }
 
     pub fn nest<R>(self) -> NestQueryBorrow<'w, Q, R, D>
@@ -407,7 +407,7 @@ where
     }
 }
 
-impl<'w, Q, D> ExclusiveQueryBorrow<'w, Q, D>
+impl<'w, Q, D> QueryMut<'w, Q, D>
 where
     Q: QueryShared,
     D: WorldData,

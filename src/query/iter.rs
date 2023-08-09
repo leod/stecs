@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{world::WorldFetch, QueryShared, WorldData};
 
-use super::{assert_borrow, fetch::Fetch, ExclusiveQueryBorrow, Query, QueryBorrow};
+use super::{assert_borrow, fetch::Fetch, Query, QueryBorrow, QueryMut};
 
 impl<'w, Q, D> IntoIterator for QueryBorrow<'w, Q, D>
 where
@@ -42,7 +42,7 @@ where
     }
 }
 
-impl<'w, Q, D> IntoIterator for ExclusiveQueryBorrow<'w, Q, D>
+impl<'w, Q, D> IntoIterator for QueryMut<'w, Q, D>
 where
     Q: Query,
     D: WorldData,
