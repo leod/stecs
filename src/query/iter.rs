@@ -83,6 +83,7 @@ where
         }
     }
 
+    #[inline]
     pub(crate) fn skip_one(&mut self) {
         if self.i < self.fetch.len() {
             self.i += 1;
@@ -96,6 +97,7 @@ where
 {
     type Item = F::Item<'a>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         if self.i == self.fetch.len() {
             None
@@ -127,6 +129,7 @@ where
 {
     type Item = <F as Fetch>::Item<'w>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             if let Some(item) = self
@@ -184,6 +187,7 @@ where
         }
     }
 
+    #[inline]
     pub(crate) fn skip_one(&mut self) {
         if let Some(fetch_iter) = self.current_fetch_iter.as_mut() {
             fetch_iter.skip_one();

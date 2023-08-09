@@ -318,6 +318,7 @@ where
         }
     }
 
+    #[inline]
     pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
@@ -335,6 +336,7 @@ where
     Q: QueryShared,
     D: WorldData,
 {
+    #[inline]
     pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
@@ -403,6 +405,7 @@ where
         self.0.join_mut(secondary_world)
     }
 
+    #[inline]
     pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
@@ -424,6 +427,7 @@ where
     Q: QueryShared,
     D: WorldData,
 {
+    #[inline]
     pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,

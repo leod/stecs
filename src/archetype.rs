@@ -152,6 +152,7 @@ where
 
     type Iter = option::IntoIter<F>;
 
+    #[inline]
     unsafe fn get<'a>(&self, id: EntityKey<T::Entity>) -> Option<F::Item<'a>> {
         self.1
             .and_then(|fetch| self.0.get(id.0).map(|&index| fetch.get(index)))
@@ -161,6 +162,7 @@ where
         self.1.into_iter()
     }
 
+    #[inline]
     fn len(&self) -> usize {
         if self.1.is_some() {
             self.0.len()

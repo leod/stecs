@@ -50,10 +50,12 @@ where
         columns.column::<C>().map(|column| column.as_raw_parts())
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.len
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
@@ -76,10 +78,12 @@ where
             .map(|column| column.as_raw_parts_mut())
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.len
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
@@ -114,10 +118,12 @@ where
         }
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.0.len()
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
@@ -138,10 +144,12 @@ macro_rules! tuple_impl {
                 Some(Self(ids.len()))
             }
 
+            #[inline]
             fn len(&self) -> usize {
                 self.0
             }
 
+            #[inline]
             unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a> {
                 debug_assert!(index < self.len());
             }
@@ -160,10 +168,12 @@ macro_rules! tuple_impl {
                 Some(($($name,)*))
             }
 
+            #[inline]
             fn len(&self) -> usize {
                 self.0.len()
             }
 
+            #[inline]
             unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
             where
                 Self: 'a,
@@ -205,10 +215,12 @@ where
         })
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.fetch.len()
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
@@ -243,10 +255,12 @@ where
         })
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.fetch.len()
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
@@ -266,6 +280,7 @@ where
         Or::new(L::new(ids, columns), R::new(ids, columns))
     }
 
+    #[inline]
     fn len(&self) -> usize {
         match self {
             Or::Left(left) => left.len(),
@@ -274,6 +289,7 @@ where
         }
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
@@ -305,10 +321,12 @@ where
         })
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.len
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,

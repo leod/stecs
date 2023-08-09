@@ -44,6 +44,7 @@ where
     J: Query,
     D: WorldData,
 {
+    #[inline]
     pub fn get_mut<'a, E>(
         &'a mut self,
         id: EntityId<E>,
@@ -129,6 +130,7 @@ where
 {
     type Item = (<F as Fetch>::Item<'w>, Nest<'w, J, D>);
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         let (id, item) = self.world_iter_q.next()?;
         let nest = Nest {
@@ -149,6 +151,7 @@ where
     // This has to take an exclusive `self` reference to prevent violating
     // Rust's borrowing rules if `J` contains an exclusive borrow, since `get()`
     // could be called multiple times with the same `id`.
+    #[inline]
     pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<J::Item<'a>>
     where
         'w: 'a,
@@ -185,6 +188,7 @@ where
 {
     type Item = J::Item<'w>;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let Some(mut id) = self.iter_id.next() else {
             self.iter_j.next();

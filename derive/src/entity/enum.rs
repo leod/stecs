@@ -100,6 +100,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             // https://github.com/rust-lang/rust/issues/48214#issuecomment-1150463333
             #(for<'__stecs__a> #variant_tys: ::stecs::EntityFromRef,)*
         {
+            #[inline]
             fn from_ref(entity: Self::Ref<'_>) -> Self
             {
                 match entity {
