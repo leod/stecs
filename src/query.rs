@@ -26,7 +26,7 @@ pub unsafe trait Query {
     fn for_each_borrow(f: impl FnMut(TypeId, bool));
 }
 
-pub type QueryItem<'w, Q> = <<Q as Query>::Fetch<'w> as Fetch>::Item<'w>;
+pub type QueryItem<'w, 'a, Q> = <<Q as Query>::Fetch<'w> as Fetch>::Item<'a>;
 
 // This is unsafe because it must not have any exclusive borrows.
 pub unsafe trait QueryShared: Query {}
@@ -242,8 +242,13 @@ where
 
 unsafe impl<Q> QueryShared for Option<Q> where Q: QueryShared {}
 
-pub struct QueryBorrow<'w, Q, D> {
+pub struct QueryBorrow<'w, Q, D>
+where
+    Q: Query,
+    D: WorldData,
+{
     data: &'w D,
+    fetch: D::Fetch<'w, Q::Fetch<'w>>,
     _phantom: PhantomData<Q>,
 }
 
@@ -253,8 +258,12 @@ where
     D: WorldData,
 {
     pub(crate) fn new(data: &'w D) -> Self {
+        // Safety: The query must satisfy Rust's borrowing rules.
+        assert_borrow::<Q>();
+
         Self {
             data,
+            fetch: data.fetch(),
             _phantom: PhantomData,
         }
     }
@@ -301,23 +310,15 @@ where
         }
     }
 
-    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<Q>>
+    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
     {
         let id = id.to_outer();
 
-        // TODO: Cache?
-
-        // Safety: Check that the query does not specify borrows that violate
-        // Rust's borrowing rules.
-        assert_borrow::<Q>();
-
-        let world_fetch = self.data.fetch::<Q::Fetch<'a>>();
-
         // Safety: TODO
-        unsafe { world_fetch.get(id.get()) }
+        unsafe { self.fetch.get(id.get()) }
     }
 }
 
@@ -326,27 +327,22 @@ where
     Q: QueryShared,
     D: WorldData,
 {
-    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<Q>>
+    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
     {
         let id = id.to_outer();
 
-        // TODO: Cache?
-
-        // Safety: Check that the query does not specify borrows that violate
-        // Rust's borrowing rules.
-        assert_borrow::<Q>();
-
-        let world_fetch = self.data.fetch::<Q::Fetch<'a>>();
-
         // Safety: TODO
-        unsafe { world_fetch.get(id.get()) }
+        unsafe { self.fetch.get(id.get()) }
     }
 }
 
-pub struct QueryMut<'w, Q, D>(QueryBorrow<'w, Q, D>);
+pub struct QueryMut<'w, Q, D>(QueryBorrow<'w, Q, D>)
+where
+    Q: Query,
+    D: WorldData;
 
 impl<'w, Q, D> QueryMut<'w, Q, D>
 where
@@ -371,13 +367,6 @@ where
         QueryMut(self.0.without::<R>())
     }
 
-    pub fn nest<R>(self) -> NestQueryBorrow<'w, Q, R, D>
-    where
-        R: Query,
-    {
-        NestQueryBorrow::new(self.0.data)
-    }
-
     pub fn join<J>(
         self,
         secondary_world: &'w SecondaryWorld<D::Entity>,
@@ -398,12 +387,19 @@ where
         self.0.join_mut(secondary_world)
     }
 
-    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<Q>>
+    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
     {
         self.0.get_mut(id)
+    }
+
+    pub fn nest<J>(self) -> NestQueryBorrow<'w, Q, J, D>
+    where
+        J: Query,
+    {
+        NestQueryBorrow::new(self.0.data)
     }
 }
 
@@ -412,7 +408,7 @@ where
     Q: QueryShared,
     D: WorldData,
 {
-    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<Q>>
+    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,

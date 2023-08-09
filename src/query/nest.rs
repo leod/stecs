@@ -6,8 +6,15 @@ use super::{
     assert_borrow, fetch::Fetch, iter::WorldFetchIter, nest2::Nest2QueryBorrow, QueryItem,
 };
 
-pub struct NestQueryBorrow<'w, Q, J, D> {
+pub struct NestQueryBorrow<'w, Q, J, D>
+where
+    Q: Query,
+    J: Query,
+    D: WorldData,
+{
     data: &'w D,
+    world_fetch_q: D::Fetch<'w, Q::Fetch<'w>>,
+    world_fetch_j: D::Fetch<'w, J::Fetch<'w>>,
     _phantom: PhantomData<(Q, J)>,
 }
 
@@ -15,15 +22,17 @@ impl<'w, Q, J, D> NestQueryBorrow<'w, Q, J, D>
 where
     Q: Query,
     J: Query,
+    D: WorldData,
 {
     pub(crate) fn new(data: &'w D) -> Self {
-        // Safety: Check that the query does not specify borrows that violate
-        // Rust's borrowing rules.
+        // Safety: The query must satisfy Rust's borrowing rules.
         assert_borrow::<Q>();
         assert_borrow::<J>();
 
         Self {
             data,
+            world_fetch_q: data.fetch(),
+            world_fetch_j: data.fetch(),
             _phantom: PhantomData,
         }
     }
@@ -38,21 +47,18 @@ where
     pub fn get_mut<'a, E>(
         &'a mut self,
         id: EntityId<E>,
-    ) -> Option<(QueryItem<'a, Q>, Nest<'a, J::Fetch<'a>, D>)>
+    ) -> Option<(QueryItem<'w, 'a, Q>, Nest<'w, J::Fetch<'w>, D>)>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
     {
-        let world_fetch = self.data.fetch::<Q::Fetch<'a>>();
         let id = id.to_outer();
-
-        // Safety: TODO
-        let item = unsafe { world_fetch.get(id.get()) }?;
+        let item = unsafe { self.world_fetch_q.get(id.get()) }?;
 
         let nest = Nest {
             data: self.data,
             ignore_id: id,
-            fetch: self.data.fetch::<J::Fetch<'a>>(),
+            world_fetch_j: self.world_fetch_j.clone(),
         };
 
         Some((item, nest))
@@ -62,8 +68,7 @@ where
     where
         J1: Query,
     {
-        // Safety: Check that the query does not specify borrows that violate
-        // Rust's borrowing rules.
+        // Safety: The query must satisfy Rust's borrowing rules.
         assert_borrow::<J1>();
 
         Nest2QueryBorrow {
@@ -85,13 +90,12 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         // Safety: TODO
-        let query_iter = unsafe { WorldFetchIter::new(self.data) };
-        let nest_fetch = self.data.fetch();
+        let world_iter_q = unsafe { WorldFetchIter::new(self.data) };
 
         NestDataFetchIter {
             data: self.data,
-            query_iter,
-            nest_fetch,
+            world_iter_q,
+            world_fetch_j: self.world_fetch_j,
         }
     }
 }
@@ -103,7 +107,7 @@ where
 {
     pub(crate) data: &'w D,
     pub(crate) ignore_id: EntityId<D::Entity>,
-    pub(crate) fetch: D::Fetch<'w, J>,
+    pub(crate) world_fetch_j: D::Fetch<'w, J>,
 }
 
 pub struct NestDataFetchIter<'w, F, J, D>
@@ -113,8 +117,8 @@ where
     D: WorldData,
 {
     data: &'w D,
-    query_iter: WorldFetchIter<'w, (<D::Entity as Entity>::FetchId<'w>, F), D>,
-    nest_fetch: D::Fetch<'w, J>,
+    world_iter_q: WorldFetchIter<'w, (<D::Entity as Entity>::FetchId<'w>, F), D>,
+    world_fetch_j: D::Fetch<'w, J>,
 }
 
 impl<'w, F, J, D> Iterator for NestDataFetchIter<'w, F, J, D>
@@ -126,11 +130,11 @@ where
     type Item = (<F as Fetch>::Item<'w>, Nest<'w, J, D>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (id, item) = self.query_iter.next()?;
+        let (id, item) = self.world_iter_q.next()?;
         let nest = Nest {
             data: self.data,
             ignore_id: id,
-            fetch: self.nest_fetch.clone(),
+            world_fetch_j: self.world_fetch_j.clone(),
         };
 
         Some((item, nest))
@@ -160,7 +164,7 @@ where
         }
 
         // Safety: TODO
-        unsafe { self.fetch.get(id.get()) }
+        unsafe { self.world_fetch_j.get(id.get()) }
     }
 }
 
@@ -170,8 +174,8 @@ where
     D: WorldData + 'w,
 {
     ignore_id: EntityId<D::Entity>,
-    id_iter: WorldFetchIter<'w, <D::Entity as Entity>::FetchId<'w>, D>,
-    data_iter: WorldFetchIter<'w, J, D>,
+    iter_id: WorldFetchIter<'w, <D::Entity as Entity>::FetchId<'w>, D>,
+    iter_j: WorldFetchIter<'w, J, D>,
 }
 
 impl<'w, J, D> Iterator for NestIter<'w, J, D>
@@ -182,8 +186,8 @@ where
     type Item = J::Item<'w>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let Some(mut id) = self.id_iter.next() else {
-            self.data_iter.next();
+        let Some(mut id) = self.iter_id.next() else {
+            self.iter_j.next();
             return None;
         };
 
@@ -195,12 +199,12 @@ where
             // must *not* call `next()` instead of `skip_one()`, since that
             // could create an aliasing reference. Instead, we just let the
             // pointers skip over the current entity.
-            self.data_iter.skip_one();
+            self.iter_j.skip_one();
 
-            let next_id = self.id_iter.next();
+            let next_id = self.iter_id.next();
 
             let Some(next_id) = next_id else {
-                self.data_iter.next();
+                self.iter_j.next();
                 return None;
             };
 
@@ -211,7 +215,7 @@ where
         // `data_iter`, and now we now know that they `id` does not point to the
         // entity that is to be ignored, so it is safe to call `next()` on
         // `data_iter`.
-        self.data_iter.next()
+        self.iter_j.next()
     }
 }
 
@@ -225,16 +229,17 @@ where
     type IntoIter = NestIter<'w, J, D>;
 
     fn into_iter(self) -> Self::IntoIter {
-        // Safety: Ids cannot be mutably borrowed, so there is no invalid aliasing.
-        let id_iter = unsafe { WorldFetchIter::new(self.data) };
+        // Safety: Ids cannot be mutably queries, so there is no invalid
+        // aliasing.
+        let iter_id = unsafe { WorldFetchIter::new(self.data) };
 
         // Safety: TODO
-        let data_iter = unsafe { WorldFetchIter::new(self.data) };
+        let iter_j = unsafe { WorldFetchIter::from_world_fetch(self.world_fetch_j) };
 
         NestIter {
             ignore_id: self.ignore_id,
-            id_iter,
-            data_iter,
+            iter_id,
+            iter_j,
         }
     }
 }

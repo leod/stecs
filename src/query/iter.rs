@@ -172,6 +172,18 @@ where
         }
     }
 
+    pub(crate) unsafe fn from_world_fetch(mut world_fetch: D::Fetch<'w, F>) -> Self {
+        let len = world_fetch.len();
+        let mut world_iter = world_fetch.iter();
+        let current_fetch_iter = world_iter.next().map(FetchIter::new);
+
+        Self {
+            len,
+            world_iter,
+            current_fetch_iter,
+        }
+    }
+
     pub(crate) fn skip_one(&mut self) {
         if let Some(fetch_iter) = self.current_fetch_iter.as_mut() {
             fetch_iter.skip_one();
