@@ -258,6 +258,17 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 }
             }
 
+            fn contains(&self, id: ::stecs::EntityId<Self::Entity>) -> bool {
+                match id.get() {
+                    #(
+                        #ident_id::#variant_idents(id) => {
+                            self.#variant_idents
+                                .contains(::stecs::EntityId::<#variant_tys>::new(id))
+                        }
+                    )*
+                }
+            }
+
             fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
             where
                 F: ::stecs::query::fetch::Fetch + 'w,

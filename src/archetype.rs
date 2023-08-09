@@ -206,6 +206,10 @@ impl<T: Columns> WorldData for Archetype<T> {
         old
     }
 
+    fn contains(&self, id: EntityId<Self::Entity>) -> bool {
+        self.indices.contains(id.get().0)
+    }
+
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where
         F: Fetch + 'w,

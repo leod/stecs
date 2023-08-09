@@ -41,6 +41,8 @@ pub trait WorldData: Default + 'static {
         entity: Self::Entity,
     ) -> Option<Self::Entity>;
 
+    fn contains(&self, id: EntityId<Self::Entity>) -> bool;
+
     #[doc(hidden)]
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
     where
@@ -130,6 +132,13 @@ impl<E: Entity> World<E> {
 
     pub fn spawn_at(&mut self, id: EntityId<E>, entity: E) -> Option<E> {
         self.0.spawn_at(id, entity)
+    }
+
+    pub fn contains<F>(&self, id: EntityId<F>) -> bool
+    where
+        F: EntityVariant<E>,
+    {
+        self.0.contains(id.to_outer())
     }
 }
 
