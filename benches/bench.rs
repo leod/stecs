@@ -2,7 +2,7 @@
 
 use std::{
     collections::hash_map::DefaultHasher,
-    hash::{BuildHasherDefault, Hash, Hasher, SipHasher},
+    hash::{Hash, Hasher},
 };
 
 use bencher::{benchmark_group, benchmark_main, Bencher};
