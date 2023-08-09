@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{world::WorldFetch, QueryShared, WorldData};
 
-use super::{assert_borrow, fetch::Fetch, ExclusiveQueryBorrow, Query, QueryBorrow};
+use super::{assert_borrow, fetch::Fetch, Query, QueryBorrow, QueryMut};
 
 impl<'w, Q, D> IntoIterator for QueryBorrow<'w, Q, D>
 where
@@ -42,7 +42,7 @@ where
     }
 }
 
-impl<'w, Q, D> IntoIterator for ExclusiveQueryBorrow<'w, Q, D>
+impl<'w, Q, D> IntoIterator for QueryMut<'w, Q, D>
 where
     Q: Query,
     D: WorldData,
@@ -161,6 +161,18 @@ where
 {
     pub(crate) unsafe fn new(data: &'w D) -> Self {
         let mut world_fetch = data.fetch::<F>();
+        let len = world_fetch.len();
+        let mut world_iter = world_fetch.iter();
+        let current_fetch_iter = world_iter.next().map(FetchIter::new);
+
+        Self {
+            len,
+            world_iter,
+            current_fetch_iter,
+        }
+    }
+
+    pub(crate) unsafe fn from_world_fetch(mut world_fetch: D::Fetch<'w, F>) -> Self {
         let len = world_fetch.len();
         let mut world_iter = world_fetch.iter();
         let current_fetch_iter = world_iter.next().map(FetchIter::new);

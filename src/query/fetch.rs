@@ -27,16 +27,14 @@ pub unsafe trait Fetch: Copy {
     /// Fetches the components specified by `Self::Query` for the entity stored
     /// at `index`.
     ///
-    /// # Panics
-    ///
-    /// Panics if `index >= self.len()`.
-    ///
     /// # Safety
     ///
     /// This is unsafe because it shifts the burden of checking Rust's borrowing
-    /// rules to the caller. In particular, the caller has to ensure that this
-    /// method is not called on an `index` whose components are already borrowed
-    /// elsewhere (be it through `self` or not through `self`).
+    /// rules to the caller. The caller has to ensure that this method is not
+    /// called on an `index` whose components are already borrowed elsewhere (be
+    /// it through `self` or not through `self`).
+    ///
+    /// The method also does not do bounds checking.
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a;
@@ -60,7 +58,7 @@ where
     where
         Self: 'a,
     {
-        assert!(index < <Self as Fetch>::len(self));
+        debug_assert!(index < <Self as Fetch>::len(self));
 
         unsafe { &*self.ptr.add(index) }
     }
@@ -86,7 +84,7 @@ where
     where
         Self: 'a,
     {
-        assert!(index < <Self as Fetch>::len(self));
+        debug_assert!(index < <Self as Fetch>::len(self));
 
         unsafe { &mut *self.ptr.add(index) }
     }
@@ -145,7 +143,7 @@ macro_rules! tuple_impl {
             }
 
             unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a> {
-                assert!(index < self.len());
+                debug_assert!(index < self.len());
             }
         }
     };

@@ -24,7 +24,7 @@ where
     D: WorldData,
 {
     type Item = (
-        QueryItem<'w, Q>,
+        QueryItem<'w, 'w, Q>,
         <J::Fetch<'w> as SecondaryFetch<'w, D::Entity>>::Item<'w>,
     );
 

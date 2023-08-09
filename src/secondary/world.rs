@@ -1,6 +1,6 @@
 use std::{any::TypeId, marker::PhantomData};
 
-use hashbrown::{HashMap, HashSet};
+use fxhash::{FxHashMap, FxHashSet};
 
 use crate::{
     entity::EntityVariant, query::fetch::Fetch, Component, Entity, EntityId, EntityRef, Query,
@@ -15,8 +15,8 @@ use super::column::{AnySecondaryColumn, SecondaryColumn};
 // archetype in the secondary world.
 
 pub struct SecondaryWorld<E: Entity> {
-    ids: HashSet<EntityId<E>>,
-    columns: HashMap<TypeId, Box<dyn AnySecondaryColumn<E>>>,
+    ids: FxHashSet<EntityId<E>>,
+    columns: FxHashMap<TypeId, Box<dyn AnySecondaryColumn<E>>>,
     _phantom: PhantomData<E>,
 }
 

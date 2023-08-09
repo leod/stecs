@@ -304,7 +304,7 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             where
                 Self: #lifetime2,
             {
-                ::std::assert!(index < self.len());
+                ::std::debug_assert!(index < self.len());
 
                 #ident_ref {
                     #(#field_comp_idents: &*self.#field_comp_idents.ptr.add(index),)*
@@ -369,7 +369,7 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             where
                 Self: #lifetime2,
             {
-                ::std::assert!(index < self.len());
+                ::std::debug_assert!(index < self.len());
 
                 #ident_ref_mut {
                     #(#field_comp_idents: &mut *self.#field_comp_idents.ptr.add(index),)*
