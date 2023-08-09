@@ -268,6 +268,10 @@ where
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.fetch.len()
+    }
+
     pub fn with<R>(self) -> QueryBorrow<'w, With<Q, R>, D>
     where
         R: Query,
@@ -351,6 +355,10 @@ where
 {
     pub(crate) fn new(data: &'w mut D) -> Self {
         Self(QueryBorrow::new(data))
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 
     pub fn with<R>(self) -> QueryMut<'w, With<Q, R>, D>
