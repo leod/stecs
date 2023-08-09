@@ -92,7 +92,7 @@ impl<E: Entity> SecondaryWorld<E> {
             .ids
             .iter()
             .copied()
-            .filter(|id| world.entity(*id).is_none())
+            .filter(|id| !world.contains(*id))
             .collect();
 
         for id in remove_ids {
