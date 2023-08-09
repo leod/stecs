@@ -6,11 +6,10 @@ edition = "2021"
 [dependencies]
 stecs-derive = { path = "derive" }
 thunderdome = "0.6.1"
-hashbrown = { version = "0.14.0", features = ["raw"] }
 downcast-rs = "1.2.0"
 derivative = "2.2.0"
-
 serde = { version = "1.0", features = ["derive"], optional = true }
+fxhash = "0.2.1"
 
 [dev-dependencies]
 bencher = "0.1.5"
