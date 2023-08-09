@@ -272,6 +272,10 @@ where
         self.fetch.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn with<R>(self) -> QueryBorrow<'w, With<Q, R>, D>
     where
         R: Query,
@@ -359,6 +363,10 @@ where
 
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn with<R>(self) -> QueryMut<'w, With<Q, R>, D>
