@@ -24,7 +24,7 @@ pub mod world;
 
 pub use thunderdome;
 
-pub use stecs_derive::{Entity, Query};
+pub use stecs_derive::{Entity, Query, QueryShared};
 
 #[doc(inline)]
 pub use self::{
