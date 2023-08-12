@@ -68,10 +68,15 @@ where
     type Item = (F::Item<'w>, J::Item<'w>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (id, item) = self.query_iter.next()?;
         let secondary_fetch = self.secondary_fetch.as_ref()?;
 
-        // Safety: `FetchIter` does not generate duplicate IDs.
-        unsafe { secondary_fetch.get(id) }.map(|secondary_item| (item, secondary_item))
+        loop {
+            let (id, item) = self.query_iter.next()?;
+
+            // Safety: `FetchIter` does not generate duplicate IDs.
+            if let Some(secondary_item) = unsafe { secondary_fetch.get(id) } {
+                return Some((item, secondary_item));
+            }
+        }
     }
 }
