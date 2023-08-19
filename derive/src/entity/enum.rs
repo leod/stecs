@@ -319,6 +319,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             type Data = #ident_world_data;
             type Iter = #world_fetch_iter;
 
+            #[inline]
             unsafe fn get<'a>(&self, id: #ident_id) -> ::std::option::Option<F::Item<'a>> {
                 // Safety: TODO
                 match id {
@@ -333,6 +334,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 iter
             }
 
+            #[inline]
             fn len(&self) -> usize {
                 let mut len = 0;
                 #(len += self.#variant_idents.len();)*
