@@ -297,11 +297,7 @@ where
     where
         J: SecondaryQueryShared<D::Entity>,
     {
-        JoinQueryBorrow {
-            data: self.data,
-            secondary_world,
-            _phantom: PhantomData,
-        }
+        JoinQueryBorrow::new(self.data, secondary_world)
     }
 
     pub fn join_mut<J>(
@@ -311,11 +307,7 @@ where
     where
         J: SecondaryQuery<D::Entity>,
     {
-        JoinQueryBorrow {
-            data: self.data,
-            secondary_world,
-            _phantom: PhantomData,
-        }
+        JoinQueryBorrow::new(self.data, secondary_world)
     }
 
     #[inline]

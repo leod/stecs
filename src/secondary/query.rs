@@ -26,6 +26,9 @@ pub unsafe trait SecondaryQuery<E: Entity> {
     fn for_each_borrow(f: impl FnMut(TypeId, bool));
 }
 
+pub type SecondaryQueryItem<'w, 'a, Q, E> =
+    <<Q as SecondaryQuery<E>>::Fetch<'w> as SecondaryFetch<'w, E>>::Item<'a>;
+
 pub trait SecondaryQueryShared<E: Entity>: SecondaryQuery<E> {}
 
 pub struct ComponentFetch<'w, E: Entity, C>(&'w SecondaryColumn<E, C>);
