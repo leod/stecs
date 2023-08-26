@@ -64,6 +64,9 @@ macro_rules! tuple_impl {
 
             fn for_each_borrow(_: impl FnMut(TypeId, bool)) {}
         }
+
+        unsafe impl QueryShared for () {
+        }
     };
     ($($name: ident),*) => {
         unsafe impl<$($name: Query,)*> Query for ($($name,)*) {
