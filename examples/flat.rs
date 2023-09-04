@@ -1,7 +1,7 @@
-use stecs::{EntityFromRef, EntityId};
+use stecs::{EntityFromRef, EntityId, EntityRef};
 
-#[derive(stecs::Entity, Clone)]
-#[stecs(derive_columns(Clone))]
+#[derive(stecs::Entity, Clone, Debug)]
+#[stecs(derive_columns(Clone), derive_ref(Debug))]
 struct Projectile {
     position: f32,
     velocity: i32,
@@ -46,4 +46,8 @@ fn main() {
 
     let entity_ref = world.entity(EntityId::<Entity>::from(id)).unwrap();
     let _ = Entity::from_ref(entity_ref);
+
+    for (id, projectile) in world.query::<(EntityId<Entity>, EntityRef<Projectile>)>() {
+        println!("{:?}: {:?}", id, projectile);
+    }
 }
