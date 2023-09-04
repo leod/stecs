@@ -64,4 +64,3 @@ fn main() {
         println!("{:?}: {:?}", id, projectile);
     }
 }
- 

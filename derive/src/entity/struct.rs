@@ -75,6 +75,7 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
     ) = split_fields(fields)?;
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+    let where_clause_predicates = where_clause.map(|where_clause| &where_clause.predicates);
 
     let lifetime: syn::Lifetime = syn::parse_str("'__stecs__a").unwrap();
     let lifetime2: syn::Lifetime = syn::parse_str("'__stecs__b").unwrap();
@@ -101,11 +102,13 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
 
         // EntityFromRef
 
-        impl #impl_generics ::stecs::EntityFromRef for #ident #ty_generics #where_clause
+        impl #impl_generics ::stecs::EntityFromRef for #ident #ty_generics
         where
             // https://github.com/rust-lang/rust/issues/48214#issuecomment-1150463333
             #(for<'__stecs__a> #field_comp_tys: ::std::clone::Clone,)*
             #(for<'__stecs__a> #field_flat_tys: ::stecs::EntityFromRef,)*
+
+            #where_clause_predicates
         {
             fn from_ref(entity: Self::Ref<'_>) -> Self
             {
