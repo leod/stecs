@@ -340,9 +340,18 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             {
                 ::std::debug_assert!(index < self.len());
 
+                // FIXME: This is REALLY bad because I don't understand why the
+                // `transmute` is needed at all. It's necessarily only if the
+                // inner entity is a generic type parameter.
+                #(
+                    let #field_flat_idents = ::std::mem::transmute(
+                        self.#field_flat_idents.get(index),
+                    );
+                )*;
+
                 #ident_ref {
                     #(#field_comp_idents: &*self.#field_comp_idents.ptr.add(index),)*
-                    #(#field_flat_idents: self.#field_flat_idents.get(index),)*
+                    #(#field_flat_idents,)*
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
             }
@@ -426,9 +435,18 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             {
                 ::std::debug_assert!(index < self.len());
 
+                // FIXME: This is REALLY bad because I don't understand why the
+                // `transmute` is needed at all. It's necessarily only if the
+                // inner entity is a generic type parameter.
+                #(
+                    let #field_flat_idents = ::std::mem::transmute(
+                        self.#field_flat_idents.get(index),
+                    );
+                )*;
+
                 #ident_ref_mut {
                     #(#field_comp_idents: &mut *self.#field_comp_idents.ptr.add(index),)*
-                    #(#field_flat_idents: self.#field_flat_idents.get(index),)*
+                    #(#field_flat_idents,)*
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
             }
