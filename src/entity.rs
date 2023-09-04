@@ -21,6 +21,8 @@ pub trait Columns: Default + 'static {
 
     #[doc(hidden)]
     fn new_fetch_mut<'a>(&self, len: usize) -> <Self::Entity as Entity>::FetchMut<'a>;
+
+    fn push_flat_columns<'a>(&'a self, output: &mut Vec<&'a dyn Any>);
 }
 
 pub trait Entity: Sized + 'static {
@@ -118,4 +120,17 @@ impl<E: Entity> EntityId<E> {
 #[doc(hidden)]
 pub fn downcast_columns_ref<T: Columns, U: Columns>(column: &T) -> Option<&U> {
     (column as &dyn Any).downcast_ref()
+}
+
+pub fn fetch_thing<'a, T: Columns>(
+    ids: Column<thunderdome::Index>,
+    columns: &T,
+) -> Option<<T::Entity as Entity>::Fetch<'a>> {
+    let mut flat_columns = Vec::new();
+    flat_columns.push(columns as &dyn Any);
+    columns.push_flat_columns(&mut flat_columns);
+
+    for flat_column in flat_columns {}
+
+    todo!()
 }

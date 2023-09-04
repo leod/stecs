@@ -229,6 +229,16 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
                     __stecs__phantom: ::std::marker::PhantomData,
                 }
             }
+
+            fn push_flat_columns<#lifetime>(
+                &#lifetime self,
+                output: &mut ::std::vec::Vec<&#lifetime dyn ::std::any::Any>,
+            ) {
+                #(
+                    output.push(&self.#field_flat_idents);
+                    self.#field_flat_idents.push_flat_columns(output);
+                )*
+            }
         }
 
         // Ref
@@ -290,10 +300,28 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &__stecs__T,
             ) -> ::std::option::Option<Self> {
-                ::stecs::entity::downcast_columns_ref(columns).map(|columns|
-                    <#ident_columns #ty_generics as ::stecs::entity::Columns>
-                    ::new_fetch(columns, ids.len())
-                )
+                let mut flat_columns = ::std::vec::Vec::new();
+                flat_columns.push(columns as &dyn ::std::any::Any);
+                ::stecs::entity::Columns::push_flat_columns(columns, &mut flat_columns);
+
+                // FIXME: This assumes that no entity struct contains the same
+                // entity type nested twice. Similar to duplicate components, we
+                // need to check against this at `World` construction time.
+                for flat_column in flat_columns {
+                    let flat_column: ::std::option::Option<&#ident_columns #ty_generics> =
+                        flat_column.downcast_ref();
+
+                    let fetch = flat_column.map(|flat_column|
+                        <#ident_columns #ty_generics as ::stecs::entity::Columns>
+                        ::new_fetch(flat_column, ids.len())
+                    );
+
+                    if fetch.is_some() {
+                        return fetch;
+                    }
+                }
+
+                None
             }
 
             fn len(&self) -> usize {
@@ -355,10 +383,28 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &__stecs__T,
             ) -> ::std::option::Option<Self> {
-                ::stecs::entity::downcast_columns_ref(columns).map(|columns|
-                    <#ident_columns #ty_generics as ::stecs::entity::Columns>
-                    ::new_fetch_mut(columns, ids.len())
-                )
+                let mut flat_columns = ::std::vec::Vec::new();
+                flat_columns.push(columns as &dyn ::std::any::Any);
+                ::stecs::entity::Columns::push_flat_columns(columns, &mut flat_columns);
+
+                // FIXME: This assumes that no entity struct contains the same
+                // entity type nested twice. Similar to duplicate components, we
+                // need to check against this at `World` construction time.
+                for flat_column in flat_columns {
+                    let flat_column: ::std::option::Option<&#ident_columns #ty_generics> =
+                        flat_column.downcast_ref();
+
+                    let fetch = flat_column.map(|flat_column|
+                        <#ident_columns #ty_generics as ::stecs::entity::Columns>
+                        ::new_fetch_mut(flat_column, ids.len())
+                    );
+
+                    if fetch.is_some() {
+                        return fetch;
+                    }
+                }
+
+                None
             }
 
             fn len(&self) -> usize {
