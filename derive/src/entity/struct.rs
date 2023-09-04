@@ -299,10 +299,13 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             fn new<__stecs__T: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &__stecs__T,
+                strict_entity_ref: bool,
             ) -> ::std::option::Option<Self> {
                 let mut flat_columns = ::std::vec::Vec::new();
                 flat_columns.push(columns as &dyn ::std::any::Any);
-                ::stecs::entity::Columns::push_flat_columns(columns, &mut flat_columns);
+                if !strict_entity_ref {
+                    ::stecs::entity::Columns::push_flat_columns(columns, &mut flat_columns);
+                }
 
                 // FIXME: This assumes that no entity struct contains the same
                 // entity type nested twice. Similar to duplicate components, we
@@ -382,10 +385,13 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             fn new<__stecs__T: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &__stecs__T,
+                strict_entity_ref: bool,
             ) -> ::std::option::Option<Self> {
                 let mut flat_columns = ::std::vec::Vec::new();
                 flat_columns.push(columns as &dyn ::std::any::Any);
-                ::stecs::entity::Columns::push_flat_columns(columns, &mut flat_columns);
+                if !strict_entity_ref {
+                    ::stecs::entity::Columns::push_flat_columns(columns, &mut flat_columns);
+                }
 
                 // FIXME: This assumes that no entity struct contains the same
                 // entity type nested twice. Similar to duplicate components, we

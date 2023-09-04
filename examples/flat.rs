@@ -8,13 +8,14 @@ struct Projectile {
 }
 
 #[derive(stecs::Entity, Clone)]
-#[stecs(derive_columns(Clone))]
+#[stecs(derive_columns(Clone), derive_ref(Debug))]
 struct Bullet {
     #[stecs(flat)]
     projectile: Projectile,
 }
 
 #[derive(stecs::Entity, Clone)]
+#[stecs(derive_ref(Debug))]
 enum Entity {
     Projectile(Projectile),
     Bullet(Bullet),
@@ -50,4 +51,17 @@ fn main() {
     for (id, projectile) in world.query::<(EntityId<Entity>, EntityRef<Projectile>)>() {
         println!("{:?}: {:?}", id, projectile);
     }
+
+    println!("---");
+
+    for (id, projectile) in world.query::<(EntityId<Projectile>, EntityRef<Projectile>)>() {
+        println!("{:?}: {:?}", id, projectile);
+    }
+
+    println!("---");
+
+    for (id, projectile) in world.query::<(EntityId<Entity>, EntityRef<Entity>)>() {
+        println!("{:?}: {:?}", id, projectile);
+    }
 }
+ 

@@ -16,7 +16,11 @@ pub unsafe trait Fetch: Copy {
     where
         Self: 'a;
 
-    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self>;
+    fn new<T: Columns>(
+        ids: &Column<thunderdome::Index>,
+        columns: &T,
+        strict_entity_ref: bool,
+    ) -> Option<Self>;
 
     fn len(&self) -> usize;
 
@@ -46,7 +50,7 @@ where
 {
     type Item<'a> = &'a C where Self: 'a;
 
-    fn new<T: Columns>(_: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
+    fn new<T: Columns>(_: &Column<thunderdome::Index>, columns: &T, _: bool) -> Option<Self> {
         columns.column::<C>().map(|column| column.as_raw_parts())
     }
 
@@ -72,7 +76,7 @@ where
 {
     type Item<'a> = &'a mut C where Self: 'a;
 
-    fn new<T: Columns>(_: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
+    fn new<T: Columns>(_: &Column<thunderdome::Index>, columns: &T, _: bool) -> Option<Self> {
         columns
             .column::<C>()
             .map(|column| column.as_raw_parts_mut())
@@ -110,7 +114,7 @@ where
 {
     type Item<'a> = EntityId<E>;
 
-    fn new<T: Columns>(ids: &Column<thunderdome::Index>, _: &T) -> Option<Self> {
+    fn new<T: Columns>(ids: &Column<thunderdome::Index>, _: &T, _: bool) -> Option<Self> {
         if TypeId::of::<T::Entity>() == TypeId::of::<E>() {
             Some(Self(ids.as_raw_parts(), PhantomData))
         } else {
@@ -140,7 +144,7 @@ macro_rules! tuple_impl {
         unsafe impl Fetch for UnitFetch {
             type Item<'a> = ();
 
-            fn new<T: Columns>(ids: &Column<thunderdome::Index>, _: &T) -> Option<Self> {
+            fn new<T: Columns>(ids: &Column<thunderdome::Index>, _: &T, _: bool) -> Option<Self> {
                 Some(Self(ids.len()))
             }
 
@@ -160,9 +164,13 @@ macro_rules! tuple_impl {
             type Item<'a> = ($($name::Item<'a>,)*) where Self: 'a;
 
             #[allow(non_snake_case, unused)]
-            fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
+            fn new<T: Columns>(
+                ids: &Column<thunderdome::Index>,
+                columns: &T,
+                strict_entity_ref: bool,
+            ) -> Option<Self> {
                 let len = ids.len();
-                $(let $name = $name::new(ids, columns)?;)*
+                $(let $name = $name::new(ids, columns, strict_entity_ref)?;)*
                 $(assert_eq!($name.len(), len);)*
 
                 Some(($($name,)*))
@@ -204,10 +212,14 @@ where
 {
     type Item<'a> = F::Item<'a> where Self: 'a;
 
-    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
-        let fetch = F::new(ids, columns)?;
+    fn new<T: Columns>(
+        ids: &Column<thunderdome::Index>,
+        columns: &T,
+        strict_entity_ref: bool,
+    ) -> Option<Self> {
+        let fetch = F::new(ids, columns, strict_entity_ref)?;
 
-        R::new(ids, columns)?;
+        R::new(ids, columns, strict_entity_ref)?;
 
         Some(Self {
             fetch,
@@ -242,10 +254,14 @@ where
 {
     type Item<'a> = F::Item<'a> where Self: 'a;
 
-    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
-        let fetch = F::new(ids, columns)?;
+    fn new<T: Columns>(
+        ids: &Column<thunderdome::Index>,
+        columns: &T,
+        strict_entity_ref: bool,
+    ) -> Option<Self> {
+        let fetch = F::new(ids, columns, strict_entity_ref)?;
 
-        if R::new(ids, columns).is_some() {
+        if R::new(ids, columns, strict_entity_ref).is_some() {
             return None;
         }
 
@@ -276,8 +292,15 @@ where
 {
     type Item<'a> = Or<L::Item<'a>, R::Item<'a>> where Self: 'a;
 
-    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
-        Or::new(L::new(ids, columns), R::new(ids, columns))
+    fn new<T: Columns>(
+        ids: &Column<thunderdome::Index>,
+        columns: &T,
+        strict_entity_ref: bool,
+    ) -> Option<Self> {
+        Or::new(
+            L::new(ids, columns, strict_entity_ref),
+            R::new(ids, columns, strict_entity_ref),
+        )
     }
 
     #[inline]
@@ -314,9 +337,9 @@ where
 {
     type Item<'a> = Option<F::Item<'a>> where Self: 'a;
 
-    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T) -> Option<Self> {
+    fn new<T: Columns>(ids: &Column<thunderdome::Index>, columns: &T, strict_entity_ref: bool) -> Option<Self> {
         Some(OptionFetch {
-            fetch: F::new(ids, columns),
+            fetch: F::new(ids, columns, strict_entity_ref),
             len: ids.len(),
         })
     }

@@ -358,12 +358,13 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             fn new<A: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &A,
+                _: bool,
             ) -> ::std::option::Option<Self> {
                 let mut result = None;
                 #(
-                    result = result.or_else(|| ::stecs::query::fetch::Fetch::new(ids, columns).map(
-                        #ident_id_fetch::#variant_idents,
-                    ));
+                    result = result.or_else(|| ::stecs::query::fetch::Fetch::new(ids, columns, false)
+                        .map(#ident_id_fetch::#variant_idents)
+                    );
                 )*
 
                 result
@@ -402,12 +403,13 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             fn new<A: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &A,
+                _: bool,
             ) -> ::std::option::Option<Self> {
                 let mut result = None;
                 #(
-                    result = result.or_else(|| ::stecs::query::fetch::Fetch::new(ids, columns).map(
-                        #ident_ref_fetch::#variant_idents,
-                    ));
+                    result = result.or_else(|| ::stecs::query::fetch::Fetch::new(ids, columns, true)
+                        .map(#ident_ref_fetch::#variant_idents)
+                    );
                 )*
 
                 result
@@ -459,12 +461,13 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             fn new<A: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &A,
+                _: bool,
             ) -> ::std::option::Option<Self> {
                 let mut result = None;
                 #(
-                    result = result.or_else(|| ::stecs::query::fetch::Fetch::new(ids, columns).map(
-                        #ident_ref_mut_fetch::#variant_idents,
-                    ));
+                    result = result.or_else(|| ::stecs::query::fetch::Fetch::new(ids, columns, true)
+                        .map(#ident_ref_mut_fetch::#variant_idents)
+                    );
                 )*
 
                 result

@@ -62,11 +62,13 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
             fn new<__stecs__T: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
                 columns: &__stecs__T,
+                strict_entity_ref: bool,
             ) -> ::std::option::Option<Self> {
                 #(
                     let #field_idents = <#field_tys as ::stecs::Query>::Fetch::<#lifetime>::new(
                         ids,
                         columns,
+                        strict_entity_ref,
                     )?;
                 )*
 

@@ -122,6 +122,7 @@ pub fn downcast_columns_ref<T: Columns, U: Columns>(column: &T) -> Option<&U> {
     (column as &dyn Any).downcast_ref()
 }
 
+// TODO
 pub fn fetch_thing<'a, T: Columns>(
     ids: Column<thunderdome::Index>,
     columns: &T,

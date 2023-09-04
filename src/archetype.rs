@@ -216,6 +216,10 @@ impl<T: Columns> WorldData for Archetype<T> {
     where
         F: Fetch + 'w,
     {
-        ArchetypeWorldFetch(&self.indices, F::new(&self.ids, &self.columns), PhantomData)
+        ArchetypeWorldFetch(
+            &self.indices,
+            F::new(&self.ids, &self.columns, false),
+            PhantomData,
+        )
     }
 }
