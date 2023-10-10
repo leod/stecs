@@ -119,18 +119,24 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             }
         }
 
-        // CloneEntityStruct
+        // CloneEntityInto
 
-        impl #impl_generics ::stecs::CloneEntityStruct for #ident #ty_generics #where_clause
+        impl #impl_generics ::stecs::CloneEntityInto for #ident #ty_generics #where_clause
         where
             // https://github.com/rust-lang/rust/issues/48214#issuecomment-1150463333
             #(for<'__stecs__a> #field_comp_tys: ::std::clone::Clone,)*
-            #(for<'__stecs__a> #field_flat_tys: ::stecs::CloneEntityStruct,)*
+            #(for<'__stecs__a> #field_flat_tys: ::stecs::CloneEntityInto,)*
         {
-            fn clone_into(&self, target: &mut Self::BorrowMut<'_>) {
+            fn clone_entity_into(&self, target: &mut Self::BorrowMut<'_>) {
                 #(
                     *target.#field_comp_idents = ::std::clone::Clone::clone(
                         &self.#field_comp_idents,
+                    );
+                )*
+                #(
+                    <#field_flat_tys as ::stecs::CloneEntityInto>::clone_entity_into(
+                        &self.#field_flat_idents,
+                        &mut target.#field_flat_idents,
                     );
                 )*
             }

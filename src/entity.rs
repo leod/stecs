@@ -46,8 +46,8 @@ pub trait CloneEntity: Entity {
     fn from_ref(entity: Self::Borrow<'_>) -> Self;
 }
 
-pub trait CloneEntityStruct: EntityStruct {
-    fn clone_into(&self, target: &mut Self::BorrowMut<'_>);
+pub trait CloneEntityInto: EntityStruct {
+    fn clone_entity_into(&self, target: &mut Self::BorrowMut<'_>);
 }
 
 pub trait EntityStruct: Entity {

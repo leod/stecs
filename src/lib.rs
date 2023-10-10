@@ -28,7 +28,7 @@ pub use stecs_derive::{Entity, Query, QueryShared};
 
 #[doc(inline)]
 pub use self::{
-    entity::{CloneEntity, CloneEntityStruct, Entity, EntityId, EntityRef, EntityRefMut},
+    entity::{CloneEntity, CloneEntityInto, Entity, EntityId, EntityRef, EntityRefMut},
     query::{Or, Query, QueryShared, With, Without},
     secondary::{query::SecondaryQuery, query::SecondaryQueryShared, world::SecondaryWorld},
     world::{World, WorldData},
