@@ -1,4 +1,4 @@
-use stecs::{EntityFromRef, EntityId};
+use stecs::{CloneEntity, EntityId};
 
 #[derive(stecs::Entity, Clone)]
 #[stecs(derive_columns(Clone))]

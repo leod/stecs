@@ -42,7 +42,7 @@ pub trait Entity: Sized + 'static {
     type FetchMut<'w>: Fetch<Item<'w> = Self::BorrowMut<'w>> + 'w;
 }
 
-pub trait EntityFromRef: Entity {
+pub trait CloneEntity: Entity {
     fn from_ref(entity: Self::Borrow<'_>) -> Self;
 }
 
