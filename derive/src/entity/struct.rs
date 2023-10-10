@@ -105,8 +105,7 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             #(for<'__stecs__a> #field_comp_tys: ::std::clone::Clone,)*
             #(for<'__stecs__a> #field_flat_tys: ::stecs::CloneEntity,)*
         {
-            fn from_ref(entity: Self::Borrow<'_>) -> Self
-            {
+            fn from_ref(entity: Self::Borrow<'_>) -> Self {
                 Self {
                     #(#field_comp_idents: ::std::clone::Clone::clone(entity.#field_comp_idents),)*
                     #(#field_flat_idents:
@@ -115,6 +114,23 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
                         ),
                     )*
                 }
+            }
+        }
+
+        // CloneEntityStruct
+
+        impl #impl_generics ::stecs::CloneEntityStruct for #ident #ty_generics #where_clause
+        where
+            // https://github.com/rust-lang/rust/issues/48214#issuecomment-1150463333
+            #(for<'__stecs__a> #field_comp_tys: ::std::clone::Clone,)*
+            #(for<'__stecs__a> #field_flat_tys: ::stecs::CloneEntityStruct,)*
+        {
+            fn clone_into(&self, target: &mut Self::BorrowMut<'_>) {
+                #(
+                    *target.#field_comp_idents = ::std::clone::Clone::clone(
+                        &self.#field_comp_idents,
+                    );
+                )*
             }
         }
 
