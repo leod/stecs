@@ -72,10 +72,10 @@ impl<E: Entity> SecondaryWorld<E> {
     pub fn synchronize<'w>(
         &'w mut self,
         world: &'w World<E>,
-        new_entity: impl Fn(&mut Self, EntityId<E>, E::Ref<'_>),
+        new_entity: impl Fn(&mut Self, EntityId<E>, E::Borrow<'_>),
     ) where
         // TODO: Can we put the bound below on `Entity` somehow?
-        <E::Ref<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRef<'w, E>>,
+        <E::Borrow<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRef<'w, E>>,
         E: EntityVariant<E>,
     {
         // FIXME: This is too inefficient for something per-frame. We need a

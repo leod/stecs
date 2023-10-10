@@ -89,8 +89,8 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
 
         impl #impl_generics ::stecs::Entity for #ident #ty_generics #where_clause {
             type Id = ::stecs::archetype::EntityKey<Self>;
-            type Ref<#lifetime> = #ident_ref #ty_generics_lifetime;
-            type RefMut<#lifetime> = #ident_ref_mut #ty_generics_lifetime;
+            type Borrow<#lifetime> = #ident_ref #ty_generics_lifetime;
+            type BorrowMut<#lifetime> = #ident_ref_mut #ty_generics_lifetime;
             type WorldData = ::stecs::archetype::Archetype<#ident_columns #ty_generics>;
             type Fetch<#lifetime> = #ident_ref_fetch #ty_generics_lifetime;
             type FetchMut<#lifetime> = #ident_ref_mut_fetch #ty_generics_lifetime;
@@ -105,7 +105,7 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             #(for<'__stecs__a> #field_comp_tys: ::std::clone::Clone,)*
             #(for<'__stecs__a> #field_flat_tys: ::stecs::EntityFromRef,)*
         {
-            fn from_ref(entity: Self::Ref<'_>) -> Self
+            fn from_ref(entity: Self::Borrow<'_>) -> Self
             {
                 Self {
                     #(#field_comp_idents: ::std::clone::Clone::clone(entity.#field_comp_idents),)*

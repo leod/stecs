@@ -84,8 +84,8 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
         impl ::stecs::Entity for #ident {
             type Id = #ident_id;
-            type Ref<#lifetime> = #ident_ref<#lifetime>;
-            type RefMut<#lifetime> = #ident_ref_mut<#lifetime>;
+            type Borrow<#lifetime> = #ident_ref<#lifetime>;
+            type BorrowMut<#lifetime> = #ident_ref_mut<#lifetime>;
             type WorldData = #ident_world_data;
             type Fetch<#lifetime> = #ident_ref_fetch<#lifetime>;
             type FetchMut<#lifetime> = #ident_ref_mut_fetch<#lifetime>;
@@ -99,7 +99,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             // https://github.com/rust-lang/rust/issues/48214#issuecomment-1150463333
             #(for<'__stecs__a> #variant_tys: ::stecs::EntityFromRef,)*
         {
-            fn from_ref(entity: Self::Ref<'_>) -> Self
+            fn from_ref(entity: Self::Borrow<'_>) -> Self
             {
                 match entity {
                     #(
@@ -189,14 +189,14 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         #[allow(non_camel_case_types)]
         #[derive(::std::clone::Clone)]
         #vis enum #ident_ref<#lifetime> {
-            #(#variant_idents(<#variant_tys as ::stecs::Entity>::Ref<#lifetime>),)*
+            #(#variant_idents(<#variant_tys as ::stecs::Entity>::Borrow<#lifetime>),)*
         }
 
         // RefMut
 
         #[allow(non_camel_case_types)]
         #vis enum #ident_ref_mut<#lifetime> {
-            #(#variant_idents(<#variant_tys as ::stecs::Entity>::RefMut<#lifetime>),)*
+            #(#variant_idents(<#variant_tys as ::stecs::Entity>::BorrowMut<#lifetime>),)*
         }
 
         // WorldData
