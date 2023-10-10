@@ -23,6 +23,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     let Derives {
         id_derives,
         world_data_derives,
+        ref_derives,
         ..
     } = get_attr_derives(&input.attrs)?;
 
@@ -188,6 +189,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
         #[allow(non_camel_case_types)]
         #[derive(::std::clone::Clone)]
+        #ref_derives
         #vis enum #ident_ref<#lifetime> {
             #(#variant_idents(<#variant_tys as ::stecs::Entity>::Borrow<#lifetime>),)*
         }
@@ -256,6 +258,17 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 }
             }
 
+            fn contains(&self, id: ::stecs::EntityId<Self::Entity>) -> bool {
+                match id.get() {
+                    #(
+                        #ident_id::#variant_idents(id) => {
+                            self.#variant_idents
+                                .contains(::stecs::EntityId::<#variant_tys>::new(id))
+                        }
+                    )*
+                }
+            }
+
             fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
             where
                 F: ::stecs::query::fetch::Fetch + 'w,
@@ -305,6 +318,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             type Data = #ident_world_data;
             type Iter = #world_fetch_iter;
 
+            #[inline]
             unsafe fn get<'a>(&self, id: #ident_id) -> ::std::option::Option<F::Item<'a>> {
                 // Safety: TODO
                 match id {
@@ -319,6 +333,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 iter
             }
 
+            #[inline]
             fn len(&self) -> usize {
                 let mut len = 0;
                 #(len += self.#variant_idents.len();)*
@@ -370,12 +385,6 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                     )*
                 })
             }
-
-            fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
-                #(
-                    <#variant_tys as ::stecs::entity::Entity>::FetchId::<'w>::check_borrows(checker);
-                )*
-            }
         }
 
         // RefFetch
@@ -421,19 +430,17 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                     )*
                 }
             }
+        }
 
-            fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
-                #(
-                    <#variant_tys as ::stecs::entity::Entity>::Fetch::<'w>::check_borrows(checker);
-                )*
+        unsafe impl<'q> ::stecs::Query for #ident_ref<'q> {
+            type Fetch<'w> = #ident_ref_fetch<'w>;
+
+            fn for_each_borrow(mut f: impl FnMut(::std::any::TypeId, bool)) {
+                #(<#variant_tys as ::stecs::Entity>::Borrow::<'q>::for_each_borrow(&mut f);)*
             }
         }
 
-        impl<'q> ::stecs::Query for #ident_ref<'q> {
-            type Fetch<'w> = #ident_ref_fetch<'w>;
-        }
-
-        impl<'q> ::stecs::QueryShared for #ident_ref<'q> {}
+        unsafe impl<'q> ::stecs::QueryShared for #ident_ref<'q> {}
 
         // RefMutFetch
 
@@ -479,16 +486,14 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                     )*
                 }
             }
-
-            fn check_borrows(checker: &mut ::stecs::query::borrow_checker::BorrowChecker) {
-                #(
-                    <#variant_tys as ::stecs::entity::Entity>::FetchMut::<'w>::check_borrows(checker);
-                )*
-            }
         }
 
-        impl<'q> ::stecs::Query for #ident_ref_mut<'q> {
+        unsafe impl<'q> ::stecs::Query for #ident_ref_mut<'q> {
             type Fetch<'w> = #ident_ref_mut_fetch<'w>;
+
+            fn for_each_borrow(mut f: impl FnMut(::std::any::TypeId, bool)) {
+                #(<#variant_tys as ::stecs::Entity>::BorrowMut::<'q>::for_each_borrow(&mut f);)*
+            }
         }
     })
 }

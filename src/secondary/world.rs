@@ -1,6 +1,6 @@
 use std::{any::TypeId, marker::PhantomData};
 
-use hashbrown::{HashMap, HashSet};
+use fxhash::{FxHashMap, FxHashSet};
 
 use crate::{
     entity::EntityVariant, query::fetch::Fetch, Component, Entity, EntityId, EntityRef, Query,
@@ -15,8 +15,8 @@ use super::column::{AnySecondaryColumn, SecondaryColumn};
 // archetype in the secondary world.
 
 pub struct SecondaryWorld<E: Entity> {
-    ids: HashSet<EntityId<E>>,
-    columns: HashMap<TypeId, Box<dyn AnySecondaryColumn<E>>>,
+    ids: FxHashSet<EntityId<E>>,
+    columns: FxHashMap<TypeId, Box<dyn AnySecondaryColumn<E>>>,
     _phantom: PhantomData<E>,
 }
 
@@ -72,7 +72,7 @@ impl<E: Entity> SecondaryWorld<E> {
     pub fn synchronize<'w>(
         &'w mut self,
         world: &'w World<E>,
-        new_entity: impl Fn(&mut Self, EntityId<E>, E::Borrow<'_>),
+        mut new_entity: impl FnMut(&mut Self, EntityId<E>, E::Borrow<'_>),
     ) where
         // TODO: Can we put the bound below on `Entity` somehow?
         <E::Borrow<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRef<'w, E>>,
@@ -92,7 +92,7 @@ impl<E: Entity> SecondaryWorld<E> {
             .ids
             .iter()
             .copied()
-            .filter(|id| world.entity(*id).is_none())
+            .filter(|id| !world.contains(*id))
             .collect();
 
         for id in remove_ids {

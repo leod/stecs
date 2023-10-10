@@ -1,10 +1,8 @@
-use std::{any::type_name, marker::PhantomData};
+use std::marker::PhantomData;
 
 use crate::{world::WorldFetch, QueryShared, WorldData};
 
-use super::{
-    borrow_checker::BorrowChecker, fetch::Fetch, ExclusiveQueryBorrow, Query, QueryBorrow,
-};
+use super::{assert_borrow, fetch::Fetch, Query, QueryBorrow, QueryMut};
 
 impl<'w, Q, D> IntoIterator for QueryBorrow<'w, Q, D>
 where
@@ -18,7 +16,7 @@ where
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        assert_borrow::<Q>();
 
         // Safety: TODO
         unsafe { WorldFetchIter::new(self.data) }
@@ -37,14 +35,14 @@ where
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        assert_borrow::<Q>();
 
         // Safety: TODO
         unsafe { WorldFetchIter::new(self.data) }
     }
 }
 
-impl<'w, Q, D> IntoIterator for ExclusiveQueryBorrow<'w, Q, D>
+impl<'w, Q, D> IntoIterator for QueryMut<'w, Q, D>
 where
     Q: Query,
     D: WorldData,
@@ -56,7 +54,7 @@ where
     fn into_iter(self) -> Self::IntoIter {
         // Safety: Check that the query does not specify borrows that violate
         // Rust's borrowing rules.
-        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
+        assert_borrow::<Q>();
 
         // Safety: TODO
         unsafe { WorldFetchIter::new(self.0.data) }
@@ -85,6 +83,7 @@ where
         }
     }
 
+    #[inline]
     pub(crate) fn skip_one(&mut self) {
         if self.i < self.fetch.len() {
             self.i += 1;
@@ -98,6 +97,7 @@ where
 {
     type Item = F::Item<'a>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         if self.i == self.fetch.len() {
             None
@@ -129,6 +129,7 @@ where
 {
     type Item = <F as Fetch>::Item<'w>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             if let Some(item) = self
@@ -174,6 +175,19 @@ where
         }
     }
 
+    pub(crate) unsafe fn from_world_fetch(mut world_fetch: D::Fetch<'w, F>) -> Self {
+        let len = world_fetch.len();
+        let mut world_iter = world_fetch.iter();
+        let current_fetch_iter = world_iter.next().map(FetchIter::new);
+
+        Self {
+            len,
+            world_iter,
+            current_fetch_iter,
+        }
+    }
+
+    #[inline]
     pub(crate) fn skip_one(&mut self) {
         if let Some(fetch_iter) = self.current_fetch_iter.as_mut() {
             fetch_iter.skip_one();

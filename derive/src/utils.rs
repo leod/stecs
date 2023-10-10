@@ -33,12 +33,14 @@ pub struct Derives {
     pub id_derives: TokenStream2,
     pub world_data_derives: TokenStream2,
     pub columns_derives: TokenStream2,
+    pub ref_derives: TokenStream2,
 }
 
 pub fn get_attr_derives(attrs: &[syn::Attribute]) -> Result<Derives> {
     let mut id_paths = Vec::new();
     let mut world_data_paths = Vec::new();
     let mut columns_paths = Vec::new();
+    let mut ref_paths = Vec::new();
 
     for attr in attrs {
         if !attr.path().is_ident("stecs") {
@@ -52,6 +54,8 @@ pub fn get_attr_derives(attrs: &[syn::Attribute]) -> Result<Derives> {
                 &mut world_data_paths
             } else if meta.path.is_ident("derive_columns") {
                 &mut columns_paths
+            } else if meta.path.is_ident("derive_ref") {
+                &mut ref_paths
             } else {
                 return Err(syn::Error::new(attr.span(), "Unknown attribute"));
             };
@@ -73,6 +77,7 @@ pub fn get_attr_derives(attrs: &[syn::Attribute]) -> Result<Derives> {
         id_derives: quote! { #[derive(#(#id_paths,)*)] },
         world_data_derives: quote! { #[derive(#(#world_data_paths,)*)] },
         columns_derives: quote! { #[derive(#(#columns_paths,)*)] },
+        ref_derives: quote! { #[derive(#(#ref_paths,)*)] },
     })
 }
 

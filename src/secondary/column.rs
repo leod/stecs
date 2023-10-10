@@ -1,11 +1,11 @@
 use std::cell::UnsafeCell;
 
 use downcast_rs::Downcast;
-use hashbrown::HashMap;
+use fxhash::FxHashMap;
 
 use crate::{Component, Entity, EntityId};
 
-pub struct SecondaryColumn<E: Entity, C>(HashMap<EntityId<E>, UnsafeCell<C>>);
+pub struct SecondaryColumn<E: Entity, C>(FxHashMap<EntityId<E>, UnsafeCell<C>>);
 
 impl<E: Entity, C> Default for SecondaryColumn<E, C> {
     fn default() -> Self {

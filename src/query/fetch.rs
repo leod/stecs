@@ -7,10 +7,10 @@ use crate::{
     Component, EntityId,
 };
 
-use super::{borrow_checker::BorrowChecker, Or};
+use super::Or;
 
-// This is unsafe because `check_borrows` must check borrows matching what `get`
-// actually borrows.
+// TODO: Now that borrow checking is in Query, maybe this no longer needs to be
+// unsafe.
 pub unsafe trait Fetch: Copy {
     type Item<'a>
     where
@@ -27,22 +27,17 @@ pub unsafe trait Fetch: Copy {
     /// Fetches the components specified by `Self::Query` for the entity stored
     /// at `index`.
     ///
-    /// # Panics
-    ///
-    /// Panics if `index >= self.len()`.
-    ///
     /// # Safety
     ///
     /// This is unsafe because it shifts the burden of checking Rust's borrowing
-    /// rules to the caller. In particular, the caller has to ensure that this
-    /// method is not called on an `index` whose components are already borrowed
-    /// elsewhere (be it through `self` or not through `self`).
+    /// rules to the caller. The caller has to ensure that this method is not
+    /// called on an `index` whose components are already borrowed elsewhere (be
+    /// it through `self` or not through `self`).
+    ///
+    /// The method also does not do bounds checking.
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a;
-
-    #[doc(hidden)]
-    fn check_borrows(checker: &mut BorrowChecker);
 }
 
 unsafe impl<C> Fetch for ColumnRawParts<C>
@@ -55,21 +50,19 @@ where
         columns.column::<C>().map(|column| column.as_raw_parts())
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.len
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
     {
-        assert!(index < <Self as Fetch>::len(self));
+        debug_assert!(index < <Self as Fetch>::len(self));
 
         unsafe { &*self.ptr.add(index) }
-    }
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        checker.borrow::<C>();
     }
 }
 
@@ -85,21 +78,19 @@ where
             .map(|column| column.as_raw_parts_mut())
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.len
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
     {
-        assert!(index < <Self as Fetch>::len(self));
+        debug_assert!(index < <Self as Fetch>::len(self));
 
         unsafe { &mut *self.ptr.add(index) }
-    }
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        checker.borrow_mut::<C>();
     }
 }
 
@@ -127,18 +118,18 @@ where
         }
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.0.len()
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
     {
         EntityId::new(EntityKey::new_unchecked(*Fetch::get(&self.0, index)))
     }
-
-    fn check_borrows(_: &mut BorrowChecker) {}
 }
 
 macro_rules! tuple_impl {
@@ -153,15 +144,15 @@ macro_rules! tuple_impl {
                 Some(Self(ids.len()))
             }
 
+            #[inline]
             fn len(&self) -> usize {
                 self.0
             }
 
+            #[inline]
             unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a> {
-                assert!(index < self.len());
+                debug_assert!(index < self.len());
             }
-
-            fn check_borrows(_: &mut BorrowChecker) {}
         }
     };
     ($($name: ident),*) => {
@@ -177,10 +168,12 @@ macro_rules! tuple_impl {
                 Some(($($name,)*))
             }
 
+            #[inline]
             fn len(&self) -> usize {
                 self.0.len()
             }
 
+            #[inline]
             unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
             where
                 Self: 'a,
@@ -189,10 +182,6 @@ macro_rules! tuple_impl {
                 let ($($name,)*) = self;
 
                 ($($name.get(index),)*)
-            }
-
-            fn check_borrows(checker: &mut BorrowChecker) {
-                $($name::check_borrows(checker);)*
             }
         }
     };
@@ -226,19 +215,17 @@ where
         })
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.fetch.len()
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
     {
         self.fetch.get(index)
-    }
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        F::check_borrows(checker);
     }
 }
 
@@ -268,19 +255,17 @@ where
         })
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.fetch.len()
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
     {
         self.fetch.get(index)
-    }
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        F::check_borrows(checker);
     }
 }
 
@@ -295,6 +280,7 @@ where
         Or::new(L::new(ids, columns), R::new(ids, columns))
     }
 
+    #[inline]
     fn len(&self) -> usize {
         match self {
             Or::Left(left) => left.len(),
@@ -303,6 +289,7 @@ where
         }
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
@@ -312,11 +299,6 @@ where
             Or::Right(right) => Or::Right(right.get(index)),
             Or::Both(left, right) => Or::Both(left.get(index), right.get(index)),
         }
-    }
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        L::check_borrows(checker);
-        R::check_borrows(checker);
     }
 }
 
@@ -339,18 +321,16 @@ where
         })
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.len
     }
 
+    #[inline]
     unsafe fn get<'a>(&self, index: usize) -> Self::Item<'a>
     where
         Self: 'a,
     {
         self.fetch.map_or(None, |fetch| Some(fetch.get(index)))
-    }
-
-    fn check_borrows(checker: &mut BorrowChecker) {
-        F::check_borrows(checker);
     }
 }

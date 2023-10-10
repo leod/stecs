@@ -82,6 +82,7 @@ where
 {
     type Item = (<F as Fetch>::Item<'w>, Nest2<'w, J0, J1, D>);
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         let (id, item) = self.query_iter.next()?;
         let nest = Nest2 {
@@ -104,6 +105,7 @@ where
     // This has to take an exclusive `self` reference to prevent violating
     // Rust's borrowing rules if `J0` contains an exclusive borrow, since
     // `get()` could be called multiple times with the same `id`.
+    #[inline]
     pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<(J0::Item<'a>, Nest1<'w, J1, D>)>
     where
         'w: 'a,
@@ -137,6 +139,7 @@ where
     // This has to take an exclusive `self` reference to prevent violating
     // Rust's borrowing rules if `J1` contains an exclusive borrow, since
     // `get()` could be called multiple times with the same `id`.
+    #[inline]
     pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<J1::Item<'a>>
     where
         'w: 'a,

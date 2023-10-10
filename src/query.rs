@@ -1,11 +1,10 @@
-pub mod borrow_checker;
 pub mod fetch;
 pub mod iter;
 pub mod join;
 pub mod nest;
 pub mod nest2;
 
-use std::{any::type_name, marker::PhantomData};
+use std::{any::TypeId, marker::PhantomData};
 
 use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
@@ -15,48 +14,71 @@ use crate::{
 };
 
 use self::{
-    borrow_checker::BorrowChecker,
     fetch::{Fetch, OptionFetch, UnitFetch, WithFetch, WithoutFetch},
     join::JoinQueryBorrow,
     nest::NestQueryBorrow,
 };
 
-pub trait Query {
+// This is unafe because `for_each_borrow` must match `Fetch`.
+pub unsafe trait Query {
     type Fetch<'w>: Fetch + 'w;
+
+    fn for_each_borrow(f: impl FnMut(TypeId, bool));
 }
 
-pub type QueryItem<'w, Q> = <<Q as Query>::Fetch<'w> as Fetch>::Item<'w>;
+pub type QueryItem<'w, 'a, Q> = <<Q as Query>::Fetch<'w> as Fetch>::Item<'a>;
 
-pub trait QueryShared: Query {}
+// This is unsafe because it must not have any exclusive borrows.
+pub unsafe trait QueryShared: Query {}
 
-impl<'q, C: Component> Query for &'q C {
+unsafe impl<'q, C: Component> Query for &'q C {
     type Fetch<'w> = ColumnRawParts<C>;
+
+    fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+        f(TypeId::of::<C>(), false);
+    }
 }
 
-impl<'q, C: Component> QueryShared for &'q C {}
+unsafe impl<'q, C: Component> QueryShared for &'q C {}
 
-impl<'q, C: Component> Query for &'q mut C {
+unsafe impl<'q, C: Component> Query for &'q mut C {
     type Fetch<'w> = ColumnRawPartsMut<C>;
+
+    fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+        f(TypeId::of::<C>(), true);
+    }
 }
 
-impl<E: Entity> Query for EntityId<E> {
+unsafe impl<E: Entity> Query for EntityId<E> {
     type Fetch<'w> = E::FetchId<'w>;
+
+    fn for_each_borrow(_: impl FnMut(TypeId, bool)) {}
 }
 
-impl<E: Entity> QueryShared for EntityId<E> {}
+unsafe impl<E: Entity> QueryShared for EntityId<E> {}
 
 macro_rules! tuple_impl {
     () => {
-        impl Query for () {
+        unsafe impl Query for () {
             type Fetch<'w> = UnitFetch;
+
+            fn for_each_borrow(_: impl FnMut(TypeId, bool)) {}
+        }
+
+        unsafe impl QueryShared for () {
         }
     };
     ($($name: ident),*) => {
-        impl<$($name: Query,)*> Query for ($($name,)*) {
+        unsafe impl<$($name: Query,)*> Query for ($($name,)*) {
             type Fetch<'w> = ($($name::Fetch<'w>,)*);
+
+            #[allow(unused_mut)]
+            fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+                $($name::for_each_borrow(&mut f);)*
+            }
         }
 
-        impl<$($name: QueryShared,)*> QueryShared for ($($name,)*) {
+        unsafe impl<$($name: QueryShared,)*> QueryShared for ($($name,)*) {
         }
     };
 }
@@ -67,15 +89,19 @@ smaller_tuples_too!(
 
 pub struct With<Q, R>(PhantomData<(Q, R)>);
 
-impl<Q, R> Query for With<Q, R>
+unsafe impl<Q, R> Query for With<Q, R>
 where
     Q: Query,
     R: Query,
 {
     type Fetch<'w> = WithFetch<Q::Fetch<'w>, R::Fetch<'w>>;
+
+    fn for_each_borrow(f: impl FnMut(TypeId, bool)) {
+        Q::for_each_borrow(f);
+    }
 }
 
-impl<Q, R> QueryShared for With<Q, R>
+unsafe impl<Q, R> QueryShared for With<Q, R>
 where
     Q: QueryShared,
     R: Query,
@@ -84,15 +110,19 @@ where
 
 pub struct Without<Q, R>(PhantomData<(Q, R)>);
 
-impl<Q, R> Query for Without<Q, R>
+unsafe impl<Q, R> Query for Without<Q, R>
 where
     Q: Query,
     R: Query,
 {
     type Fetch<'w> = WithoutFetch<Q::Fetch<'w>, R::Fetch<'w>>;
+
+    fn for_each_borrow(f: impl FnMut(TypeId, bool)) {
+        Q::for_each_borrow(f);
+    }
 }
 
-impl<Q, R> QueryShared for Without<Q, R>
+unsafe impl<Q, R> QueryShared for Without<Q, R>
 where
     Q: QueryShared,
     R: Query,
@@ -182,32 +212,46 @@ impl<L, R> Or<L, R> {
     }
 }
 
-impl<L, R> Query for Or<L, R>
+unsafe impl<L, R> Query for Or<L, R>
 where
     L: Query,
     R: Query,
 {
     type Fetch<'w> = Or<L::Fetch<'w>, R::Fetch<'w>>;
+
+    fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+        L::for_each_borrow(&mut f);
+        R::for_each_borrow(&mut f);
+    }
 }
 
-impl<L, R> QueryShared for Or<L, R>
+unsafe impl<L, R> QueryShared for Or<L, R>
 where
     L: QueryShared,
     R: QueryShared,
 {
 }
 
-impl<Q> Query for Option<Q>
+unsafe impl<Q> Query for Option<Q>
 where
     Q: Query,
 {
     type Fetch<'w> = OptionFetch<Q::Fetch<'w>>;
+
+    fn for_each_borrow(mut f: impl FnMut(TypeId, bool)) {
+        Q::for_each_borrow(&mut f);
+    }
 }
 
-impl<Q> QueryShared for Option<Q> where Q: QueryShared {}
+unsafe impl<Q> QueryShared for Option<Q> where Q: QueryShared {}
 
-pub struct QueryBorrow<'w, Q, D> {
+pub struct QueryBorrow<'w, Q, D>
+where
+    Q: Query,
+    D: WorldData,
+{
     data: &'w D,
+    fetch: D::Fetch<'w, Q::Fetch<'w>>,
     _phantom: PhantomData<Q>,
 }
 
@@ -217,10 +261,22 @@ where
     D: WorldData,
 {
     pub(crate) fn new(data: &'w D) -> Self {
+        // Safety: The query must satisfy Rust's borrowing rules.
+        assert_borrow::<Q>();
+
         Self {
             data,
+            fetch: data.fetch(),
             _phantom: PhantomData,
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.fetch.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn with<R>(self) -> QueryBorrow<'w, With<Q, R>, D>
@@ -244,11 +300,7 @@ where
     where
         J: SecondaryQueryShared<D::Entity>,
     {
-        JoinQueryBorrow {
-            data: self.data,
-            secondary_world,
-            _phantom: PhantomData,
-        }
+        JoinQueryBorrow::new(self.data, secondary_world)
     }
 
     pub fn join_mut<J>(
@@ -258,30 +310,19 @@ where
     where
         J: SecondaryQuery<D::Entity>,
     {
-        JoinQueryBorrow {
-            data: self.data,
-            secondary_world,
-            _phantom: PhantomData,
-        }
+        JoinQueryBorrow::new(self.data, secondary_world)
     }
 
-    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<Q>>
+    #[inline]
+    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
     {
         let id = id.to_outer();
 
-        // TODO: Cache?
-
-        // Safety: Check that the query does not specify borrows that violate
-        // Rust's borrowing rules.
-        <Q::Fetch<'a> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
-
-        let world_fetch = self.data.fetch::<Q::Fetch<'a>>();
-
         // Safety: TODO
-        unsafe { world_fetch.get(id.get()) }
+        unsafe { self.fetch.get(id.get()) }
     }
 }
 
@@ -290,29 +331,25 @@ where
     Q: QueryShared,
     D: WorldData,
 {
-    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<Q>>
+    #[inline]
+    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
     {
         let id = id.to_outer();
 
-        // TODO: Cache?
-
-        // Safety: Check that the query does not specify borrows that violate
-        // Rust's borrowing rules.
-        <Q::Fetch<'a> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
-
-        let world_fetch = self.data.fetch::<Q::Fetch<'a>>();
-
         // Safety: TODO
-        unsafe { world_fetch.get(id.get()) }
+        unsafe { self.fetch.get(id.get()) }
     }
 }
 
-pub struct ExclusiveQueryBorrow<'w, Q, D>(QueryBorrow<'w, Q, D>);
+pub struct QueryMut<'w, Q, D>(QueryBorrow<'w, Q, D>)
+where
+    Q: Query,
+    D: WorldData;
 
-impl<'w, Q, D> ExclusiveQueryBorrow<'w, Q, D>
+impl<'w, Q, D> QueryMut<'w, Q, D>
 where
     Q: Query,
     D: WorldData,
@@ -321,25 +358,26 @@ where
         Self(QueryBorrow::new(data))
     }
 
-    pub fn with<R>(self) -> ExclusiveQueryBorrow<'w, With<Q, R>, D>
-    where
-        R: Query,
-    {
-        ExclusiveQueryBorrow(self.0.with::<R>())
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 
-    pub fn without<R>(self) -> ExclusiveQueryBorrow<'w, Without<Q, R>, D>
-    where
-        R: Query,
-    {
-        ExclusiveQueryBorrow(self.0.without::<R>())
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
-    pub fn nest<R>(self) -> NestQueryBorrow<'w, Q, R, D>
+    pub fn with<R>(self) -> QueryMut<'w, With<Q, R>, D>
     where
         R: Query,
     {
-        NestQueryBorrow::new(self.0.data)
+        QueryMut(self.0.with::<R>())
+    }
+
+    pub fn without<R>(self) -> QueryMut<'w, Without<Q, R>, D>
+    where
+        R: Query,
+    {
+        QueryMut(self.0.without::<R>())
     }
 
     pub fn join<J>(
@@ -362,25 +400,53 @@ where
         self.0.join_mut(secondary_world)
     }
 
-    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<Q>>
+    #[inline]
+    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
     {
         self.0.get_mut(id)
     }
+
+    pub fn nest<J>(self) -> NestQueryBorrow<'w, Q, J, D>
+    where
+        J: Query,
+    {
+        NestQueryBorrow::new(self.0.data)
+    }
 }
 
-impl<'w, Q, D> ExclusiveQueryBorrow<'w, Q, D>
+impl<'w, Q, D> QueryMut<'w, Q, D>
 where
     Q: QueryShared,
     D: WorldData,
 {
-    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<Q>>
+    #[inline]
+    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
     {
         self.0.get(id)
     }
+}
+
+// Adapted from hecs (https://github.com/Ralith/hecs).
+pub(crate) fn assert_borrow<Q: Query>() {
+    // This looks like an ugly O(n^2) loop, but everything's constant after inlining, so in
+    // practice LLVM optimizes it out entirely.
+    let mut i = 0;
+    Q::for_each_borrow(|a, unique| {
+        if unique {
+            let mut j = 0;
+            Q::for_each_borrow(|b, _| {
+                if i != j {
+                    core::assert!(a != b, "query violates a unique borrow");
+                }
+                j += 1;
+            })
+        }
+        i += 1;
+    });
 }

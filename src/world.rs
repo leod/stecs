@@ -1,13 +1,10 @@
-use std::{any::type_name, fmt::Debug};
+use std::fmt::Debug;
 
 use derivative::Derivative;
 
 use crate::{
     entity::EntityVariant,
-    query::{
-        borrow_checker::BorrowChecker, fetch::Fetch, ExclusiveQueryBorrow, QueryBorrow, QueryItem,
-        QueryShared,
-    },
+    query::{assert_borrow, fetch::Fetch, QueryBorrow, QueryItem, QueryMut, QueryShared},
     Entity, EntityId, EntityRef, EntityRefMut, Query,
 };
 
@@ -43,6 +40,8 @@ pub trait WorldData: Default + 'static {
         id: EntityId<Self::Entity>,
         entity: Self::Entity,
     ) -> Option<Self::Entity>;
+
+    fn contains(&self, id: EntityId<Self::Entity>) -> bool;
 
     #[doc(hidden)]
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
@@ -83,8 +82,8 @@ impl<E: Entity> World<E> {
         QueryBorrow::new(&self.0)
     }
 
-    pub fn query_mut<Q: Query>(&mut self) -> ExclusiveQueryBorrow<Q, E::WorldData> {
-        ExclusiveQueryBorrow::new(&mut self.0)
+    pub fn query_mut<Q: Query>(&mut self) -> QueryMut<Q, E::WorldData> {
+        QueryMut::new(&mut self.0)
     }
 
     pub fn queries<Q: MultiQueryShared>(&self) -> Q::QueryBorrows<'_, E::WorldData> {
@@ -134,6 +133,13 @@ impl<E: Entity> World<E> {
     pub fn spawn_at(&mut self, id: EntityId<E>, entity: E) -> Option<E> {
         self.0.spawn_at(id, entity)
     }
+
+    pub fn contains<F>(&self, id: EntityId<F>) -> bool
+    where
+        F: EntityVariant<E>,
+    {
+        self.0.contains(id.to_outer())
+    }
 }
 
 pub trait MultiQuery {
@@ -152,11 +158,9 @@ macro_rules! tuple_impl {
 
             #[allow(clippy::needless_lifetimes, clippy::unused_unit)]
             unsafe fn new<'w, D: WorldData>(world: &'w D) -> Self::QueryBorrows<'w, D> {
-                let mut checker = BorrowChecker::new(type_name::<Self>());
-
                 // Safety: Check that the query does not specify borrows that violate
                 // Rust's borrowing rules.
-                $(<$name::Fetch<'w> as Fetch>::check_borrows(&mut checker);)*
+                $(assert_borrow::<$name>();)*
 
                 ($(QueryBorrow::<$name, _>::new(world),)*)
             }

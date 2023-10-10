@@ -1,18 +1,46 @@
-use std::{any::type_name, marker::PhantomData};
+use std::marker::PhantomData;
 
 use crate::{
-    secondary::query::SecondaryFetch, Entity, Query, SecondaryQuery, SecondaryWorld, WorldData,
+    entity::EntityVariant,
+    secondary::query::{SecondaryFetch, SecondaryQueryItem},
+    world::WorldFetch,
+    Entity, EntityId, Query, QueryShared, SecondaryQuery, SecondaryQueryShared, SecondaryWorld,
+    WorldData,
 };
 
-use super::{borrow_checker::BorrowChecker, fetch::Fetch, iter::WorldFetchIter, QueryItem};
+use super::{fetch::Fetch, iter::WorldFetchIter, QueryItem};
 
 pub struct JoinQueryBorrow<'w, Q, J, D>
 where
+    Q: Query,
+    J: SecondaryQuery<D::Entity>,
     D: WorldData,
 {
     pub(crate) data: &'w D,
-    pub(crate) secondary_world: &'w SecondaryWorld<D::Entity>,
+    pub(crate) fetch: D::Fetch<'w, Q::Fetch<'w>>,
+    pub(crate) secondary_fetch: Option<J::Fetch<'w>>,
     pub(crate) _phantom: PhantomData<(Q, J)>,
+}
+
+impl<'w, Q, J, D> JoinQueryBorrow<'w, Q, J, D>
+where
+    Q: Query,
+    J: SecondaryQuery<D::Entity>,
+    D: WorldData,
+{
+    pub fn new(data: &'w D, secondary_world: &'w SecondaryWorld<D::Entity>) -> Self {
+        // Safety: Check that the query does not specify borrows that violate
+        // Rust's borrowing rules.
+        super::assert_borrow::<Q>();
+        crate::secondary::query::assert_borrow::<D::Entity, J>();
+
+        Self {
+            data,
+            fetch: data.fetch(),
+            secondary_fetch: <J::Fetch<'w> as SecondaryFetch<D::Entity>>::new(secondary_world),
+            _phantom: PhantomData,
+        }
+    }
 }
 
 // TODO: `get` and `get_mut` for JoinQueryBorrow
@@ -24,30 +52,76 @@ where
     D: WorldData,
 {
     type Item = (
-        QueryItem<'w, Q>,
-        <J::Fetch<'w> as SecondaryFetch<'w, D::Entity>>::Item<'w>,
+        QueryItem<'w, 'w, Q>,
+        SecondaryQueryItem<'w, 'w, J, D::Entity>,
     );
 
     type IntoIter = JoinQueryFetchIter<'w, Q::Fetch<'w>, J::Fetch<'w>, D>;
 
     fn into_iter(self) -> Self::IntoIter {
-        // Safety: Check that the query does not specify borrows that violate
-        // Rust's borrowing rules.
-        <Q::Fetch<'w> as Fetch>::check_borrows(&mut BorrowChecker::new(type_name::<Q>()));
-        <J::Fetch<'w> as SecondaryFetch<'w, D::Entity>>::check_borrows(&mut BorrowChecker::new(
-            type_name::<J>(),
-        ));
-
         // Safety: TODO
         let query_iter = unsafe { WorldFetchIter::new(self.data) };
 
-        let secondary_fetch =
-            <J::Fetch<'w> as SecondaryFetch<'w, D::Entity>>::new(self.secondary_world);
-
         JoinQueryFetchIter {
             query_iter,
-            secondary_fetch,
+            secondary_fetch: self.secondary_fetch.clone(),
         }
+    }
+}
+
+impl<'w, Q, J, D> JoinQueryBorrow<'w, Q, J, D>
+where
+    Q: QueryShared,
+    J: SecondaryQueryShared<D::Entity>,
+    D: WorldData,
+{
+    #[inline]
+    pub fn get<'a, E>(
+        &'a self,
+        id: EntityId<E>,
+    ) -> Option<(
+        QueryItem<'w, 'a, Q>,
+        SecondaryQueryItem<'w, 'a, J, D::Entity>,
+    )>
+    where
+        'w: 'a,
+        E: EntityVariant<D::Entity>,
+    {
+        let id = id.to_outer();
+
+        let item = unsafe { self.fetch.get(id.get()) }?;
+        let secondary_fetch = self.secondary_fetch.as_ref()?;
+        let secondary_item = unsafe { secondary_fetch.get(id)? };
+
+        Some((item, secondary_item))
+    }
+}
+
+impl<'w, Q, J, D> JoinQueryBorrow<'w, Q, J, D>
+where
+    Q: Query,
+    J: SecondaryQuery<D::Entity>,
+    D: WorldData,
+{
+    #[inline]
+    pub fn get_mut<'a, E>(
+        &'a mut self,
+        id: EntityId<E>,
+    ) -> Option<(
+        QueryItem<'w, 'a, Q>,
+        SecondaryQueryItem<'w, 'a, J, D::Entity>,
+    )>
+    where
+        'w: 'a,
+        E: EntityVariant<D::Entity>,
+    {
+        let id = id.to_outer();
+
+        let item = unsafe { self.fetch.get(id.get()) }?;
+        let secondary_fetch = self.secondary_fetch.as_ref()?;
+        let secondary_item = unsafe { secondary_fetch.get(id)? };
+
+        Some((item, secondary_item))
     }
 }
 
@@ -70,10 +144,15 @@ where
     type Item = (F::Item<'w>, J::Item<'w>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (id, item) = self.query_iter.next()?;
         let secondary_fetch = self.secondary_fetch.as_ref()?;
 
-        // Safety: `FetchIter` does not generate duplicate IDs.
-        unsafe { secondary_fetch.get(id) }.map(|secondary_item| (item, secondary_item))
+        loop {
+            let (id, item) = self.query_iter.next()?;
+
+            // Safety: `FetchIter` does not generate duplicate IDs.
+            if let Some(secondary_item) = unsafe { secondary_fetch.get(id) } {
+                return Some((item, secondary_item));
+            }
+        }
     }
 }
