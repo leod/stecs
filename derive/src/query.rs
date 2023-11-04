@@ -64,7 +64,10 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
                 columns: &__stecs__T,
             ) -> ::std::option::Option<Self> {
                 #(
-                    let #field_idents = <#field_tys as ::stecs::Query>::Fetch::<#lifetime>::new(
+                    let #field_idents = <
+                        <#field_tys as ::stecs::Query>::Fetch::<#lifetime>
+                        as ::stecs::query::fetch::Fetch
+                    >::new(
                         ids,
                         columns,
                     )?;
