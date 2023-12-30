@@ -3,8 +3,7 @@ use std::{any::TypeId, marker::PhantomData};
 use fxhash::{FxHashMap, FxHashSet};
 
 use crate::{
-    entity::EntityVariant, query::fetch::Fetch, Component, Entity, EntityId, EntityRef, Query,
-    World,
+    entity::EntityVariant, query::fetch::Fetch, Component, Entity, EntityRef, Id, Query, World,
 };
 
 use super::column::{AnySecondaryColumn, SecondaryColumn};
@@ -15,7 +14,7 @@ use super::column::{AnySecondaryColumn, SecondaryColumn};
 // archetype in the secondary world.
 
 pub struct SecondaryWorld<E: Entity> {
-    ids: FxHashSet<EntityId<E>>,
+    ids: FxHashSet<Id<E>>,
     columns: FxHashMap<TypeId, Box<dyn AnySecondaryColumn<E>>>,
     _phantom: PhantomData<E>,
 }
@@ -41,7 +40,7 @@ impl<E: Entity> SecondaryWorld<E> {
             .and_then(|column| column.downcast_ref())
     }
 
-    pub fn spawn<B: ComponentBundle<E>>(&mut self, id: EntityId<E>, components: B) -> bool {
+    pub fn spawn<B: ComponentBundle<E>>(&mut self, id: Id<E>, components: B) -> bool {
         if !self.ids.insert(id) {
             return false;
         }
@@ -51,7 +50,7 @@ impl<E: Entity> SecondaryWorld<E> {
         true
     }
 
-    pub fn despawn(&mut self, id: EntityId<E>) -> bool {
+    pub fn despawn(&mut self, id: Id<E>) -> bool {
         if !self.ids.remove(&id) {
             return false;
         }
@@ -63,7 +62,7 @@ impl<E: Entity> SecondaryWorld<E> {
         true
     }
 
-    pub fn insert<B: ComponentBundle<E>>(&mut self, id: EntityId<E>, components: B) {
+    pub fn insert<B: ComponentBundle<E>>(&mut self, id: Id<E>, components: B) {
         components.insert_entity(self, id);
     }
 
@@ -72,7 +71,7 @@ impl<E: Entity> SecondaryWorld<E> {
     pub fn synchronize<'w>(
         &'w mut self,
         world: &'w World<E>,
-        mut new_entity: impl FnMut(&mut Self, EntityId<E>, E::Borrow<'_>),
+        mut new_entity: impl FnMut(&mut Self, Id<E>, E::Borrow<'_>),
     ) where
         // TODO: Can we put the bound below on `Entity` somehow?
         <E::Borrow<'w> as Query>::Fetch<'w>: Fetch<Item<'w> = EntityRef<'w, E>>,
@@ -82,7 +81,7 @@ impl<E: Entity> SecondaryWorld<E> {
         // better data structure for `SecondaryWorld` so that we do not have a
         // linear number of hash map lookups in `synchronize`.
 
-        for (id, entity) in world.query::<(EntityId<E>, EntityRef<E>)>() {
+        for (id, entity) in world.query::<(Id<E>, EntityRef<E>)>() {
             if !self.ids.contains(&id) {
                 new_entity(self, id, entity);
             }
@@ -102,14 +101,14 @@ impl<E: Entity> SecondaryWorld<E> {
 }
 
 pub trait ComponentBundle<E: Entity> {
-    fn insert_entity(self, world: &mut SecondaryWorld<E>, id: EntityId<E>);
+    fn insert_entity(self, world: &mut SecondaryWorld<E>, id: Id<E>);
 }
 
 macro_rules! tuple_impl {
     ($($name: ident),*) => {
         #[allow(unused)]
         impl<E: Entity, $($name: Component,)*> ComponentBundle<E> for ($($name,)*) {
-            fn insert_entity(self, world: &mut SecondaryWorld<E>, id: EntityId<E>) {
+            fn insert_entity(self, world: &mut SecondaryWorld<E>, id: Id<E>) {
                 #[allow(non_snake_case)]
                 let ($($name,)*) = self;
 

@@ -1,7 +1,7 @@
 use std::iter::ExactSizeIterator;
 
 use serde::{Deserialize, Serialize};
-use stecs::{entity::EntityVariant, Component, EntityId, EntityRef, EntityRefMut};
+use stecs::{entity::EntityVariant, Component, EntityRef, EntityRefMut, Id};
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Position(f32);
@@ -28,7 +28,7 @@ struct Boier<T: Component, S: Component> {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct Target(EntityId<Entity>);
+struct Target(Id<Entity>);
 
 #[derive(stecs::Entity, Clone, Serialize, Deserialize)]
 struct Enemy {
@@ -39,13 +39,13 @@ struct Enemy {
 #[derive(stecs::Entity, Clone, Serialize, Deserialize)]
 struct Enemy2 {
     pos: Position,
-    targets: Vec<EntityId<Entity>>,
+    targets: Vec<Id<Entity>>,
 }
 
 #[derive(stecs::Entity, Clone, Serialize, Deserialize)]
 struct InnerEnemy {
     pos: Position,
-    targets: Vec<EntityId<Entity>>,
+    targets: Vec<Id<Entity>>,
 }
 
 #[derive(stecs::Entity, Clone, Serialize, Deserialize)]
@@ -76,8 +76,8 @@ type World = stecs::World<Entity>;
 /*
 #[derive(Serialize, Deserialize)]
 pub struct SerDeThing {
-    id: EntityId<Player>,
-    id2: EntityId<Entity>,
+    id: Id<Player>,
+    id2: Id<Entity>,
 }
 */
 
@@ -162,7 +162,7 @@ fn main() {
     }
 
     println!("PhysicsObject");
-    for (id, q) in world.query_mut::<(EntityId<Entity>, PhysicsObject)>() {
+    for (id, q) in world.query_mut::<(Id<Entity>, PhysicsObject)>() {
         println!("{:?}: {:?} {:?}", id, q.position.0, q.velocity.0);
     }
 
@@ -214,22 +214,22 @@ fn main() {
         dbg!(p.0, q.0);
     }
 
-    println!("EntityId, Position");
-    for (id, _) in world.query_mut::<(EntityId<Entity>, &Position)>() {
+    println!("Id, Position");
+    for (id, _) in world.query_mut::<(Id<Entity>, &Position)>() {
         dbg!(id);
     }
 
-    println!("EntityId, Position, With<Target>");
+    println!("Id, Position, With<Target>");
     for (id, pos) in world
-        .query_mut::<(EntityId<Entity>, &Position)>()
+        .query_mut::<(Id<Entity>, &Position)>()
         .with::<&Target>()
     {
         dbg!(id, pos.0);
     }
 
-    println!("EntityId, Position, Without<Target>");
+    println!("Id, Position, Without<Target>");
     for (id, pos) in world
-        .query_mut::<(EntityId<Entity>, &Position)>()
+        .query_mut::<(Id<Entity>, &Position)>()
         .without::<&Target>()
     {
         dbg!(id, pos.0);
@@ -237,19 +237,19 @@ fn main() {
 
     println!("len");
     dbg!(world
-        .query_mut::<(EntityId<Entity>, &Position)>()
+        .query_mut::<(Id<Entity>, &Position)>()
         .without::<&Target>()
         .into_iter()
         .len());
 
-    println!("EntityId, Target");
-    for (id, target) in world.query_mut::<(EntityId<Entity>, &Target)>() {
+    println!("Id, Target");
+    for (id, target) in world.query_mut::<(Id<Entity>, &Target)>() {
         println!("{:?} targeting {:?}", id, target);
     }
 
-    println!("EntityId, Target, nest with Position");
+    println!("Id, Target, nest with Position");
     for ((id, target), mut nest) in world
-        .query_mut::<(EntityId<Entity>, &Target)>()
+        .query_mut::<(Id<Entity>, &Target)>()
         .nest::<&mut Position>()
     {
         let Some(target_pos) = nest.get_mut(target.0) else {
@@ -263,10 +263,10 @@ fn main() {
         //println!("{:?} targeting {:?} @ {:?}", id, target, target_pos_2.0);
     }
 
-    println!("EntityId, Target, nest with Position as EntityRefMut");
+    println!("Id, Target, nest with Position as EntityRefMut");
 
     for ((id, target), mut nest) in world
-        .query_mut::<(EntityId<Entity>, &Target)>()
+        .query_mut::<(Id<Entity>, &Target)>()
         .nest::<EntityRefMut<Player>>()
     {
         let Some(target_pos) = nest.get_mut(target.0) else {
@@ -301,8 +301,8 @@ fn main() {
     }*/
 
     let (positions_and_velocities, positions_b) = world.queries_mut::<(
-        (EntityId<Entity>, &Position, &mut Velocity),
-        (EntityId<Entity>, &Position),
+        (Id<Entity>, &Position, &mut Velocity),
+        (Id<Entity>, &Position),
     )>();
     for (id_a, position_a, velocity) in positions_and_velocities {
         for (id_b, position_b) in &positions_b {
@@ -384,19 +384,19 @@ fn main() {
         }
     }
 
-    for key in world.query_mut::<EntityId<Enemy>>() {
+    for key in world.query_mut::<Id<Enemy>>() {
         println!("got enemy: {:?}", key);
     }
 
-    for id in world.query_mut::<EntityId<Entity>>() {
+    for id in world.query_mut::<Id<Entity>>() {
         println!("got id: {:?}", id);
     }
 
     println!("Fetch aliasing check");
 
     for ((id, enemy), nest) in world
-        .query_mut::<(EntityId<Entity>, EntityRefMut<Enemy2>)>()
-        .nest::<(EntityId<Entity>, &mut Position)>()
+        .query_mut::<(Id<Entity>, EntityRefMut<Enemy2>)>()
+        .nest::<(Id<Entity>, &mut Position)>()
     {
         for (id2, p) in nest {
             println!("{:?} {:?} {} {}", id, id2, p.0, enemy.pos.0);

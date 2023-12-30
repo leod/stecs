@@ -1,4 +1,4 @@
-use stecs::{CloneEntityFromRef, EntityId};
+use stecs::{CloneEntityFromRef, Id};
 
 #[derive(stecs::Entity, Clone)]
 #[stecs(derive_columns(Clone))]
@@ -37,13 +37,13 @@ fn main() {
         },
     });
 
-    for id in world.query::<EntityId<Entity>>().with::<(&f32, &i32)>() {
+    for id in world.query::<Id<Entity>>().with::<(&f32, &i32)>() {
         dbg!(id);
     }
 
     let entity_ref = world.entity(id).unwrap();
     let _ = Bullet::clone_entity_from_ref(entity_ref);
 
-    let entity_ref = world.entity(EntityId::<Entity>::from(id)).unwrap();
+    let entity_ref = world.entity(Id::<Entity>::from(id)).unwrap();
     let _ = Entity::clone_entity_from_ref(entity_ref);
 }

@@ -4,7 +4,7 @@ use crate::{
     entity::EntityVariant,
     secondary::query::{SecondaryFetch, SecondaryQueryItem},
     world::WorldFetch,
-    Entity, EntityId, Query, QueryShared, SecondaryQuery, SecondaryQueryShared, SecondaryWorld,
+    Entity, Id, Query, QueryShared, SecondaryQuery, SecondaryQueryShared, SecondaryWorld,
     WorldData,
 };
 
@@ -78,7 +78,7 @@ where
     #[inline]
     pub fn get<'a, E>(
         &'a self,
-        id: EntityId<E>,
+        id: Id<E>,
     ) -> Option<(
         QueryItem<'w, 'a, Q>,
         SecondaryQueryItem<'w, 'a, J, D::Entity>,
@@ -106,7 +106,7 @@ where
     #[inline]
     pub fn get_mut<'a, E>(
         &'a mut self,
-        id: EntityId<E>,
+        id: Id<E>,
     ) -> Option<(
         QueryItem<'w, 'a, Q>,
         SecondaryQueryItem<'w, 'a, J, D::Entity>,

@@ -124,7 +124,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                     #ident::#variant_idents(self)
                 }
 
-                fn spawn(self, data: &mut #ident_world_data) -> ::stecs::EntityId<Self> {
+                fn spawn(self, data: &mut #ident_world_data) -> ::stecs::Id<Self> {
                     use ::stecs::WorldData;
 
                     data.#variant_idents.spawn(self)
@@ -149,7 +149,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 self
             }
 
-            fn spawn(self, data: &mut #ident_world_data) -> ::stecs::EntityId<Self> {
+            fn spawn(self, data: &mut #ident_world_data) -> ::stecs::Id<Self> {
                 use ::stecs::WorldData;
 
                 match self {
@@ -218,7 +218,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             type Entity = #ident;
             type Fetch<'w, F: ::stecs::query::fetch::Fetch + 'w> = #ident_world_fetch<'w, F>;
 
-            fn spawn<E>(&mut self, entity: E) -> ::stecs::EntityId<E>
+            fn spawn<E>(&mut self, entity: E) -> ::stecs::Id<E>
             where
                 E: ::stecs::entity::EntityVariant<#ident>,
             {
@@ -227,7 +227,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
             fn despawn<E>(
                 &mut self,
-                id: ::stecs::EntityId<E>,
+                id: ::stecs::Id<E>,
             ) -> ::std::option::Option<Self::Entity>
             where
                 E: ::stecs::entity::EntityVariant<Self::Entity>,
@@ -236,7 +236,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                     #(
                         #ident_id::#variant_idents(id) => {
                             self.#variant_idents
-                                .despawn(::stecs::EntityId::<#variant_tys>::new(id))
+                                .despawn(::stecs::Id::<#variant_tys>::new(id))
                                 .map(|entity| #ident::#variant_idents(entity))
                         }
                     )*
@@ -245,27 +245,27 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
             fn spawn_at(
                 &mut self,
-                id: ::stecs::EntityId<Self::Entity>,
+                id: ::stecs::Id<Self::Entity>,
                 entity: Self::Entity,
             ) -> ::std::option::Option<Self::Entity> {
                 match (id.get(), entity) {
                     #(
                         (#ident_id::#variant_idents(id), #ident::#variant_idents(entity)) => {
                             self.#variant_idents
-                                .spawn_at(::stecs::EntityId::new(id), entity)
+                                .spawn_at(::stecs::Id::new(id), entity)
                                 .map(#ident::#variant_idents)
                         }
                     )*
-                    _ => panic!("Incompatible EntityId and Entity variants in `spawn_at`"),
+                    _ => panic!("Incompatible Id and Entity variants in `spawn_at`"),
                 }
             }
 
-            fn contains(&self, id: ::stecs::EntityId<Self::Entity>) -> bool {
+            fn contains(&self, id: ::stecs::Id<Self::Entity>) -> bool {
                 match id.get() {
                     #(
                         #ident_id::#variant_idents(id) => {
                             self.#variant_idents
-                                .contains(::stecs::EntityId::<#variant_tys>::new(id))
+                                .contains(::stecs::Id::<#variant_tys>::new(id))
                         }
                     )*
                 }
@@ -354,7 +354,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         }
 
         unsafe impl<'w> ::stecs::query::fetch::Fetch for #ident_id_fetch<'w> {
-            type Item<'a> = ::stecs::EntityId<#ident> where Self: 'a;
+            type Item<'a> = ::stecs::Id<#ident> where Self: 'a;
 
             fn new<A: ::stecs::entity::Columns>(
                 ids: &::stecs::column::Column<::stecs::thunderdome::Index>,
@@ -380,7 +380,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             where
                 Self: 'a,
             {
-                ::stecs::EntityId::new(match self {
+                ::stecs::Id::new(match self {
                     #(
                         #ident_id_fetch::#variant_idents(fetch) =>
                             #ident_id::#variant_idents(fetch.get(index).get()),

@@ -10,7 +10,7 @@ use crate::{
     column::{ColumnRawParts, ColumnRawPartsMut},
     entity::EntityVariant,
     world::WorldFetch,
-    Component, Entity, EntityId, SecondaryQuery, SecondaryQueryShared, SecondaryWorld, WorldData,
+    Component, Entity, Id, SecondaryQuery, SecondaryQueryShared, SecondaryWorld, WorldData,
 };
 
 use self::{
@@ -49,13 +49,13 @@ unsafe impl<'q, C: Component> Query for &'q mut C {
     }
 }
 
-unsafe impl<E: Entity> Query for EntityId<E> {
+unsafe impl<E: Entity> Query for Id<E> {
     type Fetch<'w> = E::FetchId<'w>;
 
     fn for_each_borrow(_: impl FnMut(TypeId, bool)) {}
 }
 
-unsafe impl<E: Entity> QueryShared for EntityId<E> {}
+unsafe impl<E: Entity> QueryShared for Id<E> {}
 
 macro_rules! tuple_impl {
     () => {
@@ -314,7 +314,7 @@ where
     }
 
     #[inline]
-    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
+    pub fn get_mut<'a, E>(&'a mut self, id: Id<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
@@ -332,7 +332,7 @@ where
     D: WorldData,
 {
     #[inline]
-    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
+    pub fn get<'a, E>(&'a self, id: Id<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
@@ -401,7 +401,7 @@ where
     }
 
     #[inline]
-    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
+    pub fn get_mut<'a, E>(&'a mut self, id: Id<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
@@ -423,7 +423,7 @@ where
     D: WorldData,
 {
     #[inline]
-    pub fn get<'a, E>(&'a self, id: EntityId<E>) -> Option<QueryItem<'w, 'a, Q>>
+    pub fn get<'a, E>(&'a self, id: Id<E>) -> Option<QueryItem<'w, 'a, Q>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,

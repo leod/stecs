@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{entity::EntityVariant, world::WorldFetch, Entity, EntityId, Query, WorldData};
+use crate::{entity::EntityVariant, world::WorldFetch, Entity, Id, Query, WorldData};
 
 use super::{fetch::Fetch, iter::WorldFetchIter};
 
@@ -15,7 +15,7 @@ where
     D: WorldData + 'w,
 {
     pub(crate) data: &'w D,
-    pub(crate) ignore_ids: [EntityId<D::Entity>; 2],
+    pub(crate) ignore_ids: [Id<D::Entity>; 2],
     pub(crate) fetch1: D::Fetch<'w, J1>,
 }
 
@@ -26,7 +26,7 @@ where
     D: WorldData + 'w,
 {
     pub(crate) data: &'w D,
-    pub(crate) ignore_id: EntityId<D::Entity>,
+    pub(crate) ignore_id: Id<D::Entity>,
     pub(crate) fetch0: D::Fetch<'w, J0>,
     pub(crate) fetch1: D::Fetch<'w, J1>,
 }
@@ -106,7 +106,7 @@ where
     // Rust's borrowing rules if `J0` contains an exclusive borrow, since
     // `get()` could be called multiple times with the same `id`.
     #[inline]
-    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<(J0::Item<'a>, Nest1<'w, J1, D>)>
+    pub fn get_mut<'a, E>(&'a mut self, id: Id<E>) -> Option<(J0::Item<'a>, Nest1<'w, J1, D>)>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
@@ -140,7 +140,7 @@ where
     // Rust's borrowing rules if `J1` contains an exclusive borrow, since
     // `get()` could be called multiple times with the same `id`.
     #[inline]
-    pub fn get_mut<'a, E>(&'a mut self, id: EntityId<E>) -> Option<J1::Item<'a>>
+    pub fn get_mut<'a, E>(&'a mut self, id: Id<E>) -> Option<J1::Item<'a>>
     where
         'w: 'a,
         E: EntityVariant<D::Entity>,
