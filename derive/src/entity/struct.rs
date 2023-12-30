@@ -99,19 +99,19 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             type FetchId<'__stecs__w> = ::stecs::query::fetch::EntityKeyFetch<#ident #ty_generics>;
         }
 
-        // CloneEntity
+        // CloneEntityFromRef
 
-        impl #impl_generics ::stecs::CloneEntity for #ident #ty_generics #where_clause
+        impl #impl_generics ::stecs::CloneEntityFromRef for #ident #ty_generics #where_clause
         where
             // https://github.com/rust-lang/rust/issues/48214#issuecomment-1150463333
             #(for<'__stecs__a> #field_comp_tys: ::std::clone::Clone,)*
-            #(for<'__stecs__a> #field_flat_tys: ::stecs::CloneEntity,)*
+            #(for<'__stecs__a> #field_flat_tys: ::stecs::CloneEntityFromRef,)*
         {
-            fn from_ref(entity: Self::Borrow<'_>) -> Self {
+            fn clone_entity_from_ref(entity: Self::Borrow<'_>) -> Self {
                 Self {
                     #(#field_comp_idents: ::std::clone::Clone::clone(entity.#field_comp_idents),)*
                     #(#field_flat_idents:
-                        <#field_flat_tys as ::stecs::CloneEntity>::from_ref(
+                        <#field_flat_tys as ::stecs::CloneEntityFromRef>::clone_entity_from_ref(
                             entity.#field_flat_idents,
                         ),
                     )*
@@ -119,22 +119,22 @@ pub fn derive(input: &DeriveInput, fields: &syn::FieldsNamed) -> Result<TokenStr
             }
         }
 
-        // CloneEntityInto
+        // CloneEntityIntoRef
 
-        impl #impl_generics ::stecs::CloneEntityInto for #ident #ty_generics #where_clause
+        impl #impl_generics ::stecs::CloneEntityIntoRef for #ident #ty_generics #where_clause
         where
             // https://github.com/rust-lang/rust/issues/48214#issuecomment-1150463333
             #(for<'__stecs__a> #field_comp_tys: ::std::clone::Clone,)*
-            #(for<'__stecs__a> #field_flat_tys: ::stecs::CloneEntityInto,)*
+            #(for<'__stecs__a> #field_flat_tys: ::stecs::CloneEntityIntoRef,)*
         {
-            fn clone_entity_into(&self, target: &mut Self::BorrowMut<'_>) {
+            fn clone_entity_into_ref(&self, target: &mut Self::BorrowMut<'_>) {
                 #(
                     *target.#field_comp_idents = ::std::clone::Clone::clone(
                         &self.#field_comp_idents,
                     );
                 )*
                 #(
-                    <#field_flat_tys as ::stecs::CloneEntityInto>::clone_entity_into(
+                    <#field_flat_tys as ::stecs::CloneEntityIntoRef>::clone_entity_into_ref(
                         &self.#field_flat_idents,
                         &mut target.#field_flat_idents,
                     );

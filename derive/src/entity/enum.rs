@@ -93,20 +93,22 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             type FetchId<#lifetime> = #ident_id_fetch<#lifetime>;
         }
 
-        // CloneEntity
+        // CloneEntityFromRef
 
-        impl ::stecs::CloneEntity for #ident
+        impl ::stecs::CloneEntityFromRef for #ident
         where
             // https://github.com/rust-lang/rust/issues/48214#issuecomment-1150463333
-            #(for<'__stecs__a> #variant_tys: ::stecs::CloneEntity,)*
+            #(for<'__stecs__a> #variant_tys: ::stecs::CloneEntityFromRef,)*
         {
-            fn from_ref(entity: Self::Borrow<'_>) -> Self
+            fn clone_entity_from_ref(entity: Self::Borrow<'_>) -> Self
             {
                 match entity {
                     #(
                         #ident_ref::#variant_idents(entity) => {
                             #ident::#variant_idents(
-                                <#variant_tys as ::stecs::CloneEntity>::from_ref(entity),
+                                <#variant_tys as ::stecs::CloneEntityFromRef>::clone_entity_from_ref(
+                                    entity,
+                                ),
                             )
                         }
                     )*

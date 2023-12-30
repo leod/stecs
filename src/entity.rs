@@ -42,12 +42,12 @@ pub trait Entity: Sized + 'static {
     type FetchMut<'w>: Fetch<Item<'w> = Self::BorrowMut<'w>> + 'w;
 }
 
-pub trait CloneEntity: Entity {
-    fn from_ref(entity: Self::Borrow<'_>) -> Self;
+pub trait CloneEntityFromRef: Entity {
+    fn clone_entity_from_ref(entity: Self::Borrow<'_>) -> Self;
 }
 
-pub trait CloneEntityInto: EntityStruct {
-    fn clone_entity_into(&self, target: &mut Self::BorrowMut<'_>);
+pub trait CloneEntityIntoRef: EntityStruct {
+    fn clone_entity_into_ref(&self, target: &mut Self::BorrowMut<'_>);
 }
 
 pub trait EntityStruct: Entity {

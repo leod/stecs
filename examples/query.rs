@@ -6,7 +6,7 @@ pub struct Position(f32);
 #[derive(Clone)]
 pub struct Velocity(f32);
 
-#[derive(stecs::Query, stecs::QueryShared)]
+#[derive(stecs::Query)]
 pub struct PhysicsObjectMut<'a> {
     position: &'a mut Position,
     velocity: &'a mut Velocity,
