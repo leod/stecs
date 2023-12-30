@@ -5,7 +5,7 @@ use derivative::Derivative;
 use crate::{
     entity::EntityVariant,
     query::{assert_borrow, fetch::Fetch, QueryBorrow, QueryItem, QueryMut, QueryShared},
-    Entity, EntityId, EntityRef, EntityRefMut, Query,
+    Entity, EntityRef, EntityRefMut, Id, Query,
 };
 
 pub trait WorldFetch<'w, F: Fetch>: Clone {
@@ -27,21 +27,17 @@ pub trait WorldData: Default + 'static {
 
     type Fetch<'w, F: Fetch + 'w>: WorldFetch<'w, F, Data = Self>;
 
-    fn spawn<E>(&mut self, entity: E) -> EntityId<E>
+    fn spawn<E>(&mut self, entity: E) -> Id<E>
     where
         E: EntityVariant<Self::Entity>;
 
-    fn despawn<E>(&mut self, id: EntityId<E>) -> Option<Self::Entity>
+    fn despawn<E>(&mut self, id: Id<E>) -> Option<Self::Entity>
     where
         E: EntityVariant<Self::Entity>;
 
-    fn spawn_at(
-        &mut self,
-        id: EntityId<Self::Entity>,
-        entity: Self::Entity,
-    ) -> Option<Self::Entity>;
+    fn spawn_at(&mut self, id: Id<Self::Entity>, entity: Self::Entity) -> Option<Self::Entity>;
 
-    fn contains(&self, id: EntityId<Self::Entity>) -> bool;
+    fn contains(&self, id: Id<Self::Entity>) -> bool;
 
     #[doc(hidden)]
     fn fetch<'w, F>(&'w self) -> Self::Fetch<'w, F>
@@ -64,14 +60,14 @@ impl<E: Entity> World<E> {
         Self::default()
     }
 
-    pub fn spawn<F>(&mut self, entity: F) -> EntityId<F>
+    pub fn spawn<F>(&mut self, entity: F) -> Id<F>
     where
         F: EntityVariant<E>,
     {
         self.0.spawn(entity)
     }
 
-    pub fn despawn<F>(&mut self, id: EntityId<F>) -> Option<E>
+    pub fn despawn<F>(&mut self, id: Id<F>) -> Option<E>
     where
         F: EntityVariant<E>,
     {
@@ -94,21 +90,21 @@ impl<E: Entity> World<E> {
         unsafe { Q::new(&self.0) }
     }
 
-    pub fn get<Q: QueryShared>(&self, id: EntityId<E>) -> Option<QueryItem<Q>> {
+    pub fn get<Q: QueryShared>(&self, id: Id<E>) -> Option<QueryItem<Q>> {
         let fetch = self.0.fetch::<<Q as Query>::Fetch<'_>>();
 
         // Safety: TODO
         unsafe { fetch.get(id.get()) }
     }
 
-    pub fn get_mut<Q: Query>(&mut self, id: EntityId<E>) -> Option<QueryItem<Q>> {
+    pub fn get_mut<Q: Query>(&mut self, id: Id<E>) -> Option<QueryItem<Q>> {
         let fetch = self.0.fetch::<<Q as Query>::Fetch<'_>>();
 
         // Safety: TODO
         unsafe { fetch.get(id.get()) }
     }
 
-    pub fn entity<F>(&self, id: EntityId<F>) -> Option<EntityRef<F>>
+    pub fn entity<F>(&self, id: Id<F>) -> Option<EntityRef<F>>
     where
         F: EntityVariant<E>,
     {
@@ -119,7 +115,7 @@ impl<E: Entity> World<E> {
         unsafe { fetch.get(id.get()) }
     }
 
-    pub fn entity_mut<F>(&mut self, id: EntityId<F>) -> Option<EntityRefMut<F>>
+    pub fn entity_mut<F>(&mut self, id: Id<F>) -> Option<EntityRefMut<F>>
     where
         F: EntityVariant<E>,
     {
@@ -130,11 +126,11 @@ impl<E: Entity> World<E> {
         unsafe { fetch.get(id.get()) }
     }
 
-    pub fn spawn_at(&mut self, id: EntityId<E>, entity: E) -> Option<E> {
+    pub fn spawn_at(&mut self, id: Id<E>, entity: E) -> Option<E> {
         self.0.spawn_at(id, entity)
     }
 
-    pub fn contains<F>(&self, id: EntityId<F>) -> bool
+    pub fn contains<F>(&self, id: Id<F>) -> bool
     where
         F: EntityVariant<E>,
     {

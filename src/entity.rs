@@ -33,7 +33,7 @@ pub trait Entity: Sized + 'static {
     type WorldData: WorldData<Entity = Self>;
 
     #[doc(hidden)]
-    type FetchId<'w>: Fetch<Item<'w> = EntityId<Self>> + 'w;
+    type FetchId<'w>: Fetch<Item<'w> = Id<Self>> + 'w;
 
     #[doc(hidden)]
     type Fetch<'w>: Fetch<Item<'w> = Self::Borrow<'w>> + 'w;
@@ -57,7 +57,7 @@ pub trait EntityStruct: Entity {
 pub trait EntityVariant<EOuter: Entity>: Entity {
     fn into_outer(self) -> EOuter;
 
-    fn spawn(self, data: &mut EOuter::WorldData) -> EntityId<Self>;
+    fn spawn(self, data: &mut EOuter::WorldData) -> Id<Self>;
 
     fn id_to_outer(id: Self::Id) -> EOuter::Id
     where
@@ -87,14 +87,14 @@ pub type EntityColumns<E> = <E as EntityStruct>::Columns;
     Debug(bound = "")
 )]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct EntityId<E: Entity>(E::Id);
+pub struct Id<E: Entity>(E::Id);
 
-impl<E: Entity> EntityId<E> {
+impl<E: Entity> Id<E> {
     pub fn new(id: E::Id) -> Self {
         Self(id)
     }
 
-    pub fn from<EInner: EntityVariant<E>>(id: EntityId<EInner>) -> Self {
+    pub fn from<EInner: EntityVariant<E>>(id: Id<EInner>) -> Self {
         id.to_outer()
     }
 
@@ -102,19 +102,19 @@ impl<E: Entity> EntityId<E> {
         self.0
     }
 
-    pub fn to_outer<EOuter>(self) -> EntityId<EOuter>
+    pub fn to_outer<EOuter>(self) -> Id<EOuter>
     where
         EOuter: Entity,
         E: EntityVariant<EOuter>,
     {
-        EntityId(E::id_to_outer(self.0))
+        Id(E::id_to_outer(self.0))
     }
 
-    pub fn try_to_inner<EInner>(self) -> Option<EntityId<EInner>>
+    pub fn try_to_inner<EInner>(self) -> Option<Id<EInner>>
     where
         EInner: EntityVariant<E>,
     {
-        EInner::try_id_from_outer(self.0).map(EntityId::new)
+        EInner::try_id_from_outer(self.0).map(Id::new)
     }
 }
 

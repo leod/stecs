@@ -4,7 +4,7 @@ use crate::{
     archetype::EntityKey,
     column::{Column, ColumnRawParts, ColumnRawPartsMut},
     entity::{Columns, EntityStruct},
-    Component, EntityId,
+    Component, Id,
 };
 
 use super::Or;
@@ -108,7 +108,7 @@ unsafe impl<E> Fetch for EntityKeyFetch<E>
 where
     E: EntityStruct<Id = EntityKey<E>>,
 {
-    type Item<'a> = EntityId<E>;
+    type Item<'a> = Id<E>;
 
     fn new<T: Columns>(ids: &Column<thunderdome::Index>, _: &T) -> Option<Self> {
         if TypeId::of::<T::Entity>() == TypeId::of::<E>() {
@@ -128,7 +128,7 @@ where
     where
         Self: 'a,
     {
-        EntityId::new(EntityKey::new_unchecked(*Fetch::get(&self.0, index)))
+        Id::new(EntityKey::new_unchecked(*Fetch::get(&self.0, index)))
     }
 }
 

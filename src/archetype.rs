@@ -13,7 +13,7 @@ use crate::{
     entity::{Columns, EntityVariant},
     query::fetch::Fetch,
     world::WorldFetch,
-    EntityId, EntityRef, WorldData,
+    EntityRef, Id, WorldData,
 };
 
 #[derive(Derivative)]
@@ -79,24 +79,24 @@ pub struct Archetype<T: Columns> {
 }
 
 impl<T: Columns> Archetype<T> {
-    fn spawn_impl(&mut self, entity: T::Entity) -> EntityId<T::Entity> {
+    fn spawn_impl(&mut self, entity: T::Entity) -> Id<T::Entity> {
         let index = self.ids.len();
         let id = EntityKey::new_unchecked(self.indices.insert(index));
 
         self.ids.push(id.0);
         self.columns.push(entity);
 
-        EntityId::new(id)
+        Id::new(id)
     }
 
-    fn spawn_at_impl(&mut self, id: EntityId<T::Entity>, entity: T::Entity) {
+    fn spawn_at_impl(&mut self, id: Id<T::Entity>, entity: T::Entity) {
         self.indices.insert_at(id.get().0, self.ids.len());
 
         self.ids.push(id.get().0);
         self.columns.push(entity);
     }
 
-    fn despawn_impl(&mut self, id: EntityId<T::Entity>) -> Option<T::Entity> {
+    fn despawn_impl(&mut self, id: Id<T::Entity>) -> Option<T::Entity> {
         let index = self.indices.remove(id.get().0)?;
         let is_last = index + 1 == self.ids.len();
 
@@ -109,7 +109,7 @@ impl<T: Columns> Archetype<T> {
         Some(self.columns.remove(index))
     }
 
-    pub fn get_impl(&mut self, id: EntityId<T::Entity>) -> Option<EntityRef<T::Entity>> {
+    pub fn get_impl(&mut self, id: Id<T::Entity>) -> Option<EntityRef<T::Entity>> {
         let index = *self.indices.get(id.get().0)?;
 
         debug_assert!(index < self.ids.len());
@@ -177,7 +177,7 @@ impl<T: Columns> WorldData for Archetype<T> {
 
     type Fetch<'w, F: Fetch + 'w> = ArchetypeWorldFetch<'w, F, T>;
 
-    fn spawn<E>(&mut self, entity: E) -> EntityId<E>
+    fn spawn<E>(&mut self, entity: E) -> Id<E>
     where
         E: EntityVariant<Self::Entity>,
     {
@@ -189,18 +189,14 @@ impl<T: Columns> WorldData for Archetype<T> {
         )
     }
 
-    fn despawn<E>(&mut self, id: EntityId<E>) -> Option<Self::Entity>
+    fn despawn<E>(&mut self, id: Id<E>) -> Option<Self::Entity>
     where
         E: EntityVariant<Self::Entity>,
     {
         self.despawn_impl(id.to_outer())
     }
 
-    fn spawn_at(
-        &mut self,
-        id: EntityId<Self::Entity>,
-        entity: Self::Entity,
-    ) -> Option<Self::Entity> {
+    fn spawn_at(&mut self, id: Id<Self::Entity>, entity: Self::Entity) -> Option<Self::Entity> {
         let old = self.despawn(id);
 
         self.spawn_at_impl(id, entity);
@@ -208,7 +204,7 @@ impl<T: Columns> WorldData for Archetype<T> {
         old
     }
 
-    fn contains(&self, id: EntityId<Self::Entity>) -> bool {
+    fn contains(&self, id: Id<Self::Entity>) -> bool {
         self.indices.contains(id.get().0)
     }
 

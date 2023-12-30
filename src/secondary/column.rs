@@ -3,9 +3,9 @@ use std::cell::UnsafeCell;
 use downcast_rs::Downcast;
 use fxhash::FxHashMap;
 
-use crate::{Component, Entity, EntityId};
+use crate::{Component, Entity, Id};
 
-pub struct SecondaryColumn<E: Entity, C>(FxHashMap<EntityId<E>, UnsafeCell<C>>);
+pub struct SecondaryColumn<E: Entity, C>(FxHashMap<Id<E>, UnsafeCell<C>>);
 
 impl<E: Entity, C> Default for SecondaryColumn<E, C> {
     fn default() -> Self {
@@ -18,27 +18,27 @@ impl<E: Entity, C> SecondaryColumn<E, C> {
         Default::default()
     }
 
-    pub fn get(&self, id: EntityId<E>) -> Option<&UnsafeCell<C>> {
+    pub fn get(&self, id: Id<E>) -> Option<&UnsafeCell<C>> {
         self.0.get(&id)
     }
 
-    pub fn insert(&mut self, id: EntityId<E>, component: C) {
+    pub fn insert(&mut self, id: Id<E>, component: C) {
         self.0.insert(id, component.into());
     }
 
-    pub fn remove(&mut self, id: EntityId<E>) {
+    pub fn remove(&mut self, id: Id<E>) {
         self.0.remove(&id);
     }
 }
 
 pub trait AnySecondaryColumn<E: Entity>: Downcast + 'static {
-    fn remove(&mut self, id: EntityId<E>);
+    fn remove(&mut self, id: Id<E>);
 }
 
 downcast_rs::impl_downcast!(AnySecondaryColumn<E> where E: Entity);
 
 impl<E: Entity, C: Component> AnySecondaryColumn<E> for SecondaryColumn<E, C> {
-    fn remove(&mut self, id: EntityId<E>) {
+    fn remove(&mut self, id: Id<E>) {
         self.0.remove(&id);
     }
 }

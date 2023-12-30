@@ -1,6 +1,6 @@
 use std::any::TypeId;
 
-use crate::{Component, Entity, EntityId, SecondaryWorld};
+use crate::{Component, Entity, Id, SecondaryWorld};
 
 use super::column::SecondaryColumn;
 
@@ -14,7 +14,7 @@ pub trait SecondaryFetch<'w, E: Entity>: Copy + 'w {
     /// # Safety
     ///
     /// TODO
-    unsafe fn get<'a>(&self, id: EntityId<E>) -> Option<Self::Item<'a>>
+    unsafe fn get<'a>(&self, id: Id<E>) -> Option<Self::Item<'a>>
     where
         Self: 'a;
 }
@@ -50,7 +50,7 @@ impl<'w, E: Entity, C: Component> SecondaryFetch<'w, E> for ComponentFetch<'w, E
         world.column::<C>().map(ComponentFetch)
     }
 
-    unsafe fn get<'a>(&self, id: EntityId<E>) -> Option<Self::Item<'a>>
+    unsafe fn get<'a>(&self, id: Id<E>) -> Option<Self::Item<'a>>
     where
         Self: 'a,
     {
@@ -91,7 +91,7 @@ impl<'w, E: Entity, C: Component> SecondaryFetch<'w, E> for ComponentMutFetch<'w
         world.column::<C>().map(ComponentMutFetch)
     }
 
-    unsafe fn get<'a>(&self, id: EntityId<E>) -> Option<Self::Item<'a>>
+    unsafe fn get<'a>(&self, id: Id<E>) -> Option<Self::Item<'a>>
     where
         Self: 'a,
     {
@@ -130,7 +130,7 @@ macro_rules! tuple_impl {
             ///
             /// TODO
             #[allow(unused)]
-            unsafe fn get<'a>(&self, id: EntityId<E>) -> Option<Self::Item<'a>>
+            unsafe fn get<'a>(&self, id: Id<E>) -> Option<Self::Item<'a>>
             where
                 Self: 'a,
             {

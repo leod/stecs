@@ -7,7 +7,7 @@ use std::{
 
 use bencher::{benchmark_group, benchmark_main, Bencher};
 
-use stecs::{EntityId, World};
+use stecs::{Id, World};
 
 #[derive(Clone)]
 struct Position(f32);
@@ -42,7 +42,7 @@ fn iterate_100k(b: &mut Bencher) {
     }
 
     b.iter(|| {
-        for (_, pos, vel) in world.query_mut::<(EntityId<Bundle>, &mut Position, &Velocity)>() {
+        for (_, pos, vel) in world.query_mut::<(Id<Bundle>, &mut Position, &Velocity)>() {
             pos.0 += vel.0;
         }
     })
@@ -70,7 +70,7 @@ fn iterate_100k_random_access(b: &mut Bencher) {
     struct Enemy {
         pos: Position,
         vel: Velocity,
-        target: EntityId<Entity>,
+        target: Id<Entity>,
     }
 
     #[derive(stecs::Entity)]
@@ -113,7 +113,7 @@ fn iterate_100k_random_access(b: &mut Bencher) {
 
     b.iter(|| {
         let (query_a, query_b) =
-            world.queries_mut::<((&EntityId<Entity>, &Position, &mut Velocity), &Position)>();
+            world.queries_mut::<((&Id<Entity>, &Position, &mut Velocity), &Position)>();
 
         for (target_a, pos_a, vel_a) in query_a {
             let pos_b = query_b.get(*target_a).unwrap();

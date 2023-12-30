@@ -1,4 +1,4 @@
-use stecs::{EntityId, EntityRef, EntityRefMut};
+use stecs::{EntityRef, EntityRefMut, Id};
 
 // Components
 
@@ -18,7 +18,7 @@ struct Velocity(i32);
 struct Health(i32);
 
 #[derive(Debug, Clone)]
-struct Target(Option<EntityId<Entity>>);
+struct Target(Option<Id<Entity>>);
 
 // Entities
 
@@ -41,7 +41,7 @@ struct Enemy {
 struct Bullet {
     pos: Position,
     vel: Velocity,
-    owner: EntityId<Entity>,
+    owner: Id<Entity>,
 }
 
 // World
@@ -100,7 +100,7 @@ fn align_to_target(world: &mut World) {
     // Acquire targets.
     for ((pos, target), nest) in world
         .query_mut::<(&Position, &mut Target)>()
-        .nest::<(EntityId<Player>, EntityRef<Player>)>()
+        .nest::<(Id<Player>, EntityRef<Player>)>()
     {
         if target.0.is_some() {
             continue;
@@ -136,7 +136,7 @@ fn align_to_target(world: &mut World) {
 
 fn spawn_bullets(world: &mut World) {
     let bullets: Vec<_> = world
-        .query::<(EntityId<Entity>, &Position, &Velocity)>()
+        .query::<(Id<Entity>, &Position, &Velocity)>()
         .with::<&Target>()
         .into_iter()
         .map(|(id, pos, vel)| Bullet {
@@ -155,7 +155,7 @@ fn update_bullets(world: &mut World) {
     for (bullet, nest) in
         world
             .query_mut::<EntityRefMut<Bullet>>()
-            .nest::<(EntityId<Entity>, &Position, &mut Health)>()
+            .nest::<(Id<Entity>, &Position, &mut Health)>()
     {
         // For performance reasons, this check would usually be done with
         // a spatial acceleration structure rather than an inner loop.
@@ -170,7 +170,7 @@ fn update_bullets(world: &mut World) {
 
 fn despawn_dead(world: &mut World) {
     let dead: Vec<_> = world
-        .query::<(EntityId<Entity>, &Health)>()
+        .query::<(Id<Entity>, &Health)>()
         .into_iter()
         .filter(|(_, health)| health.0 <= 0)
         .map(|(id, _)| id)
