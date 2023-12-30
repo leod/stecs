@@ -1,4 +1,4 @@
-use stecs::{EntityFromRef, EntityId};
+use stecs::{CloneEntityFromRef, EntityId};
 
 #[derive(stecs::Entity, Clone)]
 #[stecs(derive_columns(Clone))]
@@ -42,8 +42,8 @@ fn main() {
     }
 
     let entity_ref = world.entity(id).unwrap();
-    let _ = Bullet::from_ref(entity_ref);
+    let _ = Bullet::clone_entity_from_ref(entity_ref);
 
     let entity_ref = world.entity(EntityId::<Entity>::from(id)).unwrap();
-    let _ = Entity::from_ref(entity_ref);
+    let _ = Entity::clone_entity_from_ref(entity_ref);
 }

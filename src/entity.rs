@@ -26,9 +26,9 @@ pub trait Columns: Default + 'static {
 pub trait Entity: Sized + 'static {
     type Id: Copy + Debug + Eq + Ord + Hash + 'static;
 
-    type Ref<'a>: QueryShared + Clone;
+    type Borrow<'a>: QueryShared + Clone;
 
-    type RefMut<'a>: Query;
+    type BorrowMut<'a>: Query;
 
     type WorldData: WorldData<Entity = Self>;
 
@@ -36,14 +36,18 @@ pub trait Entity: Sized + 'static {
     type FetchId<'w>: Fetch<Item<'w> = EntityId<Self>> + 'w;
 
     #[doc(hidden)]
-    type Fetch<'w>: Fetch<Item<'w> = Self::Ref<'w>> + 'w;
+    type Fetch<'w>: Fetch<Item<'w> = Self::Borrow<'w>> + 'w;
 
     #[doc(hidden)]
-    type FetchMut<'w>: Fetch<Item<'w> = Self::RefMut<'w>> + 'w;
+    type FetchMut<'w>: Fetch<Item<'w> = Self::BorrowMut<'w>> + 'w;
 }
 
-pub trait EntityFromRef: Entity {
-    fn from_ref(entity: Self::Ref<'_>) -> Self;
+pub trait CloneEntityFromRef: Entity {
+    fn clone_entity_from_ref(entity: Self::Borrow<'_>) -> Self;
+}
+
+pub trait CloneEntityIntoRef: EntityStruct {
+    fn clone_entity_into_ref(&self, target: &mut Self::BorrowMut<'_>);
 }
 
 pub trait EntityStruct: Entity {
@@ -64,9 +68,9 @@ pub trait EntityVariant<EOuter: Entity>: Entity {
         Self: Sized;
 }
 
-pub type EntityRef<'a, E> = <E as Entity>::Ref<'a>;
+pub type EntityRef<'a, E> = <E as Entity>::Borrow<'a>;
 
-pub type EntityRefMut<'a, E> = <E as Entity>::RefMut<'a>;
+pub type EntityRefMut<'a, E> = <E as Entity>::BorrowMut<'a>;
 
 #[doc(hidden)]
 pub type EntityColumns<E> = <E as EntityStruct>::Columns;

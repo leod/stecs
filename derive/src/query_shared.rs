@@ -6,7 +6,6 @@ use crate::utils::{members_as_idents, struct_fields};
 
 pub fn derive(input: DeriveInput) -> Result<TokenStream2> {
     let ident = &input.ident;
-    let vis = &input.vis;
     let data = match input.data {
         syn::Data::Struct(ref data) => Ok(data),
         _ => Err(Error::new_spanned(

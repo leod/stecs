@@ -85,29 +85,30 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
         impl ::stecs::Entity for #ident {
             type Id = #ident_id;
-            type Ref<#lifetime> = #ident_ref<#lifetime>;
-            type RefMut<#lifetime> = #ident_ref_mut<#lifetime>;
+            type Borrow<#lifetime> = #ident_ref<#lifetime>;
+            type BorrowMut<#lifetime> = #ident_ref_mut<#lifetime>;
             type WorldData = #ident_world_data;
             type Fetch<#lifetime> = #ident_ref_fetch<#lifetime>;
             type FetchMut<#lifetime> = #ident_ref_mut_fetch<#lifetime>;
             type FetchId<#lifetime> = #ident_id_fetch<#lifetime>;
         }
 
-        // EntityFromRef
+        // CloneEntityFromRef
 
-        impl ::stecs::EntityFromRef for #ident
+        impl ::stecs::CloneEntityFromRef for #ident
         where
             // https://github.com/rust-lang/rust/issues/48214#issuecomment-1150463333
-            #(for<'__stecs__a> #variant_tys: ::stecs::EntityFromRef,)*
+            #(for<'__stecs__a> #variant_tys: ::stecs::CloneEntityFromRef,)*
         {
-            #[inline]
-            fn from_ref(entity: Self::Ref<'_>) -> Self
+            fn clone_entity_from_ref(entity: Self::Borrow<'_>) -> Self
             {
                 match entity {
                     #(
                         #ident_ref::#variant_idents(entity) => {
                             #ident::#variant_idents(
-                                <#variant_tys as ::stecs::EntityFromRef>::from_ref(entity),
+                                <#variant_tys as ::stecs::CloneEntityFromRef>::clone_entity_from_ref(
+                                    entity,
+                                ),
                             )
                         }
                     )*
@@ -192,14 +193,14 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         #[derive(::std::clone::Clone)]
         #ref_derives
         #vis enum #ident_ref<#lifetime> {
-            #(#variant_idents(<#variant_tys as ::stecs::Entity>::Ref<#lifetime>),)*
+            #(#variant_idents(<#variant_tys as ::stecs::Entity>::Borrow<#lifetime>),)*
         }
 
         // RefMut
 
         #[allow(non_camel_case_types)]
         #vis enum #ident_ref_mut<#lifetime> {
-            #(#variant_idents(<#variant_tys as ::stecs::Entity>::RefMut<#lifetime>),)*
+            #(#variant_idents(<#variant_tys as ::stecs::Entity>::BorrowMut<#lifetime>),)*
         }
 
         // WorldData
@@ -437,7 +438,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             type Fetch<'w> = #ident_ref_fetch<'w>;
 
             fn for_each_borrow(mut f: impl FnMut(::std::any::TypeId, bool)) {
-                #(<#variant_tys as ::stecs::Entity>::Ref::<'q>::for_each_borrow(&mut f);)*
+                #(<#variant_tys as ::stecs::Entity>::Borrow::<'q>::for_each_borrow(&mut f);)*
             }
         }
 
@@ -493,7 +494,7 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             type Fetch<'w> = #ident_ref_mut_fetch<'w>;
 
             fn for_each_borrow(mut f: impl FnMut(::std::any::TypeId, bool)) {
-                #(<#variant_tys as ::stecs::Entity>::RefMut::<'q>::for_each_borrow(&mut f);)*
+                #(<#variant_tys as ::stecs::Entity>::BorrowMut::<'q>::for_each_borrow(&mut f);)*
             }
         }
     })
