@@ -494,7 +494,28 @@ pub fn derive(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             type Fetch<'w> = #ident_ref_mut_fetch<'w>;
 
             fn for_each_borrow(mut f: impl FnMut(::std::any::TypeId, bool)) {
-                #(<#variant_tys as ::stecs::Entity>::BorrowMut::<'q>::for_each_borrow(&mut f);)*
+                let mut borrows = ::stecs::fxhash::FxHashSet::default();
+
+                // NOTE: We are borrowing components mutably here. However, the
+                // entity enum variants might have overlapping component type
+                // sets. We need to deduplicate the component types here, so
+                // that the borrow check (`assert_borrow`) does not raise an
+                // error.
+
+                // TODO: Collecting into a hash map is likely to cause per-query
+                // runtime overhead. Is there a way to write this that enables
+                // the compiler to optimize it out when used in `assert_borrow`?
+                #(
+                    <#variant_tys as ::stecs::Entity>::BorrowMut::<'q>::for_each_borrow(
+                        |borrow, _| {
+                            borrows.insert(borrow);
+                        }
+                    );
+                )*
+
+                for borrow in borrows {
+                    f(borrow, true);
+                }
             }
         }
     })
