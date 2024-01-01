@@ -26,6 +26,10 @@ pub use thunderdome;
 
 pub use stecs_derive::{Entity, Query, QueryShared};
 
+// Re-export for derive macros.
+#[doc(hidden)]
+pub use fxhash;
+
 #[doc(inline)]
 pub use self::{
     entity::{CloneEntityFromRef, CloneEntityIntoRef, Entity, EntityRef, EntityRefMut, Id},
